@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Edit Barang</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    {% include 'flashProtection.html' %}
+    <div class="w-full max-w-md bg-white rounded-lg shadow-md overflow-hidden">
+      <!-- Header Form -->
+      <div class="bg-green-600 py-4 px-6">
+        <h1 class="text-2xl font-bold text-white text-center">Edit Barang</h1>
+      </div>
+
+      <!-- Form Container -->
+      <form
+        method="POST"
+        action="{{ url_for('editBarang', id_barang=barang[0]) }}"
+        class="p-6 space-y-4"
+      >
+        <!-- Nama Barang -->
+        <div>
+          <label
+            for="nama_barang"
+            class="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Nama Barang
+          </label>
+          <div class="relative">
+            <div
+              class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
+            >
+              <i class="fas fa-box text-gray-400"></i>
+            </div>
+            <input
+              type="text"
+              id="nama_barang"
+              name="nama_barang"
+              class="w-full pl-10 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              placeholder="Masukkan nama barang"
+              value="{{ barang[1] if barang else '' }}"
+              required
+            />
+          </div>
+        </div>
+
+        <!-- Harga -->
+        <div>
+          <label
+            for="harga"
+            class="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Harga
+          </label>
+          <div class="relative">
+            <div
+              class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
+            >
+              <i class="fas fa-tag text-gray-400"></i>
+            </div>
+            <input
+              type="number"
+              id="harga"
+              name="harga"
+              class="w-full pl-10 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              value="{{ barang[2] if barang else '' }}"
+              placeholder="Masukkan harga"
+              required
+              min="0"
+              step="0.01"
+            />
+          </div>
+          <p class="text-xs text-gray-500 mt-1">
+            Masukkan harga (contoh: 150000)
+          </p>
+        </div>
+
+        <!-- Deskripsi -->
+        <div>
+          <label
+            for="deskripsi"
+            class="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Deskripsi
+          </label>
+          <div class="relative">
+            <div
+              class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
+            >
+              <i class="fas fa-align-left text-gray-400"></i>
+            </div>
+            <textarea
+              id="deskripsi"
+              name="deskripsi"
+              class="w-full pl-10 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              placeholder="Masukkan deskripsi barang"
+              rows="3"
+              required
+            >
+{{ barang[3] if barang else '' }}</textarea
+            >
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <button
+          type="submit"
+          class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition duration-300 flex items-center justify-center"
+        >
+          <i class="fas fa-save mr-2"></i> Simpan Perubahan
+        </button>
+
+        <!-- Cancel Button -->
+        <a
+          href="{{ url_for('dashboard') }}"
+          class="block text-center w-full bg-gray-200 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-300 transition duration-300"
+        >
+          Batal
+        </a>
+      </form>
+    </div>
+  </body>
+</html>
