@@ -302,3 +302,64 @@ class Database:
             return None
         finally:
             self.close()
+            def create_tables(db_config):
+    """
+    Membuat tabel-tabel yang dibutuhkan untuk aplikasi
+    dan menambahkan kolom created_at dan updated_at
+    """
+    import psycopg2
+    
+    try:
+        # Koneksi ke database
+        connection = psycopg2.connect(**db_config)
+        cursor = connection.cursor()
+        
+        # Membuat tabel users jika belum ada
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            username VARCHAR(50) UNIQUE NOT NULL,
+            password VARCHAR(255) NOT NULL,
+            role VARCHAR(20) NOT NULL,
+            nama VARCHAR(100) NOT NULL,
+            email VARCHAR(100) UNIQUE NOT NULL,
+            nohp VARCHAR(20),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        
+        # Membuat tabel barang jika belum ada
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS barang (
+            id SERIAL PRIMARY KEY,
+            nama_barang VARCHAR(100) NOT NULL,
+            harga DECIMAL(10,2) NOT NULL,
+            deskripsi TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        
+        # Commit perubahan
+        connection.commit()
+        print("Tabel berhasil dibuat/diperbarui")
+    
+    except Exception as e:
+        print(f"Error membuat tabel: {e}")
+        if connection:
+            connection.rollback()
+    
+    finally:
+        # Tutup koneksi
+        if cursor:
+            cursor.close()
+        if connection:
+            connection.close()
+
+# Tambahkan method ini ke dalam class Database di crud.py
+def create_tables_method(self):
+    """
+    Method wrapper untuk create_tables yang dapat dipanggil dari instance Database
+    """
+    create_tables(self.config)
