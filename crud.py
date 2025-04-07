@@ -303,15 +303,16 @@ class Database:
         finally:
             self.close()
 
-   def create_tables(db_config):
+  # Di akhir file crud.py
+def create_tables(db_config):
     """
     Membuat tabel-tabel yang dibutuhkan untuk aplikasi
     dan menambahkan kolom created_at dan updated_at
     """
-    import psycopg2
-    
     connection = None
     try:
+        import psycopg2
+
         # Koneksi ke database
         connection = psycopg2.connect(**db_config)
         cursor = connection.cursor()
