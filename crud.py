@@ -303,7 +303,7 @@ class Database:
         finally:
             self.close()
             def create_tables(db_config):
-    def create_tables(db_config):
+   def create_tables(db_config):
     """
     Membuat tabel-tabel yang dibutuhkan untuk aplikasi
     dan menambahkan kolom created_at dan updated_at
@@ -357,8 +357,10 @@ class Database:
         if connection:
             connection.close()
 
-def create_tables_method(self):
-    """
-    Method wrapper untuk create_tables yang dapat dipanggil dari instance Database
-    """
-    create_tables(self.config)
+class DatabaseMigration:
+    @staticmethod
+    def create_tables_method(db_config):
+        """
+        Method wrapper untuk create_tables yang dapat dipanggil dari instance Database
+        """
+        create_tables(db_config)
