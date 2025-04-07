@@ -309,15 +309,15 @@ def create_tables(db_config):
     Membuat tabel-tabel yang dibutuhkan untuk aplikasi
     dan menambahkan kolom created_at dan updated_at
     """
+    import psycopg2
+    
     connection = None
     try:
-        import psycopg2
-
-        # Koneksi ke database
+        print("Mencoba membuat koneksi...")
         connection = psycopg2.connect(**db_config)
         cursor = connection.cursor()
         
-        # Membuat tabel users jika belum ada
+        print("Membuat tabel users...")
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
@@ -332,7 +332,7 @@ def create_tables(db_config):
         )
         """)
         
-        # Membuat tabel barang jika belum ada
+        print("Membuat tabel barang...")
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS barang (
             id SERIAL PRIMARY KEY,
@@ -357,11 +357,3 @@ def create_tables(db_config):
         # Tutup koneksi
         if connection:
             connection.close()
-
-class DatabaseMigration:
-    @staticmethod
-    def create_tables_method(db_config):
-        """
-        Method wrapper untuk create_tables yang dapat dipanggil dari instance Database
-        """
-        create_tables(db_config)
