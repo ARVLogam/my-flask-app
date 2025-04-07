@@ -2,6 +2,7 @@ import psycopg2
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from flask import flash
+from config import DB_CONFIG
 
 class Database:
     def __init__(self, config):
