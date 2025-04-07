@@ -302,7 +302,7 @@ class Database:
             return None
         finally:
             self.close()
-            def create_tables(db_config):
+
    def create_tables(db_config):
     """
     Membuat tabel-tabel yang dibutuhkan untuk aplikasi
