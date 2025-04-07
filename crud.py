@@ -303,12 +303,14 @@ class Database:
         finally:
             self.close()
             def create_tables(db_config):
+    def create_tables(db_config):
     """
     Membuat tabel-tabel yang dibutuhkan untuk aplikasi
     dan menambahkan kolom created_at dan updated_at
     """
     import psycopg2
     
+    connection = None
     try:
         # Koneksi ke database
         connection = psycopg2.connect(**db_config)
@@ -352,12 +354,10 @@ class Database:
     
     finally:
         # Tutup koneksi
-        if cursor:
-            cursor.close()
         if connection:
             connection.close()
 
-# Tambahkan method ini ke dalam class Database di crud.py
+# Tambahkan method ini sebagai method dari class Database
 def create_tables_method(self):
     """
     Method wrapper untuk create_tables yang dapat dipanggil dari instance Database
