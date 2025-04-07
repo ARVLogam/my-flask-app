@@ -304,6 +304,8 @@ class Database:
             self.close()
 
   # Di akhir file crud.py
+# Method-method lain di class Database
+
 def create_tables(db_config):
     """
     Membuat tabel-tabel yang dibutuhkan untuk aplikasi
