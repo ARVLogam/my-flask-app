@@ -11,10 +11,10 @@ app.secret_key = os.urandom(24)  # Secret key for session management
 
 # Database configuration - replace with your actual credentials
 DB_CONFIG = {
-    'host': os.environ.get('postgres.railway.internal', 'localhost'),
-    'database': os.environ.get('railway', 'arvLogam'),
-    'user': os.environ.get('postgres', 'postgres'),
-    'password': os.environ.get('FPXHjKAHReSzXFDbQPmLNjLxeXUHyeOY', 'postgres')
+    'host': os.environ.get('postgres.railway.internal'),
+    'database': os.environ.get('railway'),
+    'user': os.environ.get('postgres'),
+    'password': os.environ.get('FPXHjKAHReSzXFDbQPmLNjLxeXUHyeOY')
 }
 
 #basic crud start
@@ -426,7 +426,7 @@ def menuAdmin():
     
 
 db = Database(DB_CONFIG)
-DatabaseMigration.create_tables_method(DB_CONFIG) # Jalankan migrasi saat aplikasi dimulai
+create_tables(DB_CONFIG)
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
