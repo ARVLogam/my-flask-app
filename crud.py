@@ -357,7 +357,6 @@ class Database:
         if connection:
             connection.close()
 
-# Tambahkan method ini sebagai method dari class Database
 def create_tables_method(self):
     """
     Method wrapper untuk create_tables yang dapat dipanggil dari instance Database
