@@ -12,10 +12,10 @@ app.secret_key = os.urandom(24)  # Secret key for session management
 
 # Database configuration - replace with your actual credentials
 DB_CONFIG = {
-    'host': 'localhost',
-    'database': 'arvLogam',
-    'user': 'postgres',
-    'password': 'postgres'
+    'host': os.environ.get('PGHOST', 'localhost'),
+    'database': os.environ.get('PGDATABASE', 'arvLogam'),
+    'user': os.environ.get('PGUSER', 'postgres'),
+    'password': os.environ.get('PGPASSWORD', 'postgres')
 }
 
 #basic crud start
@@ -427,8 +427,9 @@ def menuAdmin():
     
 
 
-port = int(os.environ.get("PORT", 5000))
-app.run(host='0.0.0.0', port=port)
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
 
 
 
