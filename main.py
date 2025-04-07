@@ -1,10 +1,9 @@
 from flask import Flask, render_template, redirect, request, session, flash, url_for
 import psycopg2
 import os
-from crud import *
+from crud import Database  # Pastikan ini
 from config import *
 from datetime import datetime, timedelta
-from crud import Database  # Tambahkan ini di import
 
 
 app = Flask(__name__)
