@@ -1,7 +1,7 @@
 from flask import Flask, render_template, redirect, request, session, flash, url_for
 import psycopg2
 import os
-from crud import Database, DatabaseMigration # Pastikan ini
+from crud import Database, DatabaseMigration
 from config import *
 from datetime import datetime, timedelta
 
@@ -431,7 +431,6 @@ DatabaseMigration.create_tables_method(DB_CONFIG) # Jalankan migrasi saat aplika
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-
 
 
 # kelola user
