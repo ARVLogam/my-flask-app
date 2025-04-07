@@ -1,18 +1,15 @@
 from flask import Flask, render_template, redirect, request, session, flash, url_for
+from flask_sqlalchemy import SQLAlchemy
 import psycopg2
 import os
 from crud import Database, create_tables
 from config import *
 from datetime import datetime, timedelta
-from config import SQLALCHEMY_DATABASE_URI, SQLALCHEMY_TRACK_MODIFICATIONS
+
 
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # Secret key for session management
-
-app.config['SQLALCHEMY_DATABASE_URI'] = SQLALCHEMY_DATABASE_URI
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = SQLALCHEMY_TRACK_MODIFICATIONS
-db = SQLAlchemy(app)
 
 # Database configuration - replace with your actual credentials
 DB_CONFIG = {
