@@ -1,7 +1,7 @@
 from flask import Flask, render_template, redirect, request, session, flash, url_for
 import psycopg2
 import os
-from crud import Database  # Pastikan ini
+from crud import Database, DatabaseMigration # Pastikan ini
 from config import *
 from datetime import datetime, timedelta
 
@@ -426,7 +426,7 @@ def menuAdmin():
     
 
 db = Database(DB_CONFIG)
-db.create_tables_method()  # Jalankan migrasi saat aplikasi dimulai
+DatabaseMigration.create_tables_method(DB_CONFIG) # Jalankan migrasi saat aplikasi dimulai
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
