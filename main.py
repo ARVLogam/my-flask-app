@@ -4,7 +4,7 @@ import os
 from crud import *
 from config import *
 from datetime import datetime, timedelta
-
+from crud import Database, create_tables  # Tambahkan ini di import
 
 
 app = Flask(__name__)
@@ -426,6 +426,8 @@ def menuAdmin():
         return redirect('/')
     
 
+db = Database(DB_CONFIG)
+db.create_tables_method()  # Jalankan migrasi saat aplikasi dimulai
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
