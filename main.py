@@ -4,7 +4,7 @@ import os
 from crud import *
 from config import *
 from datetime import datetime, timedelta
-from crud import Database, create_tables  # Tambahkan ini di import
+from crud import Database  # Tambahkan ini di import
 
 
 app = Flask(__name__)
