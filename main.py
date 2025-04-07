@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 import psycopg2
 import os
 from crud import Database, create_tables
-from config import *
+from config import DB_CONFIG
 from datetime import datetime, timedelta
 
 
@@ -434,6 +434,17 @@ if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
 
+try:
+    print("Mencoba konek ke database...")
+    conn = psycopg2.connect(**DB_CONFIG)
+    cursor = conn.cursor()
+    cursor.execute("SELECT NOW();")
+    result = cursor.fetchone()
+    print("Sukses konek! Waktu DB sekarang:", result)
+    cursor.close()
+    conn.close()
+except Exception as e:
+    print("Gagal konek ke database:", e)
 
 # kelola user
 # {{ url_for('editUser', id=user[0]) }} titip
