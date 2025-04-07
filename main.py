@@ -1,7 +1,7 @@
 from flask import Flask, render_template, redirect, request, session, flash, url_for
 import psycopg2
 import os
-from crud import Database, DatabaseMigration
+from crud import Database
 from config import *
 from datetime import datetime, timedelta
 
