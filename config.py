@@ -15,7 +15,7 @@ DB_CONFIG = {
     'port': 39316
 }
 EMAIL_ADDRESS = 'secrap7@gmail.com'
-EMAIL_PASSWORD = 'pmbnqjbiosnuzszt'
+EMAIL_PASSWORD = 'itlukqqxvhkqvuwq'
 
 MAIL_SETTINGS = {
     "MAIL_SERVER": "smtp.gmail.com",
