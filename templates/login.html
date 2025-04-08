@@ -3,86 +3,58 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Login</title>
+    <title>Login Page</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/11.7.32/sweetalert2.min.css"
       rel="stylesheet"
     />
-    <style>
-      @keyframes fadeInUp {
-        0% {
-          opacity: 0;
-          transform: translateY(20px);
-        }
-        100% {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      .fade-in-up {
-        animation: fadeInUp 0.8s ease-out both;
-      }
-    </style>
   </head>
-  <body class="bg-gradient-to-br from-green-200 via-green-100 to-white min-h-screen flex items-center justify-center font-sans">
-
+  <body class="bg-green-100 flex justify-center items-center h-screen">
     {% include 'flashProtection.html' %}
-
-    <div class="bg-white/80 backdrop-blur-md shadow-2xl rounded-2xl p-8 w-full max-w-md border border-green-200 fade-in-up">
-      <div class="flex justify-center mb-6 animate-bounce-slow">
-        <svg class="w-14 h-14 text-green-600 drop-shadow" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 11c0 1.104-.672 2-1.5 2S9 12.104 9 11s.672-2 1.5-2S12 9.896 12 11zM12 11c0-2.21-1.79-4-4-4s-4 1.79-4 4c0 1.38.725 2.612 1.818 3.334C6.227 15.778 7.962 16 9 16s2.773-.222 3.182-.666A3.987 3.987 0 0012 11z" />
-        </svg>
-      </div>
-
-      <h1 class="text-3xl font-extrabold text-green-700 text-center mb-2 tracking-wide">Welcome Back!</h1>
-      <p class="text-center text-gray-600 mb-6 text-sm animate-fade-in delay-150">Login to access your dashboard</p>
+    <div class="bg-white shadow-lg rounded-lg p-6 w-full max-w-md">
+      <h1 class="text-2xl font-bold text-green-700 text-center mb-4">
+        Welcome
+      </h1>
+      <p class="text-gray-600 text-center mb-4">
+        Please select an option to proceed:
+      </p>
 
       {% if message %}
-      <div class="bg-red-100 text-red-700 p-3 rounded mb-4 text-sm font-medium shadow-inner">{{ message }}</div>
+      <div class="bg-red-100 text-red-700 p-3 rounded mb-4">{{ message }}</div>
       {% endif %}
 
-      <form action="/login" method="post" class="space-y-4">
-        <div class="transition-all duration-500">
-          <label for="username" class="text-sm font-medium text-gray-700">Username</label>
-          <input
-            type="text"
-            name="username"
-            id="username"
-            class="mt-1 w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 shadow-sm"
-            placeholder="Enter your username"
-            required
-          />
-        </div>
-        <div class="transition-all duration-500">
-          <label for="password" class="text-sm font-medium text-gray-700">Password</label>
-          <input
-            type="password"
-            name="password"
-            id="password"
-            class="mt-1 w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 shadow-sm"
-            placeholder="Enter your password"
-            required
-          />
-        </div>
+      <form action="/login" method="post" class="space-y-3">
+        <input
+          type="text"
+          name="username"
+          id="username"
+          class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
+          placeholder="Username"
+          required
+        />
+        <input
+          type="password"
+          name="password"
+          id="password"
+          class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
+          placeholder="Password"
+          required
+        />
         <button
           type="submit"
-          class="w-full bg-green-600 text-white font-semibold p-2 rounded-lg hover:bg-green-700 transition-all duration-300 shadow-md hover:shadow-lg"
+          class="w-full bg-green-600 text-white p-2 rounded hover:bg-green-700 transition"
         >
           Login
         </button>
-        <div class="text-right mt-1">
-          <a href="{{ url_for('forgot_password') }}" class="text-sm text-green-600 hover:underline">Lupa password?</a>
-        </div>
-        
       </form>
 
-      <div class="mt-4 text-center">
-        <span class="text-gray-600 text-sm">Don't have an account?</span>
-        <a href="{{ url_for('register') }}" class="text-green-700 hover:underline ml-1 font-medium">Register</a>
-      </div>
+      <a
+        href="{{ url_for('register') }}"
+        class="block text-center mt-3 text-green-700 hover:text-green-800"
+      >
+        Register
+      </a>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
