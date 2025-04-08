@@ -594,12 +594,19 @@ def edit_user(user_id):
     return render_template("editUser.html", user=user)
 
     
-@app.route('/user/delete/<int:user_id>')
-def deleteUser(user_id):
-    # Logika hapus user
-    db.delete_user(user_id)  # contoh
-    flash("User berhasil dihapus", "success")
-    return redirect(url_for('menuAdmin'))  # atau halaman lain
+@app.route("/delete_user", methods=["POST"])
+def delete_user():
+    if not session.get("logged_in"):
+        return redirect("/login")
+    
+    user_id = request.form.get("user_id")
+    if user_id:
+        db.delete_user(user_id)
+        flash("User berhasil dihapus", "success")
+    else:
+        flash("User tidak ditemukan", "error")
+    return redirect("/users")
+
 
 
 @app.route('/menuAdmin', methods=['GET', 'POST'])
