@@ -7,6 +7,8 @@ from config import DB_CONFIG
 
 class Database:
     def __init__(self, config):
+        self.conn = psycopg2.connect(**config)
+        self.cur = self.conn.cursor()
         self.config = config
         self.connection = None
         self.cursor = None
