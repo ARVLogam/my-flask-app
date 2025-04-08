@@ -9,6 +9,39 @@ from itsdangerous import URLSafeTimedSerializer
 from dotenv import load_dotenv
 import os
 from functools import wraps
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+def send_reset_email(recipient_email, token):
+    sender_email = 'secrap7@gmail.com'  # Ganti dengan emailmu
+    sender_password = 'pmbnqjbiosnuzszt'  # Ganti dengan App Password (bukan password biasa)
+    reset_link = f"https://my-flask-app-production-9042.up.railway.app/forgot-password/{token}"  # Ganti ke domain aslimu saat deploy
+
+    subject = "Reset Password"
+    body = f'''
+    Hai,\n
+    Klik link berikut untuk mereset password kamu:\n
+    {reset_link}\n
+    Jika kamu tidak meminta reset password, abaikan email ini.
+    '''
+
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = recipient_email
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body, 'plain'))
+
+    try:
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(sender_email, sender_password)
+        server.send_message(msg)
+        server.quit()
+        print('Email berhasil dikirim.')
+    except Exception as e:
+        print('Gagal mengirim email:', e)
+
 
 def login_required(f):
     @wraps(f)
