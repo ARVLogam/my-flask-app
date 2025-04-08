@@ -8,7 +8,7 @@ from config import DB_CONFIG
 class Database:
 
 
-        def update_user(self, user_id, username, nama, email, nohp, role=None, password=None):
+    def update_user(self, user_id, username, nama, email, nohp, role=None, password=None):
         """Update user data, optionally update password and role"""
         try:
             self.connect()
