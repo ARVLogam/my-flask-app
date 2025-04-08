@@ -25,3 +25,4 @@ tzdata==2025.1
 Werkzeug==3.1.3
 WTForms==3.2.1
 Flask-Mail
+python-dotenv
