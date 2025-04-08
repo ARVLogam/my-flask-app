@@ -18,7 +18,7 @@ class Database:
         self.connection = psycopg2.connect(**self.config)
         self.cursor = self.connection.cursor()
 
-       def close(self):
+    def close(self):
         """Close database connection"""
         if self.cur:
             self.cur.close()
