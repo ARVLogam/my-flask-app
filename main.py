@@ -23,6 +23,18 @@ except Exception as e:
 app = Flask(__name__, static_folder='static')
 app.secret_key = os.urandom(24)  # Secret key for session management
 
+from flask_mail import Mail, Message
+
+# Konfigurasi email
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = os.environ.get('secrap7@gmail.com')  # Email kamu
+app.config['MAIL_PASSWORD'] = os.environ.get('pmbn qjbi osnu zszt')  # Password / App password
+
+mail = Mail(app)
+
+
 # Pindahkan error handler setelah inisialisasi app
 @app.errorhandler(500)
 def handle_500(error):
@@ -141,14 +153,34 @@ def verify_token(token, max_age=3600):  # 1 jam
     except Exception as e:
         print(f"Token error: {e}")
         return None
+def generate_token(email):
+    s = URLSafeTimedSerializer(app.secret_key)
+    return s.dumps(email)
 
 @app.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
     if request.method == 'POST':
         email = request.form['email']
-        # Di sini kamu bisa tambah logika cek email, kirim link reset, dll
-        flash("Instruksi reset password telah dikirim ke email jika terdaftar.", "info")
+        db = Database(DB_CONFIG)
+
+        # Cek apakah email terdaftar
+        if db.check_email_exists(email):
+            token = generate_token(email)
+            reset_url = url_for('reset_password', token=token, _external=True)
+
+            try:
+                msg = Message("Reset Password", sender=app.config['MAIL_USERNAME'], recipients=[email])
+                msg.body = f"Klik link berikut untuk mereset password kamu: {reset_url}\n\nLink ini berlaku 1 jam."
+                mail.send(msg)
+                flash("Email reset password telah dikirim.", "info")
+            except Exception as e:
+                print("Gagal mengirim email:", e)
+                flash("Gagal mengirim email reset password", "error")
+        else:
+            flash("Email tidak ditemukan", "warning")
+            
         return redirect(url_for('login'))
+
     return render_template("forgot_password.html")
 
 
