@@ -207,7 +207,7 @@ def reset_password(token):
         return redirect(url_for('login'))
 
     return render_template('reset_password.html')
-def verify_token(token, max_age=3600):  # 1 jam
+def verify_token(token, max_age=3600):
     s = URLSafeTimedSerializer(app.secret_key)
     try:
         email = s.loads(token, max_age=max_age)
@@ -215,6 +215,7 @@ def verify_token(token, max_age=3600):  # 1 jam
     except Exception as e:
         print(f"Token error: {e}")
         return None
+
 def generate_token(email):
     s = URLSafeTimedSerializer(app.secret_key)
     return s.dumps(email)
