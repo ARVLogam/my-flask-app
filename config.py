@@ -14,8 +14,8 @@ DB_CONFIG = {
     'password': "JxlxNXWerXUEyNLkCgxgBlhSvXKMfNjo",
     'port': 39316
 }
-EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
-EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+EMAIL_ADDRESS = 'secrap7@gmail.com'
+EMAIL_PASSWORD = 'pmbnqjbiosnuzszt'
 
 MAIL_SETTINGS = {
     "MAIL_SERVER": "smtp.gmail.com",
