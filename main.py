@@ -6,7 +6,6 @@ import traceback
 import logging
 from crud import Database, create_tables
 
-
 logging.basicConfig(level=logging.DEBUG)
 
 # Di bagian awal main.py
@@ -16,19 +15,22 @@ try:
 except Exception as e:
     logging.error(f"Error saat inisialisasi: {e}")
     traceback.print_exc()
-# Tambahkan di bagian atas file atau di dekat route login
+
+app = Flask(__name__)
+app.secret_key = os.urandom(24)  # Secret key for session management
+
+# Pindahkan error handler setelah inisialisasi app
 @app.errorhandler(500)
 def handle_500(error):
     print("Internal Server Error:")
     traceback.print_exc()
     return "Internal Server Error", 500
 
-
-app = Flask(__name__)
-app.secret_key = os.urandom(24)  # Secret key for session management
 def check_role(required_role):
     """Memeriksa role pengguna dalam session"""
     return session.get('role') == required_role
+
+# Sisa kode tetap sama...
 
 # Database configuration - replace with your actual credentials
 DB_CONFIG = {
