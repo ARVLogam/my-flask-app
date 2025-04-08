@@ -1,0 +1,24 @@
+<!-- templates/editUser.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit User</title>
+</head>
+<body>
+    <h1>Edit User</h1>
+    <form method="POST">
+        <label>Nama:</label><br>
+        <input type="text" name="nama" value="{{ user.nama }}" required><br><br>
+
+        <label>Email:</label><br>
+        <input type="email" name="email" value="{{ user.email }}" required><br><br>
+
+        <label>Role:</label><br>
+        <input type="text" name="role" value="{{ user.role }}" required><br><br>
+
+        <button type="submit">Simpan</button>
+    </form>
+    <br>
+    <a href="{{ url_for('kelola_user') }}">Kembali ke Kelola User</a>
+</body>
+</html>
