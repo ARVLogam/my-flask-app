@@ -1,24 +1,24 @@
-<!-- templates/editUser.html -->
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Edit User</title>
-</head>
-<body>
-    <h1>Edit User</h1>
-    <form method="POST">
-        <label>Nama:</label><br>
-        <input type="text" name="nama" value="{{ user.nama }}" required><br><br>
+<form method="POST">
+  <label>Username</label>
+  <input type="text" name="username" value="{{ user[1] }}" required />
 
-        <label>Email:</label><br>
-        <input type="email" name="email" value="{{ user.email }}" required><br><br>
+  <label>Nama</label>
+  <input type="text" name="nama" value="{{ user[4] }}" required />
 
-        <label>Role:</label><br>
-        <input type="text" name="role" value="{{ user.role }}" required><br><br>
+  <label>Email</label>
+  <input type="email" name="email" value="{{ user[5] }}" required />
 
-        <button type="submit">Simpan</button>
-    </form>
-    <br>
-    <a href="{{ url_for('kelola_user') }}">Kembali ke Kelola User</a>
-</body>
-</html>
+  <label>No HP</label>
+  <input type="text" name="nohp" value="{{ user[6] }}" />
+
+  <label>Role</label>
+  <select name="role">
+    <option value="admin" {% if user[3] == 'admin' %}selected{% endif %}>Admin</option>
+    <option value="user" {% if user[3] == 'user' %}selected{% endif %}>User</option>
+  </select>
+
+  <label>Password (opsional - isi jika ingin ganti)</label>
+  <input type="password" name="password" />
+
+  <button type="submit">Simpan Perubahan</button>
+</form>
