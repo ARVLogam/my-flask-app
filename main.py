@@ -1,11 +1,27 @@
 from flask import Flask, render_template, redirect, request, session, flash, url_for
-from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import check_password_hash
 import psycopg2
 import os
 from crud import Database, create_tables
-from config import DB_CONFIG
+from config import *
 from datetime import datetime, timedelta
+import traceback
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
+# Di bagian awal main.py
+try:
+    # Kode inisialisasi
+    logging.debug("Aplikasi dimulai")
+except Exception as e:
+    logging.error(f"Error saat inisialisasi: {e}")
+    traceback.print_exc()
+# Tambahkan di bagian atas file atau di dekat route login
+@app.errorhandler(500)
+def handle_500(error):
+    print("Internal Server Error:")
+    traceback.print_exc()
+    return "Internal Server Error", 500
 
 
 app = Flask(__name__)
