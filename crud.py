@@ -4,6 +4,7 @@ from datetime import datetime
 from flask import flash
 from config import DB_CONFIG
 
+
 class Database:
     def __init__(self, config):
         self.config = config
@@ -128,9 +129,9 @@ class Database:
     # Tambahkan method ini ke class Database
 
     def update_user_password(self, email, new_password):
-    hashed_pw = generate_password_hash(new_password)
-    self.cur.execute("UPDATE users SET password = %s WHERE email = %s", (hashed_pw, email))
-    self.conn.commit()
+        hashed_pw = generate_password_hash(new_password)
+        self.cur.execute("UPDATE users SET password = %s WHERE email = %s", (hashed_pw, email))
+        self.conn.commit()
 
         """Update data user dengan ID tertentu"""
         try:
