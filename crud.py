@@ -41,10 +41,12 @@ class Database:
             return None
         finally:
             self.close()
+            
     def delete_user(self, user_id):
-        with self.conn.cursor() as cur:
+    with self.conn.cursor() as cur:
         cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
         self.conn.commit()
+
 
 
     
