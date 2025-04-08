@@ -556,6 +556,55 @@ def addUser():
     return render_template("addUser.html")
 
 
+@app.route("/editUser/<int:user_id>", methods=["GET", "POST"])
+@login_required
+def editUser(user_id):
+    if not check_role("admin"):
+        flash("Akses ditolak!", "error")
+        return redirect(url_for("dashboard"))
+
+    db = Database(DB_CONFIG)
+    user = db.get_user_by_id(user_id)
+
+    if not user:
+        flash("User tidak ditemukan", "error")
+        return redirect(url_for("menuAdmin", roleMenu="kelolaUser"))
+
+    if request.method == "POST":
+        username = request.form["username"]
+        nama = request.form["nama"]
+        email = request.form["email"]
+        nohp = request.form["nohp"]
+        password = request.form.get("password", "").strip()
+
+        if db.check_username_exists(username, user_id):
+            flash("Username sudah digunakan oleh pengguna lain", "error")
+            return redirect(url_for("editUser", user_id=user_id))
+
+        if db.check_email_exists_for_update(email, user_id):
+            flash("Email sudah digunakan oleh pengguna lain", "error")
+            return redirect(url_for("editUser", user_id=user_id))
+
+        # Update user
+        if password:
+            result = db.update_user(user_id, username, nama, email, nohp, password)
+        else:
+            result = db.update_user(user_id, username, nama, email, nohp)
+
+        if result:
+            flash("User berhasil diperbarui", "success")
+        else:
+            flash("Gagal memperbarui user", "error")
+        return redirect(url_for("menuAdmin", roleMenu="kelolaUser"))
+
+    user_data = {
+        "id": user[0],
+        "username": user[1],
+        "nama": user[4],
+        "email": user[5],
+        "nohp": user[6]
+    }
+    return render_template("editUser.html", user=user_data)
 
 
 @app.route('/menuAdmin', methods=['GET', 'POST'])
