@@ -5,9 +5,6 @@ import os
 import traceback
 import logging
 from crud import Database, create_tables
-from itsdangerous import URLSafeTimedSerializer
-from flask import request
-
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -115,35 +112,6 @@ def dashboard():
         user_terakhir=user_terakhir
     )
 
-@app.route('/reset-password/<token>', methods=['GET', 'POST'])
-def reset_password(token):
-    email = verify_token(token)  # Fungsi untuk decode token
-    if not email:
-        flash("Token tidak valid atau kedaluwarsa", "danger")
-        return redirect(url_for('login'))
-
-    if request.method == 'POST':
-        new_password = request.form['password']
-        confirm = request.form['confirm_password']
-        if new_password != confirm:
-            flash("Konfirmasi password tidak cocok", "warning")
-            return redirect(request.url)
-        db = Database(DB_CONFIG)
-        db.update_user_password(email, new_password)
-
-        flash("Password berhasil diubah", "success")
-        return redirect(url_for('login'))
-
-    return render_template('reset_password.html')
-def verify_token(token, max_age=3600):  # 1 jam
-    s = URLSafeTimedSerializer(app.secret_key)
-    try:
-        email = s.loads(token, max_age=max_age)
-        return email
-    except Exception as e:
-        print(f"Token error: {e}")
-        return None
-
 @app.route("/register", methods=['GET', 'POST'])
 def register():
     if 'user_id' in session:
@@ -201,8 +169,7 @@ def register():
 def editProfile():
     if "user_id" not in session:
         flash("Silakan login terlebih dahulu", "error")
-        return redirect(url_for("menuAdmin", roleMenu="kelolaUser"))
-
+        return redirect(url_for("login"))
     
     user_id = session["user_id"]
     db = Database(DB_CONFIG)
@@ -489,8 +456,7 @@ def menuAdmin():
         return redirect('/')
     
 
-
-db = Database(DB_CONFIG)  # <-- ini penting!
+db = Database(DB_CONFIG)
 create_tables(DB_CONFIG)
 
 if __name__ == '__main__':
