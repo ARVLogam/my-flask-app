@@ -32,6 +32,13 @@ except Exception as e:
 app = Flask(__name__, static_folder='static')
 app.secret_key = os.urandom(24)  # Secret key for session management
 
+from flask_mail import Mail
+from config import MAIL_SETTINGS
+
+app.config.update(MAIL_SETTINGS)
+mail = Mail(app)
+
+
 from flask_mail import Mail, Message
 
 # Konfigurasi email
