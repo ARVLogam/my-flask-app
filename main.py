@@ -556,7 +556,7 @@ def addUser():
     return render_template("addUser.html")
 
 
-@app.route("/editUser/<int:user_id>", methods=["GET", "POST"])
+@app.route("/edituser/<int:user_id>", methods=["GET", "POST"])
 @login_required
 def editUser(user_id):
     if not check_role("admin"):
@@ -579,11 +579,11 @@ def editUser(user_id):
 
         if db.check_username_exists(username, user_id):
             flash("Username sudah digunakan oleh pengguna lain", "error")
-            return redirect(url_for("editUser", user_id=user_id))
+            return redirect(url_for("edituser", user_id=user_id))
 
         if db.check_email_exists_for_update(email, user_id):
             flash("Email sudah digunakan oleh pengguna lain", "error")
-            return redirect(url_for("editUser", user_id=user_id))
+            return redirect(url_for("edituser", user_id=user_id))
 
         # Update user
         if password:
@@ -604,8 +604,9 @@ def editUser(user_id):
         "email": user[5],
         "nohp": user[6]
     }
-    return render_template("editUser.html", user=user_data)
-@app.route('/user/delete/<int:user_id>', endpoint='deleteUser')
+    return render_template("edituser.html", user=user_data)
+    
+@app.route('/user/delete/<int:user_id>')
 def deleteUser(user_id):
     # Logika hapus user
     db.delete_user(user_id)  # contoh
