@@ -156,7 +156,8 @@ def verify_token(token, max_age=3600):  # 1 jam
 def generate_token(email):
     s = URLSafeTimedSerializer(app.secret_key)
     return s.dumps(email)
-    def send_email(to, subject, body):
+    
+def send_email(to, subject, body):
     msg = Message(subject, sender=app.config['MAIL_USERNAME'], recipients=[to])
     msg.body = body
     mail.send(msg)
