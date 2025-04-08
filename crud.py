@@ -20,6 +20,8 @@ class Database:
 
     def close(self):
         """Close database connection"""
+            self.cur.close()
+            self.conn.close()
         if self.cursor:
             self.cursor.close()
         if self.connection:
