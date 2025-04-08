@@ -13,12 +13,11 @@ app.secret_key = os.urandom(24)  # Secret key for session management
 
 # Database configuration - replace with your actual credentials
 DB_CONFIG = {
-    'host': os.environ.get('postgres.railway.internal'),
-    'database': os.environ.get('railway'),
-    'user': os.environ.get('postgres'),
-    'password': os.environ.get('FPXHjKAHReSzXFDbQPmLNjLxeXUHyeOY')
+    'host': os.environ.get('PGHOST', 'postgres-q03m.railway.internal'),
+    'database': os.environ.get('PGDATABASE', 'railway'),
+    'user': os.environ.get('PGUSER', 'postgres'),
+    'password': os.environ.get('PGPASSWORD', 'JxlxNXWerXUEyNLkCgxgBlhSvXKMfNjo')
 }
-
 #basic crud start
 @app.route("/")
 def home():
