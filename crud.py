@@ -105,7 +105,33 @@ class Database:
         finally:
             self.close()
 
+def update_user(self, user_id, username, nama, email, nohp, password=None):
+    try:
+        self.connect()
+        if password:
+            query = """
+                UPDATE users 
+                SET username = %s, nama = %s, email = %s, nohp = %s, password = %s
+                WHERE id = %s
+            """
+            self.cursor.execute(query, (username, nama, email, nohp, password, user_id))
+        else:
+            query = """
+                UPDATE users 
+                SET username = %s, nama = %s, email = %s, nohp = %s
+                WHERE id = %s
+            """
+            self.cursor.execute(query, (username, nama, email, nohp, user_id))
+        
+        self.connection.commit()
+        return True
+    except Exception as e:
+        print(f"Database error (update_user): {e}")
+        return False
+    finally:
+        self.close()
 
+    
     def check_email_exists(self, email):
         """Check if email already exists in database"""
         try:
