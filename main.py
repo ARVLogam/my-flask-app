@@ -8,6 +8,17 @@ from crud import Database, create_tables
 from itsdangerous import URLSafeTimedSerializer
 from dotenv import load_dotenv
 import os
+from functools import wraps
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 
 load_dotenv()
 
@@ -103,8 +114,10 @@ def login():
     
     return render_template("login.html")
 
-@app.route("/dashboard")
+@app.route('/dashboard')
+@login_required
 def dashboard():
+    
     if 'user_id' not in session:
         return redirect(url_for('login'))
     else:
