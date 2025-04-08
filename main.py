@@ -142,6 +142,16 @@ def verify_token(token, max_age=3600):  # 1 jam
         print(f"Token error: {e}")
         return None
 
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form['email']
+        # Di sini kamu bisa tambah logika cek email, kirim link reset, dll
+        flash("Instruksi reset password telah dikirim ke email jika terdaftar.", "info")
+        return redirect(url_for('login'))
+    return render_template("forgot_password.html")
+
+
 @app.route("/register", methods=['GET', 'POST'])
 def register():
     if 'user_id' in session:
