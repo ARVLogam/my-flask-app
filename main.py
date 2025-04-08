@@ -8,7 +8,7 @@ from crud import Database, create_tables
 
 logging.basicConfig(level=logging.DEBUG)
 
-print("Current working directory:", os.getcwd())
+print("Dashboard route - Current working directory:", os.getcwd())
 print("Static folder path:", os.path.join(os.getcwd(), 'static', 'img'))
 print("Logo file exists:", os.path.exists(os.path.join(os.getcwd(), 'static', 'img', 'logo.PNG')))
 # Di bagian awal main.py
@@ -94,6 +94,12 @@ def dashboard():
         users = db.read_all_users()
         total_pengguna = len(users)
         user_terakhir = users[-1] if users else None
+
+        # Tambahkan logging ini
+        import os
+        print("Dashboard route - Current working directory:", os.getcwd())
+        print("Static folder path:", os.path.join(os.getcwd(), 'static', 'img'))
+        print("Logo file exists:", os.path.exists(os.path.join(os.getcwd(), 'static', 'img', 'logo.PNG')))
 
     return render_template(
         "dashboard.html", 
