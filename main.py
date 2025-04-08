@@ -6,6 +6,8 @@ import traceback
 import logging
 from crud import Database, create_tables
 from itsdangerous import URLSafeTimedSerializer
+from flask import request
+
 
 logging.basicConfig(level=logging.DEBUG)
 
