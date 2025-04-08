@@ -202,7 +202,7 @@ def reset_password(token):
             return redirect(request.url)
         db = Database(DB_CONFIG)
         db.update_user_password(email, new_password)
-
+        db.close()
         flash("Password berhasil diubah", "success")
         return redirect(url_for('login'))
 
