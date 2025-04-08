@@ -6,42 +6,32 @@ from config import DB_CONFIG
 
 
 class Database:
-    def update_user(user_id, nama, email, role):
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            cur.execute("""
-                UPDATE users
-                SET nama = %s, email = %s, role = %s
-                WHERE id = %s
-            """, (nama, email, role, user_id))
-        conn.commit()
-    finally:
-        conn.close()
 
-    def update_user(self, user_id, username, nama, email, nohp, password=None):
+
+        def update_user(self, user_id, username, nama, email, nohp, role=None, password=None):
+        """Update user data, optionally update password and role"""
         try:
             self.connect()
             if password:
                 hashed_password = generate_password_hash(password)
                 query = """
                     UPDATE users 
-                    SET username = %s, password = %s, nama = %s, email = %s, nohp = %s, 
+                    SET username = %s, password = %s, nama = %s, email = %s, nohp = %s, role = %s,
                         updated_at = CURRENT_TIMESTAMP
                     WHERE id = %s
                     RETURNING id
                 """
-                self.cursor.execute(query, (username, hashed_password, nama, email, nohp, user_id))
+                self.cursor.execute(query, (username, hashed_password, nama, email, nohp, role, user_id))
             else:
                 query = """
                     UPDATE users 
-                    SET username = %s, nama = %s, email = %s, nohp = %s, 
+                    SET username = %s, nama = %s, email = %s, nohp = %s, role = %s,
                         updated_at = CURRENT_TIMESTAMP
                     WHERE id = %s
                     RETURNING id
                 """
-                self.cursor.execute(query, (username, nama, email, nohp, user_id))
-            
+                self.cursor.execute(query, (username, nama, email, nohp, role, user_id))
+
             updated_id = self.cursor.fetchone()
             self.connection.commit()
             return updated_id[0] if updated_id else None
@@ -51,6 +41,7 @@ class Database:
             return None
         finally:
             self.close()
+
 
     
     def __init__(self, config):
