@@ -6,6 +6,15 @@ import traceback
 import logging
 from crud import Database, create_tables
 from itsdangerous import URLSafeTimedSerializer
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+
+
 
 logging.basicConfig(level=logging.DEBUG)
 
