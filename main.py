@@ -8,6 +8,9 @@ from crud import Database, create_tables
 
 logging.basicConfig(level=logging.DEBUG)
 
+print("Current working directory:", os.getcwd())
+print("Static folder path:", os.path.join(os.getcwd(), 'static', 'img'))
+print("Logo file exists:", os.path.exists(os.path.join(os.getcwd(), 'static', 'img', 'logo.PNG')))
 # Di bagian awal main.py
 try:
     # Kode inisialisasi
@@ -16,7 +19,7 @@ except Exception as e:
     logging.error(f"Error saat inisialisasi: {e}")
     traceback.print_exc()
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 app.secret_key = os.urandom(24)  # Secret key for session management
 
 # Pindahkan error handler setelah inisialisasi app
