@@ -605,6 +605,12 @@ def editUser(user_id):
         "nohp": user[6]
     }
     return render_template("editUser.html", user=user_data)
+@app.route('/user/delete/<int:user_id>', endpoint='deleteUser')
+def deleteUser(user_id):
+    # Logika hapus user
+    db.delete_user(user_id)  # contoh
+    flash("User berhasil dihapus", "success")
+    return redirect(url_for('menuAdmin'))  # atau halaman lain
 
 
 @app.route('/menuAdmin', methods=['GET', 'POST'])
