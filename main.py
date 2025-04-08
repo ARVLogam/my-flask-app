@@ -2,11 +2,11 @@ from flask import Flask, render_template, redirect, request, session, flash, url
 from werkzeug.security import check_password_hash
 import psycopg2
 import os
-from crud import Database, create_tables
-from config import *
-from datetime import datetime, timedelta
 import traceback
 import logging
+from crud import Database, create_tables
+
+
 logging.basicConfig(level=logging.DEBUG)
 
 # Di bagian awal main.py
@@ -26,6 +26,9 @@ def handle_500(error):
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # Secret key for session management
+def check_role(required_role):
+    """Memeriksa role pengguna dalam session"""
+    return session.get('role') == required_role
 
 # Database configuration - replace with your actual credentials
 DB_CONFIG = {
