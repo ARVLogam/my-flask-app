@@ -359,55 +359,38 @@ def delete_barang(self, barang_id):
 # Method-method lain di class Database
 
 def create_tables(db_config):
-"""
-Membuat tabel-tabel yang dibutuhkan untuk aplikasi
-dan menambahkan kolom created_at dan updated_at
-"""
-import psycopg2
+    """
+    Membuat tabel users dan barang jika belum ada.
+    """
+    try:
+        conn = psycopg2.connect(**db_config)
+        cur = conn.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(50) UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                role VARCHAR(10) NOT NULL,
+                nama TEXT NOT NULL,
+                email TEXT NOT NULL,
+                nohp TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS barang (
+                id SERIAL PRIMARY KEY,
+                nama_barang TEXT NOT NULL,
+                harga NUMERIC NOT NULL,
+                deskripsi TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.commit()
+    except Exception as e:
+        print(f"Error creating tables: {e}")
+    finally:
+        conn.close()
 
-connection = None
-try:
-    print("Mencoba membuat koneksi...")
-    connection = psycopg2.connect(**db_config)
-    cursor = connection.cursor()
-    
-    print("Membuat tabel users...")
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(50) UNIQUE NOT NULL,
-        password VARCHAR(255) NOT NULL,
-        role VARCHAR(20) NOT NULL,
-        nama VARCHAR(100) NOT NULL,
-        email VARCHAR(100) UNIQUE NOT NULL,
-        nohp VARCHAR(20),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
-    
-    print("Membuat tabel barang...")
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS barang (
-        id SERIAL PRIMARY KEY,
-        nama_barang VARCHAR(100) NOT NULL,
-        harga DECIMAL(10,2) NOT NULL,
-        deskripsi TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
-    
-    # Commit perubahan
-    connection.commit()
-    print("Tabel berhasil dibuat/diperbarui")
-
-except Exception as e:
-    print(f"Error membuat tabel: {e}")
-    if connection:
-        connection.rollback()
-
-finally:
-    # Tutup koneksi
-    if connection:
-        connection.close()
