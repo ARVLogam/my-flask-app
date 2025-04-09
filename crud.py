@@ -7,40 +7,31 @@ from config import DB_CONFIG
 
 class Database:
 
+def __init__(self, config):
+    self.conn = psycopg2.connect(**config)
+    self.cur = self.conn.cursor()
+    self.config = config
+    self.connection = None
+    self.cursor = None
+
 
 def update_user(self, user_id, username, nama, email, nohp, role=None, password=None):
-    """Update user data, optionally update password and role"""
-    try:
-        self.connect()
-        if password:
-            hashed_password = generate_password_hash(password)
-            query = """
-                UPDATE users 
-                SET username = %s, password = %s, nama = %s, email = %s, nohp = %s, role = %s,
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE id = %s
-                RETURNING id
-            """
-            self.cursor.execute(query, (username, hashed_password, nama, email, nohp, role, user_id))
-        else:
-            query = """
-                UPDATE users 
-                SET username = %s, nama = %s, email = %s, nohp = %s, role = %s,
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE id = %s
-                RETURNING id
-            """
-            self.cursor.execute(query, (username, nama, email, nohp, role, user_id))
-
-        updated_id = self.cursor.fetchone()
-        self.connection.commit()
-        return updated_id[0] if updated_id else None
-    except Exception as e:
-        print(f"Database error: {e}")
-        self.connection.rollback()
-        return None
-    finally:
-        self.close()
+        try:
+            with self.conn.cursor() as cur:
+                if password:
+                    cur.execute("""
+                        UPDATE users SET username=%s, nama=%s, email=%s, nohp=%s, role=%s, password=%s WHERE id=%s
+                    """, (username, nama, email, nohp, role, password, user_id))
+                else:
+                    cur.execute("""
+                        UPDATE users SET username=%s, nama=%s, email=%s, nohp=%s, role=%s WHERE id=%s
+                    """, (username, nama, email, nohp, role, user_id))
+                self.conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error saat update user: {e}")
+            self.conn.rollback()
+            return False
         
 def delete_user(self, user_id):
     try:
@@ -53,16 +44,6 @@ def delete_user(self, user_id):
     self.conn.rollback()
     return False
 
-
-
-
-
-def __init__(self, config):
-    self.conn = psycopg2.connect(**config)
-    self.cur = self.conn.cursor()
-    self.config = config
-    self.connection = None
-    self.cursor = None
 
 def connect(self):
     """Connect to the PostgreSQL database"""
