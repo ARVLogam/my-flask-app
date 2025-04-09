@@ -1,24 +1,73 @@
-<form method="POST">
-  <label>Username</label>
-  <input type="text" name="username" value="{{ user[1] }}" required />
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Edit Pengguna</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet"/>
+</head>
+<body class="bg-gray-100">
+  <nav class="bg-green-600 p-4 text-white">
+    {% include 'navbar.html' %}
+  </nav>
 
-  <label>Nama</label>
-  <input type="text" name="nama" value="{{ user[4] }}" required />
+  <div class="container mx-auto p-4">
+    <div class="bg-white rounded-lg shadow-md p-6 max-w-2xl mx-auto">
+      <h2 class="text-2xl font-bold mb-4 text-gray-700">Edit Pengguna</h2>
 
-  <label>Email</label>
-  <input type="email" name="email" value="{{ user[5] }}" required />
+      <form method="POST" action="">
+        <div class="mb-4">
+          <label class="block text-gray-700 font-medium mb-2">Username</label>
+          <input type="text" name="username" value="{{ user[1] }}" required
+                 class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"/>
+        </div>
 
-  <label>No HP</label>
-  <input type="text" name="nohp" value="{{ user[6] }}" />
+        <div class="mb-4">
+          <label class="block text-gray-700 font-medium mb-2">Nama Lengkap</label>
+          <input type="text" name="nama" value="{{ user[4] }}" required
+                 class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"/>
+        </div>
 
-  <label>Role</label>
-  <select name="role">
-    <option value="admin" {% if user[3] == 'admin' %}selected{% endif %}>Admin</option>
-    <option value="user" {% if user[3] == 'user' %}selected{% endif %}>User</option>
-  </select>
+        <div class="mb-4">
+          <label class="block text-gray-700 font-medium mb-2">Email</label>
+          <input type="email" name="email" value="{{ user[5] }}" required
+                 class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"/>
+        </div>
 
-  <label>Password (opsional - isi jika ingin ganti)</label>
-  <input type="password" name="password" />
+        <div class="mb-4">
+          <label class="block text-gray-700 font-medium mb-2">No HP</label>
+          <input type="text" name="nohp" value="{{ user[6] }}" required
+                 class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"/>
+        </div>
 
-  <button type="submit">Simpan Perubahan</button>
-</form>
+        <div class="mb-4">
+          <label class="block text-gray-700 font-medium mb-2">Role</label>
+          <select name="role"
+                  class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500">
+            <option value="admin" {% if user[3] == 'admin' %}selected{% endif %}>Admin</option>
+            <option value="user" {% if user[3] == 'user' %}selected{% endif %}>User</option>
+          </select>
+        </div>
+
+        <div class="mb-6">
+          <label class="block text-gray-700 font-medium mb-2">Password (opsional)</label>
+          <input type="password" name="password" placeholder="Kosongkan jika tidak diubah"
+                 class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"/>
+        </div>
+
+        <div class="flex justify-between">
+          <a href="{{ url_for('menuAdmin', roleMenu='kelolaUser') }}"
+             class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">
+            Kembali
+          </a>
+          <button type="submit"
+                  class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+            Simpan Perubahan
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
