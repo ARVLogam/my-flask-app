@@ -8,11 +8,8 @@ from config import DB_CONFIG
 class Database:
 
 def __init__(self, config):
-    self.conn = psycopg2.connect(**config)
-    self.cur = self.conn.cursor()
-    self.config = config
-    self.connection = None
-    self.cursor = None
+        self.conn = psycopg2.connect(**config)
+        self.config = config
 
 
 def update_user(self, user_id, username, nama, email, nohp, role=None, password=None):
