@@ -556,56 +556,66 @@ def addUser():
     return render_template("addUser.html")
 
 
-@app.route("/edit_user/<int:user_id>", methods=["GET", "POST"])
-def edit_user(user_id):
-    if not session.get("logged_in"):
-        return redirect("/login")
-    
+@app.route('/editUser/<int:user_id>', methods=['GET', 'POST'])
+def editUser(user_id):
+    if not check_role('admin'):
+        flash("Akses ditolak", "error")
+        return redirect('/')
+
+    db = Database(DB_CONFIG)
     user = db.get_user_by_id(user_id)
     if not user:
         flash("User tidak ditemukan", "error")
-        return redirect("/users")
+        return redirect(url_for("menuAdmin", roleMenu="kelolaUser"))
 
-    if request.method == "POST":
-        username = request.form["username"]
-        nama = request.form["nama"]
-        email = request.form["email"]
-        nohp = request.form["nohp"]
-        role = request.form["role"]
-        password = request.form.get("password") or None
+    if request.method == 'POST':
+        username = request.form['username']
+        nama = request.form['nama']
+        email = request.form['email']
+        nohp = request.form['nohp']
+        role = request.form['role']
+        password = request.form['password']
 
-        # Validasi unik username/email
+        # Cek validasi
         if db.check_username_exists(username, exclude_id=user_id):
-            flash("Username sudah digunakan", "error")
-            return render_template("editUser.html", user=user)
+            flash("Username sudah digunakan oleh user lain", "error")
+            return redirect(request.url)
 
         if db.check_email_exists_for_update(email, exclude_id=user_id):
-            flash("Email sudah digunakan", "error")
-            return render_template("editUser.html", user=user)
+            flash("Email sudah digunakan oleh user lain", "error")
+            return redirect(request.url)
 
-        updated_id = db.update_user(user_id, username, nama, email, nohp, role, password)
+        updated_id = db.update_user(user_id, username, nama, email, nohp, role, password if password.strip() else None)
 
         if updated_id:
-            flash("Data user berhasil diperbarui", "success")
-            return redirect("/users")
+            flash("Data pengguna berhasil diperbarui", "success")
         else:
-            flash("Gagal memperbarui user", "error")
+            flash("Gagal memperbarui pengguna", "error")
 
-    return render_template("editUser.html", user=user)
+        return redirect(url_for("menuAdmin", roleMenu="kelolaUser"))
 
-    
-@app.route("/delete_user", methods=["POST"])
-def delete_user():
-    if not session.get("logged_in"):
-        return redirect("/login")
-    
-    user_id = request.form.get("user_id")
-    if user_id:
-        db.delete_user(user_id)
-        flash("User berhasil dihapus", "success")
+    return render_template('editUser.html', user=user)
+
+
+@app.route('/deleteUser', methods=['POST'])
+def deleteUser():
+    if not check_role('admin'):
+        flash("Akses ditolak", "error")
+        return redirect('/')
+
+    user_id = request.form.get('user_id')
+    if not user_id:
+        flash("ID pengguna tidak valid", "error")
+        return redirect(url_for("menuAdmin", roleMenu="kelolaUser"))
+
+    db = Database(DB_CONFIG)
+    if db.delete_user(user_id):
+        flash("Pengguna berhasil dihapus", "success")
     else:
-        flash("User tidak ditemukan", "error")
-    return redirect("/users")
+        flash("Gagal menghapus pengguna", "error")
+
+    return redirect(url_for("menuAdmin", roleMenu="kelolaUser"))
+
 
 
 
