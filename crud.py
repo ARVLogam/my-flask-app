@@ -1,62 +1,72 @@
 import psycopg2
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
-from flask import flash
-from config import DB_CONFIG
-
 
 class Database:
-
-def __init__(self, config):
-        self.conn = psycopg2.connect(**config)
+    def __init__(self, config):
         self.config = config
+        self.conn = psycopg2.connect(**config)
+        self.cur = self.conn.cursor()
+        self.connection = None
+        self.cursor = None
 
+    def connect(self):
+        self.connection = psycopg2.connect(**self.config)
+        self.cursor = self.connection.cursor()
 
-def update_user(self, user_id, username, nama, email, nohp, role=None, password=None):
+    def close(self):
+        if self.cur:
+            self.cur.close()
+        if self.conn:
+            self.conn.close()
+        if self.cursor:
+            self.cursor.close()
+        if self.connection:
+            self.connection.close()
+
+    def update_user(self, user_id, username, nama, email, nohp, role=None, password=None):
+        try:
+            self.connect()
+            if password:
+                hashed_password = generate_password_hash(password)
+                query = """
+                    UPDATE users 
+                    SET username = %s, password = %s, nama = %s, email = %s, nohp = %s, role = %s,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = %s
+                    RETURNING id
+                """
+                self.cursor.execute(query, (username, hashed_password, nama, email, nohp, role, user_id))
+            else:
+                query = """
+                    UPDATE users 
+                    SET username = %s, nama = %s, email = %s, nohp = %s, role = %s,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = %s
+                    RETURNING id
+                """
+                self.cursor.execute(query, (username, nama, email, nohp, role, user_id))
+
+            updated_id = self.cursor.fetchone()
+            self.connection.commit()
+            return updated_id[0] if updated_id else None
+        except Exception as e:
+            print(f"Database error: {e}")
+            self.connection.rollback()
+            return None
+        finally:
+            self.close()
+
+    def delete_user(self, user_id):
         try:
             with self.conn.cursor() as cur:
-                if password:
-                    cur.execute("""
-                        UPDATE users SET username=%s, nama=%s, email=%s, nohp=%s, role=%s, password=%s WHERE id=%s
-                    """, (username, nama, email, nohp, role, password, user_id))
-                else:
-                    cur.execute("""
-                        UPDATE users SET username=%s, nama=%s, email=%s, nohp=%s, role=%s WHERE id=%s
-                    """, (username, nama, email, nohp, role, user_id))
+                cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
                 self.conn.commit()
                 return True
         except Exception as e:
-            print(f"Error saat update user: {e}")
+            print(f"Database error saat menghapus user: {e}")
             self.conn.rollback()
             return False
-        
-def delete_user(self, user_id):
-    try:
-    with self.conn.cursor() as cur:
-        cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
-        self.conn.commit()
-        return True
-    except Exception as e:
-    print(f"Database error saat menghapus user: {e}")
-    self.conn.rollback()
-    return False
-
-
-def connect(self):
-    """Connect to the PostgreSQL database"""
-    self.connection = psycopg2.connect(**self.config)
-    self.cursor = self.connection.cursor()
-
-def close(self):
-    """Close database connection"""
-    if self.cur:
-        self.cur.close()
-    if self.conn:
-        self.conn.close()
-    if self.cursor:
-        self.cursor.close()
-    if self.connection:
-        self.connection.close()
 
 
 def get_user(self, username):
