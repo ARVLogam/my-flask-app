@@ -283,18 +283,15 @@ def read_all_barang(self):
 def update_barang(self, barang_id, nama_barang, harga, deskripsi):
     try:
         self.connect()
-        # Gunakan zona waktu Indonesia
-        waktu_sekarang = datetime.now(pytz.timezone('Asia/Jakarta'))
-        
         query = """
             UPDATE barang 
             SET nama_barang = %s, 
                 harga = %s, 
                 deskripsi = %s,
-                updated_at = %s
+                updated_at = CURRENT_TIMESTAMP
             WHERE id = %s RETURNING id
         """
-        self.cursor.execute(query, (nama_barang, harga, deskripsi, waktu_sekarang, barang_id))
+        self.cursor.execute(query, (nama_barang, harga, deskripsi, barang_id))
         updated_id = self.cursor.fetchone()
         self.connection.commit()
         return updated_id[0] if updated_id else None
