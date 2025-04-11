@@ -74,7 +74,7 @@ class Database:
         finally:
             self.close()
 
-    def update_user(self, user_id, username, nama, email, nohp, role=None, password=None):
+def update_user(self, user_id, username, nama, email, nohp, role=None, password=None):
     try:
         self.connect()
         
