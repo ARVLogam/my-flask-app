@@ -263,20 +263,22 @@ class Database:
         finally:
             self.close()
 
-    def read_all_barang(self):
-        try:
-            self.connect()
-            query = """
-                SELECT id, nama_barang, harga, deskripsi, created_at, updated_at
-                FROM barang ORDER BY id
-            """
-            self.cursor.execute(query)
-            return self.cursor.fetchall()
-        except Exception as e:
-            print(f"Database error: {e}")
-            return []
-        finally:
-            self.close()
+def read_all_barang(self):
+    try:
+        self.connect()
+        query = """
+            SELECT id, nama_barang, harga, deskripsi, 
+                   to_char(created_at, 'DD-MM-YYYY HH24:MI') as created, 
+                   to_char(updated_at, 'DD-MM-YYYY HH24:MI') as updated
+            FROM barang ORDER BY id
+        """
+        self.cursor.execute(query)
+        return self.cursor.fetchall()
+    except Exception as e:
+        print(f"Database error: {e}")
+        return []
+    finally:
+        self.close()
 
 def update_barang(self, barang_id, nama_barang, harga, deskripsi):
     try:
