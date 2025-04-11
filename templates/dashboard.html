@@ -85,11 +85,11 @@
                   {{ item[3] }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ item[4].strftime('%d-%m-%Y %H:%M') if item[4] else '' }}
+                  {{ item[4] if item[4] else '' }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ item[4].astimezone(timezone('Asia/Jakarta')).strftime('%d-%m-%Y %H:%M') if item[4] else '' }}
-              </td>
+                  {{ item[5] if item[5] else '' }}
+                </td>
               </tr>
               {% endfor %}
             </tbody>
@@ -130,51 +130,51 @@
 
     <script>
       // Clock and mobile menu scripts
-      src="{{ url_for('static', filename='js/mobile-menu.js') }}"
+      document.addEventListener('DOMContentLoaded', function() {
+        // Close menu when clicking outside
+        document.addEventListener('click', function(event) {
+          const menu = document.getElementById("mobileMenu");
+          const toggle = document.getElementById("mobileMenuToggle");
+          
+          if (menu && toggle && !menu.contains(event.target) && !toggle.contains(event.target)) {
+            menu.classList.add('hidden');
+            const icon = toggle.querySelector('i');
+            icon.classList.remove('fa-times');
+            icon.classList.add('fa-bars');
+          }
+        });
 
-      // Close menu when clicking outside
-      document.addEventListener('click', function(event) {
-        const menu = document.getElementById("mobileMenu");
-        const toggle = document.getElementById("mobileMenuToggle");
-        
-        if (!menu.contains(event.target) && !toggle.contains(event.target)) {
-          menu.classList.add('hidden');
-          const icon = toggle.querySelector('i');
-          icon.classList.remove('fa-times');
-          icon.classList.add('fa-bars');
+        // Enhanced live clock function
+        function updateClock() {
+          const now = new Date();
+
+          // Format options
+          const dayDateOptions = {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          };
+
+          const timeOptions = {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false,
+          };
+
+          document.getElementById("liveDayDate").textContent =
+            now.toLocaleDateString("id-ID", dayDateOptions);
+          document.getElementById("liveTime").textContent =
+            now.toLocaleTimeString("id-ID", timeOptions);
+
+          // Update every second
+          setTimeout(updateClock, 1000);
         }
+
+        // Initialize clock
+        updateClock();
       });
-
-      // Enhanced live clock function
-      function updateClock() {
-        const now = new Date();
-
-        // Format options
-        const dayDateOptions = {
-          weekday: "long",
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        };
-
-        const timeOptions = {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: false,
-        };
-
-        document.getElementById("liveDayDate").textContent =
-          now.toLocaleDateString("id-ID", dayDateOptions);
-        document.getElementById("liveTime").textContent =
-          now.toLocaleTimeString("id-ID", timeOptions);
-
-        // Update every second
-        setTimeout(updateClock, 1000);
-      }
-
-      // Initialize clock when page loads
-      document.addEventListener("DOMContentLoaded", updateClock);
     </script>
   </body>
 </html>
