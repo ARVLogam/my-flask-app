@@ -90,22 +90,6 @@
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {{ item[5].strftime('%d-%m-%Y %H:%M') if item[5] else '' }}
                 </td>
-                {% if role == 'admin' %}
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <div class="flex space-x-2">
-                    <a href="{{ url_for('editBarang', id_barang=item[0]) }}" 
-                       class="text-blue-600 hover:text-blue-900">
-                      <i class="fas fa-edit"></i>
-                    </a>
-                    <form action="{{ url_for('deleteBarang', id_barang=item[0]) }}" method="POST" 
-                          onsubmit="return confirm('Apakah Anda yakin ingin menghapus barang ini?');">
-                      <button type="submit" class="text-red-600 hover:text-red-900">
-                        <i class="fas fa-trash"></i>
-                      </button>
-                    </form>
-                  </div>
-                </td>
-                {% endif %}
               </tr>
               {% endfor %}
             </tbody>
