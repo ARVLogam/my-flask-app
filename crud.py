@@ -1,6 +1,7 @@
 import psycopg2
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
+import pytz 
 
 class Database:
     def __init__(self, config):
@@ -274,18 +275,21 @@ class Database:
         finally:
             self.close()
 
-    def update_barang(self, barang_id, nama_barang, harga, deskripsi):
+     def update_barang(self, barang_id, nama_barang, harga, deskripsi):
         try:
             self.connect()
+            # Gunakan zona waktu Indonesia
+            waktu_sekarang = datetime.now(pytz.timezone('Asia/Jakarta'))
+            
             query = """
                 UPDATE barang 
                 SET nama_barang = %s, 
                     harga = %s, 
                     deskripsi = %s,
-                    updated_at = CURRENT_TIMESTAMP
+                    updated_at = %s
                 WHERE id = %s RETURNING id
             """
-            self.cursor.execute(query, (nama_barang, harga, deskripsi, barang_id))
+            self.cursor.execute(query, (nama_barang, harga, deskripsi, waktu_sekarang, barang_id))
             updated_id = self.cursor.fetchone()
             self.connection.commit()
             return updated_id[0] if updated_id else None
