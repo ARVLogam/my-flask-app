@@ -569,7 +569,7 @@ def editUser(user_id):
         return redirect(url_for("menuAdmin", roleMenu="kelolaUser"))
 
     if request.method == 'POST':
-        # Collect form data
+        # Ambil semua data dari form
         username = request.form.get('username', '').strip()
         nama = request.form.get('nama', '').strip()
         email = request.form.get('email', '').strip()
@@ -577,24 +577,23 @@ def editUser(user_id):
         role = request.form.get('role', '').strip()
         password = request.form.get('password', '').strip()
 
-        # Validate username
+        # Validasi username
         if not username:
             flash("Username tidak boleh kosong", "error")
             return redirect(url_for("editUser", user_id=user_id))
 
-        # Check username uniqueness (excluding current user)
+        # Cek keunikan username (kecuali user saat ini)
         if db.check_username_exists(username, exclude_id=user_id):
-            flash("Username sudah digunakan oleh user lain", "error")
+            flash("Username sudah digunakan", "error")
             return redirect(url_for("editUser", user_id=user_id))
 
-        # Check email uniqueness (excluding current user)
+        # Cek keunikan email (kecuali user saat ini)
         if db.check_email_exists_for_update(email, user_id):
-            flash("Email sudah digunakan oleh user lain", "error")
+            flash("Email sudah digunakan", "error")
             return redirect(url_for("editUser", user_id=user_id))
 
-        # Update user 
+        # Update user
         try:
-            # If password is empty, pass None to skip password update
             updated_id = db.update_user(
                 user_id, 
                 username, 
@@ -607,17 +606,17 @@ def editUser(user_id):
 
             if updated_id:
                 flash("Data pengguna berhasil diperbarui", "success")
+                return redirect(url_for("menuAdmin", roleMenu="kelolaUser"))
             else:
                 flash("Gagal memperbarui pengguna", "error")
-
-            return redirect(url_for("menuAdmin", roleMenu="kelolaUser"))
+                return redirect(url_for("editUser", user_id=user_id))
 
         except Exception as e:
             print(f"Error updating user: {e}")
             flash("Terjadi kesalahan saat memperbarui pengguna", "error")
             return redirect(url_for("editUser", user_id=user_id))
 
-    # GET request: render edit form
+    # Render halaman edit
     return render_template('editUser.html', user=user)
 
 @app.route('/deleteUser', methods=['POST'])
