@@ -1,73 +1,202 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Edit Pengguna</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet"/>
-</head>
-<body class="bg-gray-100">
-  <nav class="bg-green-600 p-4 text-white">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="bg-gray-100">
     {% include 'navbar.html' %}
-  </nav>
-
-  <div class="container mx-auto p-4">
-    <div class="bg-white rounded-lg shadow-md p-6 max-w-2xl mx-auto">
-      <h2 class="text-2xl font-bold mb-4 text-gray-700">Edit Pengguna</h2>
-
-      <form method="POST" action="{{ url_for('editUser', user_id=user[0]) }}">
-        <div class="mb-4">
-          <label class="block text-gray-700 font-medium mb-2">Username</label>
-          <input type="text" name="username" value="{{ user[1] }}"
-                 class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"/>
+    
+    <!-- Main Content -->
+    <div class="container mx-auto p-4 pt-6">
+      <!-- Dashboard Header with Clock -->
+      <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div
+          class="flex flex-col md:flex-row justify-between items-start md:items-center"
+        >
+          <div>
+            <img src="{{ url_for('static', filename='img/logo.PNG') }}" width="300" class="text-gray-600">
+            Selamat datang kembali, {{ nama }} di Sistem Management ARV LOGAM
+          </div>
+          <div class="mt-4 md:mt-0 bg-gray-100 px-4 py-2 rounded-lg">
+            <div class="text-lg font-medium text-gray-700 flex items-center">
+              <i class="far fa-clock mr-3"></i>
+              <div>
+                <div id="liveDayDate" class="text-sm"></div>
+                <div id="liveTime" class="font-semibold"></div>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
 
-        <div class="mb-4">
-          <label class="block text-gray-700 font-medium mb-2">Nama</label>
-          <input type="text" name="nama" value="{{ user[4] }}"
-                 class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"/>
-        </div>
+      {% include 'flashProtection.html' %}
 
-        <div class="mb-4">
-          <label class="block text-gray-700 font-medium mb-2">Email</label>
-          <input type="email" name="email" value="{{ user[5] }}"
-                 class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"/>
+      <!-- Produk Section for Both Admin and User -->
+      <div class="bg-white overflow-hidden shadow-md rounded-lg mb-6">
+        <div class="p-4 bg-gray-50 border-b">
+          <h2 class="text-lg font-semibold text-gray-700">Daftar Produk</h2>
         </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  ID
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Nama Barang
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Harga/kg
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Deskripsi
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Tanggal Dibuat
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Tanggal Update
+                </th>
+                {% if role == 'admin' %}
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Aksi
+                </th>
+                {% endif %}
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              {% for item in barang %}
+              <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {{ item[0] }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {{ item[1] }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {{ item[2] }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {{ item[3] }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {{ item[4].strftime('%d-%m-%Y %H:%M') if item[4] else '' }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {{ item[5].strftime('%d-%m-%Y %H:%M') if item[5] else '' }}
+                </td>
+                {% if role == 'admin' %}
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <div class="flex space-x-2">
+                    <a href="{{ url_for('editBarang', id_barang=item[0]) }}" 
+                       class="text-blue-600 hover:text-blue-900">
+                      <i class="fas fa-edit"></i>
+                    </a>
+                    <form action="{{ url_for('deleteBarang', id_barang=item[0]) }}" method="POST" 
+                          onsubmit="return confirm('Apakah Anda yakin ingin menghapus barang ini?');">
+                      <button type="submit" class="text-red-600 hover:text-red-900">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </form>
+                  </div>
+                </td>
+                {% endif %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-        <div class="mb-4">
-          <label class="block text-gray-700 font-medium mb-2">No. HP</label>
-          <input type="text" name="nohp" value="{{ user[6] }}"
-                 class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"/>
+      <!-- Stats Cards (Optional) -->
+      {% if role == 'admin' %}
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-gray-500">Total Produk</p>
+              <h3 class="text-2xl font-bold">{{ total_produk }}</h3>
+            </div>
+            <div class="bg-blue-100 p-3 rounded-full">
+              <i class="fas fa-box text-blue-600 text-xl"></i>
+            </div>
+          </div>
         </div>
-
-        <div class="mb-4">
-          <label class="block text-gray-700 font-medium mb-2">Role</label>
-          <select name="role"
-                  class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500">
-            <option value="admin" {% if user[3] == 'admin' %}selected{% endif %}>Admin</option>
-            <option value="user" {% if user[3] == 'user' %}selected{% endif %}>User</option>
-          </select>
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-gray-500">Produk Terakhir Ditambahkan</p>
+              <h3 class="text-lg font-semibold">
+                {{ produk_terakhir[1] if produk_terakhir else 'Tidak ada' }}
+              </h3>
+            </div>
+            <div class="bg-green-100 p-3 rounded-full">
+              <i class="fas fa-plus text-green-600 text-xl"></i>
+            </div>
+          </div>
         </div>
-
-        <div class="mb-6">
-          <label class="block text-gray-700 font-medium mb-2">Password (opsional)</label>
-          <input type="password" name="password" placeholder="Kosongkan jika tidak diubah"
-                 class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"/>
-        </div>
-
-        <div class="flex justify-between">
-          <a href="{{ url_for('menuAdmin', roleMenu='kelolaUser') }}"
-             class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">
-            Kembali
-          </a>
-          <button type="submit"
-                  class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
-            Simpan Perubahan
-          </button>
-        </div>
-      </form>
+      </div>
+      {% endif %}
     </div>
-  </div>
-</body>
+
+    <script>
+      // Clock and mobile menu scripts
+      src="{{ url_for('static', filename='js/mobile-menu.js') }}"
+
+      // Close menu when clicking outside
+      document.addEventListener('click', function(event) {
+        const menu = document.getElementById("mobileMenu");
+        const toggle = document.getElementById("mobileMenuToggle");
+        
+        if (!menu.contains(event.target) && !toggle.contains(event.target)) {
+          menu.classList.add('hidden');
+          const icon = toggle.querySelector('i');
+          icon.classList.remove('fa-times');
+          icon.classList.add('fa-bars');
+        }
+      });
+
+      // Enhanced live clock function
+      function updateClock() {
+        const now = new Date();
+
+        // Format options
+        const dayDateOptions = {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        };
+
+        const timeOptions = {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        };
+
+        document.getElementById("liveDayDate").textContent =
+          now.toLocaleDateString("id-ID", dayDateOptions);
+        document.getElementById("liveTime").textContent =
+          now.toLocaleTimeString("id-ID", timeOptions);
+
+        // Update every second
+        setTimeout(updateClock, 1000);
+      }
+
+      // Initialize clock when page loads
+      document.addEventListener("DOMContentLoaded", updateClock);
+    </script>
+  </body>
 </html>
+```
