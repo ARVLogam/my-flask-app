@@ -215,11 +215,14 @@ class Database:
     def create_barang(self, nama_barang, harga, deskripsi):
         try:
             self.connect()
+            # Gunakan zona waktu Indonesia
+            waktu_sekarang = datetime.now(pytz.timezone('Asia/Jakarta'))
+            
             query = """
-                INSERT INTO barang (nama_barang, harga, deskripsi)
-                VALUES (%s, %s, %s) RETURNING id
+                INSERT INTO barang (nama_barang, harga, deskripsi, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s) RETURNING id
             """
-            self.cursor.execute(query, (nama_barang, harga, deskripsi))
+            self.cursor.execute(query, (nama_barang, harga, deskripsi, waktu_sekarang, waktu_sekarang))
             barang_id = self.cursor.fetchone()[0]
             self.connection.commit()
             return barang_id
