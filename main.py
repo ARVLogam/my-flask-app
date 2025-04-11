@@ -569,33 +569,40 @@ def editUser(user_id):
         return redirect(url_for("menuAdmin", roleMenu="kelolaUser"))
 
     if request.method == 'POST':
-        username = request.form['username']
-        nama = request.form['nama']
-        email = request.form['email']
-        nohp = request.form['nohp']
-        role = request.form['role']
-        password = request.form['password']
+        # Ambil role dari form
+        role = request.form.get('role', '').strip()
 
-        # Cek validasi
-        if db.check_username_exists(username, exclude_id=user_id):
-            flash("Username sudah digunakan oleh user lain", "error")
-            return redirect(request.url)
+        # Validasi role
+        if role not in ['admin', 'user']:
+            flash("Role tidak valid", "error")
+            return redirect(url_for("editUser", user_id=user_id))
 
-        if db.check_email_exists_for_update(email, exclude_id=user_id):
-            flash("Email sudah digunakan oleh user lain", "error")
-            return redirect(request.url)
+        try:
+            # Update user dengan role baru
+            updated_id = db.update_user(
+                user_id, 
+                user[1],   # username (tetap sama)
+                user[4],   # nama (tetap sama)
+                user[5],   # email (tetap sama)
+                user[6],   # nohp (tetap sama)
+                role,      # role baru
+                None       # password (tidak diubah)
+            )
 
-        updated_id = db.update_user(user_id, username, nama, email, nohp, role, password if password.strip() else None)
+            if updated_id:
+                flash("Role pengguna berhasil diubah", "success")
+                return redirect(url_for("menuAdmin", roleMenu="kelolaUser"))
+            else:
+                flash("Gagal mengubah role pengguna", "error")
+                return redirect(url_for("editUser", user_id=user_id))
 
-        if updated_id:
-            flash("Data pengguna berhasil diperbarui", "success")
-        else:
-            flash("Gagal memperbarui pengguna", "error")
+        except Exception as e:
+            print(f"Error updating user role: {e}")
+            flash("Terjadi kesalahan saat mengubah role", "error")
+            return redirect(url_for("editUser", user_id=user_id))
 
-        return redirect(url_for("menuAdmin", roleMenu="kelolaUser"))
-
+    # Render halaman edit untuk GET request
     return render_template('editUser.html', user=user)
-
 
 @app.route('/deleteUser', methods=['POST'])
 def deleteUser():
