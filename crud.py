@@ -274,6 +274,28 @@ class Database:
         finally:
             self.close()
 
+def update_barang(self, barang_id, nama_barang, harga, deskripsi):
+    try:
+        self.connect()
+        query = """
+            UPDATE barang 
+            SET nama_barang = %s, 
+                harga = %s, 
+                deskripsi = %s,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = %s RETURNING id
+        """
+        self.cursor.execute(query, (nama_barang, harga, deskripsi, barang_id))
+        updated_id = self.cursor.fetchone()
+        self.connection.commit()
+        return updated_id[0] if updated_id else None
+    except Exception as e:
+        print(f"Database Error saat update barang: {e}")
+        self.connection.rollback()
+        return None
+    finally:
+        self.close()
+    
     def delete_barang(self, barang_id):
         try:
             self.connect()
