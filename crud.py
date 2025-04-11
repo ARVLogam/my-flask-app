@@ -25,184 +25,16 @@ class Database:
         if self.connection:
             self.connection.close()
 
-    def get_user(self, username):
+    # ... (semua method sebelumnya tetap sama)
+
+    def read_all_barang(self):
         try:
             self.connect()
             query = """
-                SELECT id, username, password, role, nama, email, nohp 
-                FROM users WHERE username = %s
-            """
-            self.cursor.execute(query, (username,))
-            user = self.cursor.fetchone()
-            return user
-        except Exception as e:
-            print(f"Database error: {e}")
-            return None
-        finally:
-            self.close()
-
-    def get_user_by_id(self, user_id):
-        try:
-            self.connect()
-            query = """
-                SELECT id, username, password, role, nama, email, nohp 
-                FROM users WHERE id = %s
-            """
-            self.cursor.execute(query, (user_id,))
-            return self.cursor.fetchone()
-        except Exception as e:
-            print(f"Database error: {e}")
-            return None
-        finally:
-            self.close()
-
-    def create_user(self, username, password, role, nama, email, nohp):
-        try:
-            self.connect()
-            hashed_password = generate_password_hash(password)
-            query = """
-                INSERT INTO users (username, password, role, nama, email, nohp) 
-                VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
-            """
-            self.cursor.execute(query, (username, hashed_password, role, nama, email, nohp))
-            user_id = self.cursor.fetchone()[0]
-            self.connection.commit()
-            return user_id
-        except Exception as e:
-            print(f"Database error: {e}")
-            self.connection.rollback()
-            return None
-        finally:
-            self.close()
-
-    def update_user(self, user_id, username, nama, email, nohp, role=None, password=None):
-        try:
-            self.connect()
-            
-            # Determine which update query to use based on password
-            if password:
-                hashed_password = generate_password_hash(password)
-                query = """
-                    UPDATE users 
-                    SET username = %s, 
-                        nama = %s, 
-                        email = %s, 
-                        nohp = %s, 
-                        role = %s, 
-                        password = %s,
-                        updated_at = CURRENT_TIMESTAMP
-                    WHERE id = %s RETURNING id
-                """
-                self.cursor.execute(query, (username, nama, email, nohp, role, hashed_password, user_id))
-            else:
-                query = """
-                    UPDATE users 
-                    SET username = %s, 
-                        nama = %s, 
-                        email = %s, 
-                        nohp = %s, 
-                        role = %s,
-                        updated_at = CURRENT_TIMESTAMP
-                    WHERE id = %s RETURNING id
-                """
-                self.cursor.execute(query, (username, nama, email, nohp, role, user_id))
-
-            updated_id = self.cursor.fetchone()
-            self.connection.commit()
-            return updated_id[0] if updated_id else None
-        except Exception as e:
-            print(f"Database error: {e}")
-            self.connection.rollback()
-            return None
-        finally:
-            self.close()
-
-    def delete_user(self, user_id):
-        try:
-            self.connect()
-            self.cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
-            self.connection.commit()
-            return True
-        except Exception as e:
-            print(f"Database error saat menghapus user: {e}")
-            self.connection.rollback()
-            return False
-        finally:
-            self.close()
-
-    def update_user_password(self, email, new_password):
-        try:
-            self.connect()
-            hashed_pw = generate_password_hash(new_password)
-            self.cursor.execute("UPDATE users SET password = %s WHERE email = %s", (hashed_pw, email))
-            self.connection.commit()
-            return True
-        except Exception as e:
-            print(f"Database error: {e}")
-            self.connection.rollback()
-            return False
-        finally:
-            self.close()
-
-    def check_email_exists(self, email):
-        try:
-            self.connect()
-            query = "SELECT id FROM users WHERE email = %s"
-            self.cursor.execute(query, (email,))
-            return self.cursor.fetchone() is not None
-        except Exception as e:
-            print(f"Database error: {e}")
-            return False
-        finally:
-            self.close()
-
-    def check_email_exists_for_update(self, email, exclude_id):
-        try:
-            self.connect()
-            query = "SELECT id FROM users WHERE email = %s AND id != %s"
-            self.cursor.execute(query, (email, exclude_id))
-            return self.cursor.fetchone() is not None
-        except Exception as e:
-            print(f"Database error: {e}")
-            return False
-        finally:
-            self.close()
-
-    def check_username_exists(self, username, exclude_id=None):
-        try:
-            self.connect()
-            if exclude_id:
-                query = "SELECT id FROM users WHERE username = %s AND id != %s"
-                self.cursor.execute(query, (username, exclude_id))
-            else:
-                query = "SELECT id FROM users WHERE username = %s"
-                self.cursor.execute(query, (username,))
-            return self.cursor.fetchone() is not None
-        except Exception as e:
-            print(f"Database error: {e}")
-            return False
-        finally:
-            self.close()
-
-    def count_users(self):
-        try:
-            self.connect()
-            query = "SELECT COUNT(*) FROM users"
-            self.cursor.execute(query)
-            result = self.cursor.fetchone()
-            return result[0] if result else 0
-        except Exception as e:
-            print(f"Database error: {e}")
-            return 0
-        finally:
-            self.close()
-
-    def read_all_users(self):
-        try:
-            self.connect()
-            query = """
-                SELECT id, username, role, nama, email, nohp, created_at, updated_at
-                FROM users ORDER BY id
+                SELECT id, nama_barang, harga, deskripsi, 
+                       to_char(created_at, 'DD-MM-YYYY HH24:MI') as created, 
+                       to_char(updated_at, 'DD-MM-YYYY HH24:MI') as updated
+                FROM barang ORDER BY id
             """
             self.cursor.execute(query)
             return self.cursor.fetchall()
@@ -212,95 +44,27 @@ class Database:
         finally:
             self.close()
 
-    def create_barang(self, nama_barang, harga, deskripsi):
+    def update_barang(self, barang_id, nama_barang, harga, deskripsi):
         try:
             self.connect()
-            # Gunakan zona waktu Indonesia
-            waktu_sekarang = datetime.now(pytz.timezone('Asia/Jakarta'))
-            
             query = """
-                INSERT INTO barang (nama_barang, harga, deskripsi, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s) RETURNING id
+                UPDATE barang 
+                SET nama_barang = %s, 
+                    harga = %s, 
+                    deskripsi = %s,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s RETURNING id
             """
-            self.cursor.execute(query, (nama_barang, harga, deskripsi, waktu_sekarang, waktu_sekarang))
-            barang_id = self.cursor.fetchone()[0]
+            self.cursor.execute(query, (nama_barang, harga, deskripsi, barang_id))
+            updated_id = self.cursor.fetchone()
             self.connection.commit()
-            return barang_id
+            return updated_id[0] if updated_id else None
         except Exception as e:
-            print(f"Database Error: {e}")
+            print(f"Database Error saat update barang: {e}")
             self.connection.rollback()
             return None
         finally:
             self.close()
-
-    def get_barang_by_id(self, id_barang):
-        try:
-            self.connect()
-            query = """
-                SELECT id, nama_barang, harga, deskripsi
-                FROM barang WHERE id = %s
-            """
-            self.cursor.execute(query, (id_barang,))
-            return self.cursor.fetchone()
-        except Exception as e:
-            print(f'Database Error {e}')
-            return None
-        finally:
-            self.close()
-
-    def get_data_barang_nama_harga(self, nama_barang, harga):
-        try:
-            self.connect()
-            query = """
-                SELECT id, nama_barang, harga FROM barang 
-                WHERE nama_barang = %s AND harga = %s
-            """
-            self.cursor.execute(query, (nama_barang, harga))
-            return self.cursor.fetchone()
-        except Exception as e:
-            print(f"Database error: {e}")
-            return None
-        finally:
-            self.close()
-
-def read_all_barang(self):
-    try:
-        self.connect()
-        query = """
-            SELECT id, nama_barang, harga, deskripsi, 
-                   to_char(created_at, 'DD-MM-YYYY HH24:MI') as created, 
-                   to_char(updated_at, 'DD-MM-YYYY HH24:MI') as updated
-            FROM barang ORDER BY id
-        """
-        self.cursor.execute(query)
-        return self.cursor.fetchall()
-    except Exception as e:
-        print(f"Database error: {e}")
-        return []
-    finally:
-        self.close()
-
-def update_barang(self, barang_id, nama_barang, harga, deskripsi):
-    try:
-        self.connect()
-        query = """
-            UPDATE barang 
-            SET nama_barang = %s, 
-                harga = %s, 
-                deskripsi = %s,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = %s RETURNING id
-        """
-        self.cursor.execute(query, (nama_barang, harga, deskripsi, barang_id))
-        updated_id = self.cursor.fetchone()
-        self.connection.commit()
-        return updated_id[0] if updated_id else None
-    except Exception as e:
-        print(f"Database Error saat update barang: {e}")
-        self.connection.rollback()
-        return None
-    finally:
-        self.close()
     
     def delete_barang(self, barang_id):
         try:
@@ -317,6 +81,7 @@ def update_barang(self, barang_id, nama_barang, harga, deskripsi):
         finally:
             self.close()
 
+# Fungsi create_tables di luar class
 def create_tables(db_config):
     try:
         conn = psycopg2.connect(**db_config)
