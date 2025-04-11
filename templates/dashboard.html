@@ -88,8 +88,8 @@
                   {{ item[4].strftime('%d-%m-%Y %H:%M') if item[4] else '' }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ item[5].strftime('%d-%m-%Y %H:%M') if item[5] else '' }}
-                </td>
+                {{ item[4].astimezone(timezone('Asia/Jakarta')).strftime('%d-%m-%Y %H:%M') if item[4] else '' }}
+              </td>
               </tr>
               {% endfor %}
             </tbody>
