@@ -273,20 +273,20 @@ def update_user(self, user_id, username, nama, email, nohp, role=None, password=
         finally:
             self.close()
 
-    def read_all_barang(self):
-        try:
-            self.connect()
-            query = """
-                SELECT id, nama_barang, harga, deskripsi, created_at, updated_at
-                FROM barang ORDER BY id
-            """
-            self.cursor.execute(query)
-            return self.cursor.fetchall()
-        except Exception as e:
-            print(f"Database error: {e}")
-            return []
-        finally:
-            self.close()
+def read_all_barang(self):
+    try:
+        self.connect()
+        query = """
+            SELECT id, nama_barang, harga, deskripsi, created_at, updated_at
+            FROM barang ORDER BY id
+        """
+        self.cursor.execute(query)
+        return self.cursor.fetchall()
+    except Exception as e:
+        print(f"Database error: {e}")
+        return []
+    finally:
+        self.close()
 
     def delete_barang(self, barang_id):
         try:
