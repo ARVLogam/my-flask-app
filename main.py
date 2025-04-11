@@ -569,33 +569,56 @@ def editUser(user_id):
         return redirect(url_for("menuAdmin", roleMenu="kelolaUser"))
 
     if request.method == 'POST':
-        username = request.form['username']
-        nama = request.form['nama']
-        email = request.form['email']
-        nohp = request.form['nohp']
-        role = request.form['role']
-        password = request.form['password']
+        # Collect form data
+        username = request.form.get('username', '').strip()
+        nama = request.form.get('nama', '').strip()
+        email = request.form.get('email', '').strip()
+        nohp = request.form.get('nohp', '').strip()
+        role = request.form.get('role', '').strip()
+        password = request.form.get('password', '').strip()
 
-        # Cek validasi
+        # Validate username
+        if not username:
+            flash("Username tidak boleh kosong", "error")
+            return redirect(url_for("editUser", user_id=user_id))
+
+        # Check username uniqueness (excluding current user)
         if db.check_username_exists(username, exclude_id=user_id):
             flash("Username sudah digunakan oleh user lain", "error")
-            return redirect(request.url)
+            return redirect(url_for("editUser", user_id=user_id))
 
-        if db.check_email_exists_for_update(email, exclude_id=user_id):
+        # Check email uniqueness (excluding current user)
+        if db.check_email_exists_for_update(email, user_id):
             flash("Email sudah digunakan oleh user lain", "error")
-            return redirect(request.url)
+            return redirect(url_for("editUser", user_id=user_id))
 
-        updated_id = db.update_user(user_id, username, nama, email, nohp, role, password if password.strip() else None)
+        # Update user 
+        try:
+            # If password is empty, pass None to skip password update
+            updated_id = db.update_user(
+                user_id, 
+                username, 
+                nama, 
+                email, 
+                nohp, 
+                role, 
+                password if password else None
+            )
 
-        if updated_id:
-            flash("Data pengguna berhasil diperbarui", "success")
-        else:
-            flash("Gagal memperbarui pengguna", "error")
+            if updated_id:
+                flash("Data pengguna berhasil diperbarui", "success")
+            else:
+                flash("Gagal memperbarui pengguna", "error")
 
-        return redirect(url_for("menuAdmin", roleMenu="kelolaUser"))
+            return redirect(url_for("menuAdmin", roleMenu="kelolaUser"))
 
+        except Exception as e:
+            print(f"Error updating user: {e}")
+            flash("Terjadi kesalahan saat memperbarui pengguna", "error")
+            return redirect(url_for("editUser", user_id=user_id))
+
+    # GET request: render edit form
     return render_template('editUser.html', user=user)
-
 
 @app.route('/deleteUser', methods=['POST'])
 def deleteUser():
