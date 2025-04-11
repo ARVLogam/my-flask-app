@@ -17,29 +17,6 @@
       <h2 class="text-2xl font-bold mb-4 text-gray-700">Edit Pengguna</h2>
 
       <form method="POST" action="">
-        <div class="mb-4">
-          <label class="block text-gray-700 font-medium mb-2">Username</label>
-          <input type="text" name="username" value="{{ user[1] }}" required
-                 class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"/>
-        </div>
-
-        <div class="mb-4">
-          <label class="block text-gray-700 font-medium mb-2">Nama Lengkap</label>
-          <input type="text" name="nama" value="{{ user[4] }}" required
-                 class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"/>
-        </div>
-
-        <div class="mb-4">
-          <label class="block text-gray-700 font-medium mb-2">Email</label>
-          <input type="email" name="email" value="{{ user[5] }}" required
-                 class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"/>
-        </div>
-
-        <div class="mb-4">
-          <label class="block text-gray-700 font-medium mb-2">No HP</label>
-          <input type="text" name="nohp" value="{{ user[6] }}" required
-                 class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"/>
-        </div>
 
         <div class="mb-4">
           <label class="block text-gray-700 font-medium mb-2">Role</label>
@@ -48,12 +25,6 @@
             <option value="admin" {% if user[3] == 'admin' %}selected{% endif %}>Admin</option>
             <option value="user" {% if user[3] == 'user' %}selected{% endif %}>User</option>
           </select>
-        </div>
-
-        <div class="mb-6">
-          <label class="block text-gray-700 font-medium mb-2">Password (opsional)</label>
-          <input type="password" name="password" placeholder="Kosongkan jika tidak diubah"
-                 class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"/>
         </div>
 
         <div class="flex justify-between">
