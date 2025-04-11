@@ -435,7 +435,6 @@ def editBarang(id_barang):
                 flash("Data barang tidak ditemukan", "error")
                 return redirect(url_for("dashboard"))
             
-            # Kirim data barang langsung tanpa konversi ke dictionary
             return render_template("editBarang.html", barang=barang)
             
         elif request.method == "POST":
@@ -449,7 +448,8 @@ def editBarang(id_barang):
                 return redirect(url_for("editBarang", id_barang=id_barang))
                 
             try:
-                harga = float(harga)
+                # Konversi harga ke float
+                harga = float(harga.replace(',', '.'))
             except ValueError:
                 flash("Harga harus berupa angka", "error")
                 return redirect(url_for("editBarang", id_barang=id_barang))
@@ -459,11 +459,9 @@ def editBarang(id_barang):
             
             if result:
                 flash("Data barang berhasil diperbarui!", "success")
-                # Redirect ke dashboard setelah update berhasil
                 return redirect(url_for("menuAdmin", roleMenu="kelolaBarang"))
             else:
                 flash("Gagal memperbarui data barang", "error")
-                # Kembali ke form edit jika gagal
                 return redirect(url_for("editBarang", id_barang=id_barang))
             
     except Exception as e:
