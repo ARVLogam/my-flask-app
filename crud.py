@@ -74,47 +74,48 @@ class Database:
         finally:
             self.close()
 
-def update_user(self, user_id, username, nama, email, nohp, role=None, password=None):
-    try:
-        self.connect()
+    def update_user(self, user_id, username, nama, email, nohp, role=None, password=None):
+        try:
+            self.connect()
+            
+            # Determine which update query to use based on password
+            if password:
+                hashed_password = generate_password_hash(password)
+                query = """
+                    UPDATE users 
+                    SET username = %s, 
+                        nama = %s, 
+                        email = %s, 
+                        nohp = %s, 
+                        role = %s, 
+                        password = %s,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = %s RETURNING id
+                """
+                self.cursor.execute(query, (username, nama, email, nohp, role, hashed_password, user_id))
+            else:
+                query = """
+                    UPDATE users 
+                    SET username = %s, 
+                        nama = %s, 
+                        email = %s, 
+                        nohp = %s, 
+                        role = %s,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = %s RETURNING id
+                """
+                self.cursor.execute(query, (username, nama, email, nohp, role, user_id))
+    
+            updated_id = self.cursor.fetchone()
+            self.connection.commit()
+            return updated_id[0] if updated_id else None
+        except Exception as e:
+            print(f"Database error: {e}")
+            self.connection.rollback()
+            return None
+        finally:
+            self.close()
         
-        # Determine which update query to use based on password
-        if password:
-            hashed_password = generate_password_hash(password)
-            query = """
-                UPDATE users 
-                SET username = %s, 
-                    nama = %s, 
-                    email = %s, 
-                    nohp = %s, 
-                    role = %s, 
-                    password = %s,
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE id = %s RETURNING id
-            """
-            self.cursor.execute(query, (username, nama, email, nohp, role, hashed_password, user_id))
-        else:
-            query = """
-                UPDATE users 
-                SET username = %s, 
-                    nama = %s, 
-                    email = %s, 
-                    nohp = %s, 
-                    role = %s,
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE id = %s RETURNING id
-            """
-            self.cursor.execute(query, (username, nama, email, nohp, role, user_id))
-
-        updated_id = self.cursor.fetchone()
-        self.connection.commit()
-        return updated_id[0] if updated_id else None
-    except Exception as e:
-        print(f"Database error: {e}")
-        self.connection.rollback()
-        return None
-    finally:
-        self.close()
     def delete_user(self, user_id):
         try:
             with self.conn.cursor() as cur:
