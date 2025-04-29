@@ -11,22 +11,20 @@
       rel="stylesheet"
     />
   </head>
-  <body class="bg-gray-100">
+  <body class="bg-rose-50">
     {% include 'navbar.html' %}
     
     <!-- Main Content -->
     <div class="container mx-auto p-4 pt-6">
       <!-- Dashboard Header with Clock -->
       <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div
-          class="flex flex-col md:flex-row justify-between items-start md:items-center"
-        >
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
           <div>
-            <img src="{{ url_for('static', filename='img/logo.PNG') }}" width="300" class="text-gray-600">
+            <img src="{{ url_for('static', filename='img/logo.PNG') }}" width="300" class="text-rose-700">
             Selamat datang kembali, {{ nama }} di Sistem Management ARV LOGAM
           </div>
-          <div class="mt-4 md:mt-0 bg-gray-100 px-4 py-2 rounded-lg">
-            <div class="text-lg font-medium text-gray-700 flex items-center">
+          <div class="mt-4 md:mt-0 bg-rose-100 px-4 py-2 rounded-lg">
+            <div class="text-lg font-medium text-rose-700 flex items-center">
               <i class="far fa-clock mr-3"></i>
               <div>
                 <div id="liveDayDate" class="text-sm"></div>
@@ -41,52 +39,52 @@
 
       <!-- Produk Section for Both Admin and User -->
       <div class="bg-white overflow-hidden shadow-md rounded-lg mb-6">
-        <div class="p-4 bg-gray-50 border-b">
-          <h2 class="text-lg font-semibold text-gray-700">Daftar Produk</h2>
+        <div class="p-4 bg-rose-50 border-b">
+          <h2 class="text-lg font-semibold text-rose-700">Daftar Produk</h2>
         </div>
         <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
+          <table class="min-w-full divide-y divide-rose-200">
+            <thead class="bg-rose-50">
               <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th class="px-6 py-3 text-left text-xs font-medium text-rose-500 uppercase tracking-wider">
                   No
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th class="px-6 py-3 text-left text-xs font-medium text-rose-500 uppercase tracking-wider">
                   Nama Barang
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th class="px-6 py-3 text-left text-xs font-medium text-rose-500 uppercase tracking-wider">
                   Harga/kg
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th class="px-6 py-3 text-left text-xs font-medium text-rose-500 uppercase tracking-wider">
                   Deskripsi
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th class="px-6 py-3 text-left text-xs font-medium text-rose-500 uppercase tracking-wider">
                   Tanggal Dibuat
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th class="px-6 py-3 text-left text-xs font-medium text-rose-500 uppercase tracking-wider">
                   Tanggal Update
                 </th>
               </tr>
             </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
+            <tbody class="bg-white divide-y divide-rose-200">
               {% for item in barang %}
-              <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <tr class="hover:bg-rose-50">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-rose-900">
                   {{ loop.index }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-rose-900">
                   {{ item[1] }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-rose-900">
                   {{ item[2] }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-rose-500">
                   {{ item[3] }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-rose-500">
                   {{ item[4] if item[4] else '' }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-rose-500">
                   {{ item[5] if item[5] else '' }}
                 </td>
               </tr>
@@ -96,30 +94,30 @@
         </div>
       </div>
 
-      <!-- Stats Cards (Optional) -->
+      <!-- Stats Cards -->
       {% if role == 'admin' %}
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <div class="bg-white rounded-lg shadow-md p-6">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-gray-500">Total Produk</p>
+              <p class="text-rose-500">Total Produk</p>
               <h3 class="text-2xl font-bold">{{ total_produk }}</h3>
             </div>
-            <div class="bg-blue-100 p-3 rounded-full">
-              <i class="fas fa-box text-blue-600 text-xl"></i>
+            <div class="bg-rose-100 p-3 rounded-full">
+              <i class="fas fa-box text-rose-600 text-xl"></i>
             </div>
           </div>
         </div>
         <div class="bg-white rounded-lg shadow-md p-6">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-gray-500">Produk Terakhir Ditambahkan</p>
+              <p class="text-rose-500">Produk Terakhir Ditambahkan</p>
               <h3 class="text-lg font-semibold">
                 {{ produk_terakhir[1] if produk_terakhir else 'Tidak ada' }}
               </h3>
             </div>
-            <div class="bg-green-100 p-3 rounded-full">
-              <i class="fas fa-plus text-green-600 text-xl"></i>
+            <div class="bg-rose-100 p-3 rounded-full">
+              <i class="fas fa-plus text-rose-600 text-xl"></i>
             </div>
           </div>
         </div>
@@ -128,9 +126,7 @@
     </div>
 
     <script>
-      // Clock and mobile menu scripts
       document.addEventListener('DOMContentLoaded', function() {
-        // Close menu when clicking outside
         document.addEventListener('click', function(event) {
           const menu = document.getElementById("mobileMenu");
           const toggle = document.getElementById("mobileMenuToggle");
@@ -143,35 +139,27 @@
           }
         });
 
-        // Enhanced live clock function
         function updateClock() {
           const now = new Date();
-
-          // Format options
           const dayDateOptions = {
             weekday: "long",
             year: "numeric",
             month: "long",
             day: "numeric",
           };
-
           const timeOptions = {
             hour: "2-digit",
             minute: "2-digit",
             second: "2-digit",
             hour12: false,
           };
-
           document.getElementById("liveDayDate").textContent =
             now.toLocaleDateString("id-ID", dayDateOptions);
           document.getElementById("liveTime").textContent =
             now.toLocaleTimeString("id-ID", timeOptions);
 
-          // Update every second
           setTimeout(updateClock, 1000);
         }
-
-        // Initialize clock
         updateClock();
       });
     </script>
