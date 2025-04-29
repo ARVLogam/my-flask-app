@@ -1,13 +1,14 @@
+<!-- Navbar -->
 <nav class="bg-gray-800 text-white shadow-md p-4 fixed top-0 left-0 right-0 z-50">
   <div class="container mx-auto px-4 flex justify-between items-center">
     
-    <!-- Kiri: Logo + Welcome -->
+    <!-- Logo + Welcome -->
     <div class="flex items-center space-x-3">
       <i class="fas fa-store text-2xl text-red-500"></i>
       <span class="text-lg font-semibold">Welcome, {{ nama }}!</span>
     </div>
 
-    <!-- Kanan: Menu Desktop -->
+    <!-- Desktop Menu -->
     <div class="hidden md:flex items-center space-x-4">
       {% if role == 'admin' %}
         <a href="{{ url_for('dashboard') }}" class="hover:bg-gray-700 px-3 py-2 rounded flex items-center">
@@ -21,7 +22,7 @@
         </a>
       {% endif %}
 
-      <!-- Dropdown Akun -->
+      <!-- Akun Dropdown -->
       <div class="relative group">
         <button class="flex items-center space-x-2 hover:bg-gray-700 px-3 py-2 rounded transition">
           <i class="fas fa-user-circle text-2xl text-red-500"></i>
@@ -38,9 +39,38 @@
       </div>
     </div>
 
-    <!-- Mobile Menu Button -->
+    <!-- Mobile Toggle -->
     <button id="mobileMenuToggle" class="md:hidden text-red-500 focus:outline-none">
       <i class="fas fa-bars text-xl"></i>
     </button>
   </div>
+
+  <!-- Mobile Menu -->
+  <div id="mobileMenu" class="md:hidden hidden flex flex-col bg-gray-900 text-white px-4 pt-4 pb-2 space-y-2">
+    {% if role == 'admin' %}
+      <a href="{{ url_for('dashboard') }}" class="hover:bg-gray-700 px-3 py-2 rounded flex items-center">
+        <i class="fas fa-home mr-2 text-red-500"></i> Beranda
+      </a>
+      <a href="{{ url_for('menuAdmin', roleMenu='kelolaBarang') }}" class="hover:bg-gray-700 px-3 py-2 rounded flex items-center">
+        <i class="fas fa-box mr-2 text-red-500"></i> Kelola Barang
+      </a>
+      <a href="{{ url_for('menuAdmin', roleMenu='kelolaUser') }}" class="hover:bg-gray-700 px-3 py-2 rounded flex items-center">
+        <i class="fas fa-users mr-2 text-red-500"></i> Kelola User
+      </a>
+    {% endif %}
+    <a href="{{ url_for('editProfile') }}" class="hover:bg-gray-700 px-3 py-2 rounded flex items-center">
+      <i class="fas fa-user-edit mr-2 text-red-500"></i> Edit Profile
+    </a>
+    <a href="{{ url_for('logout') }}" class="hover:bg-gray-700 px-3 py-2 rounded flex items-center">
+      <i class="fas fa-sign-out-alt mr-2 text-red-500"></i> Logout
+    </a>
+  </div>
 </nav>
+
+<!-- Script: Toggle Menu -->
+<script>
+  document.getElementById("mobileMenuToggle").addEventListener("click", function () {
+    const menu = document.getElementById("mobileMenu");
+    menu.classList.toggle("hidden");
+  });
+</script>
