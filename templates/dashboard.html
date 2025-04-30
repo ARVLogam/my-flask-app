@@ -59,6 +59,45 @@
               <td class="px-6 py-3 text-sm text-gray-600">{{ item[4] }}</td>
               <td class="px-6 py-3 text-sm text-gray-600">{{ item[5] }}</td>
             </tr>
+            <!-- Versi Desktop -->
+<table class="min-w-full divide-y divide-gray-200 hidden md:table">
+  <thead class="bg-[#FCE4EC] text-[#C62828] text-xs uppercase">
+    <tr>
+      <th class="px-6 py-3 text-left">No</th>
+      <th class="px-6 py-3 text-left">Nama Barang</th>
+      <th class="px-6 py-3 text-left">Harga/kg</th>
+      <th class="px-6 py-3 text-left">Deskripsi</th>
+      <th class="px-6 py-3 text-left">Tanggal Dibuat</th>
+      <th class="px-6 py-3 text-left">Tanggal Update</th>
+    </tr>
+  </thead>
+  <tbody class="bg-white text-gray-800">
+    {% for item in barang %}
+    <tr class="hover:bg-[#F5F5F5]">
+      <td class="px-6 py-3">{{ loop.index }}</td>
+      <td class="px-6 py-3">{{ item[1] }}</td>
+      <td class="px-6 py-3">{{ item[2] }}</td>
+      <td class="px-6 py-3 text-sm text-gray-600">{{ item[3] }}</td>
+      <td class="px-6 py-3 text-sm text-gray-600">{{ item[4] }}</td>
+      <td class="px-6 py-3 text-sm text-gray-600">{{ item[5] }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- Versi Mobile -->
+<div class="space-y-4 md:hidden">
+  {% for item in barang %}
+  <div class="border rounded-lg p-4 shadow-sm bg-white">
+    <p class="text-sm text-gray-600"><span class="font-semibold">#{{ loop.index }}</span> - {{ item[1] }}</p>
+    <p class="text-gray-700 text-sm"><span class="font-medium">Harga/kg:</span> {{ item[2] }}</p>
+    <p class="text-gray-600 text-sm"><span class="font-medium">Deskripsi:</span> {{ item[3] }}</p>
+    <p class="text-gray-600 text-sm"><span class="font-medium">Dibuat:</span> {{ item[4] }}</p>
+    <p class="text-gray-600 text-sm"><span class="font-medium">Update:</span> {{ item[5] }}</p>
+  </div>
+  {% endfor %}
+</div>
+
             {% endfor %}
           </tbody>
         </table>
