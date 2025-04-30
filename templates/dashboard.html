@@ -1,112 +1,100 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" class="dark">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Dashboard - ARV Logam</title>
-  <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-    }
-  </script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard | ARV Logam</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              primary: '#b91c1c', // Merah gelap
+              metal: '#e5e7eb'   // Abu metalik
+            }
+          }
+        }
+      };
+    </script>
 </head>
-<body class="bg-[#ECEFF1] dark:bg-[#121212] text-black dark:text-white font-sans">
-
-  <!-- Navbar -->
-  <nav class="bg-[#C62828] text-white px-4 py-3 flex justify-between items-center">
-    <div class="flex items-center space-x-2">
-      <i class="fas fa-store text-xl"></i>
-      <span class="font-bold">Welcome, {{ username }}!</span>
-    </div>
-    <div class="flex items-center space-x-4">
-      <a href="/dashboard" class="hover:bg-[#7f1d1d] px-3 py-2 rounded">Beranda</a>
-      <a href="/kelola-barang" class="hover:bg-[#7f1d1d] px-3 py-2 rounded">Kelola Barang</a>
-      <a href="/kelola-user" class="hover:bg-[#7f1d1d] px-3 py-2 rounded">Kelola User</a>
-      <a href="/kelola-akun" class="hover:bg-[#7f1d1d] px-3 py-2 rounded">Kelola Akun</a>
-      <button id="toggleDark" class="hover:bg-[#7f1d1d] px-3 py-2 rounded transition flex items-center space-x-2">
-        <i class="fas fa-moon"></i>
-      </button>
-    </div>
-  </nav>
-
-  <!-- Greeting Box -->
-  <div class="m-4 p-4 rounded shadow-md bg-white dark:bg-[#1e1e1e]">
-    <div class="flex items-center space-x-4">
-      <img src="/static/logo-arv.png" alt="Logo ARV" class="h-12" />
-      <div>
-        <p>Selamat datang kembali, <span class="text-red-600 font-semibold">{{ username }}</span> di Sistem Management <span class="font-bold">ARV LOGAM</span></p>
-        <div class="bg-red-100 dark:bg-red-800 text-red-700 dark:text-red-200 inline-flex items-center px-3 py-1 mt-2 rounded">
-          <i class="far fa-clock text-lg animate-pulse mr-2"></i>
-          <span>{{ waktu }}</span>
+<body class="bg-metal dark:bg-gray-900 text-gray-800 dark:text-white font-sans">
+    <!-- Navbar -->
+    <nav class="bg-primary text-white px-4 py-3 flex justify-between items-center">
+        <div class="font-bold text-xl">
+            Welcome, {{ username }}!
         </div>
-      </div>
+        <div class="space-x-4">
+            <a href="/" class="hover:underline">Beranda</a>
+            <a href="/barang" class="hover:underline">Kelola Barang</a>
+            <a href="/user" class="hover:underline">Kelola User</a>
+            <a href="/akun" class="hover:underline">Kelola Akun</a>
+        </div>
+    </nav>
+
+    <!-- Welcome Banner -->
+    <section class="m-4 p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div class="flex items-center space-x-4">
+            <img src="{{ url_for('static', filename='logo-arv.png') }}" alt="Logo ARV" class="h-12 w-12" />
+            <div>
+                <p class="text-lg">Selamat datang kembali, di Sistem Management <strong>ARV LOGAM</strong></p>
+                <p id="jam" class="text-sm text-gray-500 dark:text-gray-400">⏳ {{ waktu }}</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tabel Produk -->
+    <section class="m-4">
+        <h2 class="text-xl font-bold mb-2 text-primary">Daftar Produk</h2>
+        <div class="overflow-x-auto rounded-lg shadow">
+            <table class="min-w-full border-collapse bg-white dark:bg-gray-800">
+                <thead>
+                    <tr class="bg-red-100 text-red-700 text-left text-sm uppercase">
+                        <th class="p-3">No</th>
+                        <th class="p-3">Nama Barang</th>
+                        <th class="p-3">Harga/Kg</th>
+                        <th class="p-3">Deskripsi</th>
+                        <th class="p-3">Tanggal Dibuat</th>
+                        <th class="p-3">Tanggal Update</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for index, b in enumerate(barang, start=1) %}
+                    <tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td class="p-3">{{ index }}</td>
+                        <td class="p-3">{{ b.nama_barang }}</td>
+                        <td class="p-3">{{ "{:,.2f}".format(b.harga_kg) }}</td>
+                        <td class="p-3">{{ b.deskripsi }}</td>
+                        <td class="p-3">{{ b.tanggal_dibuat.strftime("%d-%m-%Y %H:%M") }}</td>
+                        <td class="p-3">{{ b.tanggal_update.strftime("%d-%m-%Y %H:%M") }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Dark Mode Toggle -->
+    <div class="fixed bottom-4 right-4">
+        <button onclick="document.documentElement.classList.toggle('dark')" class="bg-primary text-white p-2 rounded-full shadow-lg hover:bg-red-700">
+            <i class="fas fa-adjust"></i>
+        </button>
     </div>
-  </div>
 
-  <!-- Daftar Produk -->
-  <div class="m-4">
-    <h2 class="text-lg font-bold text-[#C62828] mb-2">Daftar Produk</h2>
-
-    <!-- Tabel Desktop -->
-    <div class="overflow-auto rounded-lg shadow-md hidden md:block">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-[#FCE4EC] text-[#C62828] text-xs uppercase">
-          <tr>
-            <th class="px-6 py-3 text-left">No</th>
-            <th class="px-6 py-3 text-left">Nama Barang</th>
-            <th class="px-6 py-3 text-left">Harga/kg</th>
-            <th class="px-6 py-3 text-left">Deskripsi</th>
-            <th class="px-6 py-3 text-left">Tanggal Dibuat</th>
-            <th class="px-6 py-3 text-left">Tanggal Update</th>
-          </tr>
-        </thead>
-        <tbody class="bg-white dark:bg-[#1e1e1e] text-gray-800 dark:text-gray-200">
-          {% for item in barang %}
-          <tr class="hover:bg-gray-100 dark:hover:bg-[#2a2a2a]">
-            <td class="px-6 py-3">{{ loop.index }}</td>
-            <td class="px-6 py-3">{{ item[1] }}</td>
-            <td class="px-6 py-3">{{ item[2] }}</td>
-            <td class="px-6 py-3">{{ item[3] }}</td>
-            <td class="px-6 py-3">{{ item[4] }}</td>
-            <td class="px-6 py-3">{{ item[5] }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Card Mobile -->
-    <div class="md:hidden space-y-4">
-      {% for item in barang %}
-      <div class="border rounded-lg p-4 shadow-sm bg-white dark:bg-[#1e1e1e]">
-        <p class="text-sm"><span class="font-semibold">#{{ loop.index }}</span> - {{ item[1] }}</p>
-        <p class="text-gray-600 dark:text-gray-300 text-sm"><strong>Harga/kg:</strong> {{ item[2] }}</p>
-        <p class="text-gray-600 dark:text-gray-300 text-sm"><strong>Deskripsi:</strong> {{ item[3] }}</p>
-        <p class="text-gray-600 dark:text-gray-300 text-sm"><strong>Dibuat:</strong> {{ item[4] }}</p>
-        <p class="text-gray-600 dark:text-gray-300 text-sm"><strong>Update:</strong> {{ item[5] }}</p>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-
-  <script>
-    const toggle = document.getElementById('toggleDark');
-    const html = document.documentElement;
-
-    if (localStorage.theme === 'dark') {
-      html.classList.add('dark');
-    }
-
-    toggle.addEventListener('click', () => {
-      html.classList.toggle('dark');
-      if (html.classList.contains('dark')) {
-        localStorage.theme = 'dark';
-      } else {
-        localStorage.theme = 'light';
-      }
-    });
-  </script>
+    <!-- Jam Dinamis -->
+    <script>
+        function updateJam() {
+            const now = new Date();
+            const formatted = now.toLocaleString('id-ID', {
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit', second: '2-digit'
+            });
+            document.getElementById('jam').textContent = `⏳ ${formatted}`;
+        }
+        setInterval(updateJam, 1000);
+        updateJam();
+    </script>
 </body>
 </html>
