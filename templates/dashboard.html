@@ -1,148 +1,111 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard ARV LOGAM</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard - ARV Logam</title>
+  <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet" />
-</head>
-<body class="bg-[#ECEFF1] font-sans">
-  {% include 'navbar.html' %}
-
-  <div class="container mx-auto p-6 pt-28">
-    <!-- Header -->
-    <div class="bg-white shadow-md rounded-lg p-6 mb-6 border border-[#B0BEC5]">
-      <div class="flex flex-col md:flex-row justify-between items-center">
-        <div>
-          <img src="{{ url_for('static', filename='img/logo.PNG') }}" width="250" class="mb-2">
-          <p class="text-gray-700 text-sm">Selamat datang kembali, <span class="font-bold text-[#C62828]">{{ nama }}</span> di Sistem Management <span class="font-semibold">ARV LOGAM</span></p>
-        </div>
-        <div class="mt-4 md:mt-0 bg-[#FBE9E7] px-4 py-2 rounded-lg text-[#C62828] shadow-inner">
-          <div class="text-sm flex items-center gap-2">
-            <i class="far fa-clock text-lg"></i>
-            <div>
-              <div id="liveDayDate" class="text-xs font-medium"></div>
-              <div id="liveTime" class="font-semibold text-base"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    {% include 'flashProtection.html' %}
-
-    <!-- Daftar Produk -->
-    <div class="bg-white shadow-md rounded-lg overflow-hidden border-t-4 border-[#C62828] mb-6">
-      <div class="p-4 bg-[#FBE9E7] border-b border-[#FFCDD2]">
-        <h2 class="text-lg font-semibold text-[#C62828]">Daftar Produk</h2>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-[#FCE4EC] text-[#C62828] text-xs uppercase">
-            <tr>
-              <th class="px-6 py-3 text-left">No</th>
-              <th class="px-6 py-3 text-left">Nama Barang</th>
-              <th class="px-6 py-3 text-left">Harga/kg</th>
-              <th class="px-6 py-3 text-left">Deskripsi</th>
-              <th class="px-6 py-3 text-left">Tanggal Dibuat</th>
-              <th class="px-6 py-3 text-left">Tanggal Update</th>
-            </tr>
-          </thead>
-          <tbody class="bg-white text-gray-800">
-            {% for item in barang %}
-            <tr class="hover:bg-[#F5F5F5]">
-              <td class="px-6 py-3">{{ loop.index }}</td>
-              <td class="px-6 py-3">{{ item[1] }}</td>
-              <td class="px-6 py-3">{{ item[2] }}</td>
-              <td class="px-6 py-3 text-sm text-gray-600">{{ item[3] }}</td>
-              <td class="px-6 py-3 text-sm text-gray-600">{{ item[4] }}</td>
-              <td class="px-6 py-3 text-sm text-gray-600">{{ item[5] }}</td>
-            </tr>
-            <!-- Versi Desktop -->
-<table class="min-w-full divide-y divide-gray-200 hidden md:table">
-  <thead class="bg-[#FCE4EC] text-[#C62828] text-xs uppercase">
-    <tr>
-      <th class="px-6 py-3 text-left">No</th>
-      <th class="px-6 py-3 text-left">Nama Barang</th>
-      <th class="px-6 py-3 text-left">Harga/kg</th>
-      <th class="px-6 py-3 text-left">Deskripsi</th>
-      <th class="px-6 py-3 text-left">Tanggal Dibuat</th>
-      <th class="px-6 py-3 text-left">Tanggal Update</th>
-    </tr>
-  </thead>
-  <tbody class="bg-white text-gray-800">
-    {% for item in barang %}
-    <tr class="hover:bg-[#F5F5F5]">
-      <td class="px-6 py-3">{{ loop.index }}</td>
-      <td class="px-6 py-3">{{ item[1] }}</td>
-      <td class="px-6 py-3">{{ item[2] }}</td>
-      <td class="px-6 py-3 text-sm text-gray-600">{{ item[3] }}</td>
-      <td class="px-6 py-3 text-sm text-gray-600">{{ item[4] }}</td>
-      <td class="px-6 py-3 text-sm text-gray-600">{{ item[5] }}</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-
-<!-- Versi Mobile -->
-<div class="space-y-4 md:hidden">
-  {% for item in barang %}
-  <div class="border rounded-lg p-4 shadow-sm bg-white">
-    <p class="text-sm text-gray-600"><span class="font-semibold">#{{ loop.index }}</span> - {{ item[1] }}</p>
-    <p class="text-gray-700 text-sm"><span class="font-medium">Harga/kg:</span> {{ item[2] }}</p>
-    <p class="text-gray-600 text-sm"><span class="font-medium">Deskripsi:</span> {{ item[3] }}</p>
-    <p class="text-gray-600 text-sm"><span class="font-medium">Dibuat:</span> {{ item[4] }}</p>
-    <p class="text-gray-600 text-sm"><span class="font-medium">Update:</span> {{ item[5] }}</p>
-  </div>
-  {% endfor %}
-</div>
-
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Statistik Admin -->
-    {% if role == 'admin' %}
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-      <div class="bg-white rounded-lg shadow p-6 border-l-4 border-[#C62828]">
-        <p class="text-gray-500">Total Produk</p>
-        <h3 class="text-2xl font-bold text-[#C62828]">{{ total_produk }}</h3>
-      </div>
-      <div class="bg-white rounded-lg shadow p-6 border-l-4 border-[#C62828]">
-        <p class="text-gray-500">Produk Terakhir Ditambahkan</p>
-        <h3 class="text-lg font-semibold text-[#C62828]">
-          {{ produk_terakhir[1] if produk_terakhir else 'Tidak ada' }}
-        </h3>
-      </div>
-    </div>
-    {% endif %}
-  </div>
-
-  <!-- Jam -->
   <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      function updateClock() {
-        const now = new Date();
-        const dayDateOptions = {
-          weekday: "long",
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        };
-        const timeOptions = {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: false,
-        };
-        document.getElementById("liveDayDate").textContent = now.toLocaleDateString("id-ID", dayDateOptions);
-        document.getElementById("liveTime").textContent = now.toLocaleTimeString("id-ID", timeOptions);
-        setTimeout(updateClock, 1000);
+    tailwind.config = {
+      darkMode: 'class',
+    }
+  </script>
+</head>
+<body class="bg-[#ECEFF1] dark:bg-[#121212] text-black dark:text-white font-sans">
+
+  <!-- Navbar -->
+  <nav class="bg-[#C62828] text-white px-4 py-3 flex justify-between items-center">
+    <div class="flex items-center space-x-2">
+      <i class="fas fa-store text-xl"></i>
+      <span class="font-bold">Welcome, {{ username }}!</span>
+    </div>
+    <div class="flex items-center space-x-4">
+      <a href="/dashboard" class="hover:bg-[#7f1d1d] px-3 py-2 rounded">Beranda</a>
+      <a href="/kelola-barang" class="hover:bg-[#7f1d1d] px-3 py-2 rounded">Kelola Barang</a>
+      <a href="/kelola-user" class="hover:bg-[#7f1d1d] px-3 py-2 rounded">Kelola User</a>
+      <a href="/kelola-akun" class="hover:bg-[#7f1d1d] px-3 py-2 rounded">Kelola Akun</a>
+      <button id="toggleDark" class="hover:bg-[#7f1d1d] px-3 py-2 rounded transition flex items-center space-x-2">
+        <i class="fas fa-moon"></i>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Greeting Box -->
+  <div class="m-4 p-4 rounded shadow-md bg-white dark:bg-[#1e1e1e]">
+    <div class="flex items-center space-x-4">
+      <img src="/static/logo-arv.png" alt="Logo ARV" class="h-12" />
+      <div>
+        <p>Selamat datang kembali, <span class="text-red-600 font-semibold">{{ username }}</span> di Sistem Management <span class="font-bold">ARV LOGAM</span></p>
+        <div class="bg-red-100 dark:bg-red-800 text-red-700 dark:text-red-200 inline-flex items-center px-3 py-1 mt-2 rounded">
+          <i class="far fa-clock text-lg animate-pulse mr-2"></i>
+          <span>{{ waktu }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Daftar Produk -->
+  <div class="m-4">
+    <h2 class="text-lg font-bold text-[#C62828] mb-2">Daftar Produk</h2>
+
+    <!-- Tabel Desktop -->
+    <div class="overflow-auto rounded-lg shadow-md hidden md:block">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-[#FCE4EC] text-[#C62828] text-xs uppercase">
+          <tr>
+            <th class="px-6 py-3 text-left">No</th>
+            <th class="px-6 py-3 text-left">Nama Barang</th>
+            <th class="px-6 py-3 text-left">Harga/kg</th>
+            <th class="px-6 py-3 text-left">Deskripsi</th>
+            <th class="px-6 py-3 text-left">Tanggal Dibuat</th>
+            <th class="px-6 py-3 text-left">Tanggal Update</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white dark:bg-[#1e1e1e] text-gray-800 dark:text-gray-200">
+          {% for item in barang %}
+          <tr class="hover:bg-gray-100 dark:hover:bg-[#2a2a2a]">
+            <td class="px-6 py-3">{{ loop.index }}</td>
+            <td class="px-6 py-3">{{ item[1] }}</td>
+            <td class="px-6 py-3">{{ item[2] }}</td>
+            <td class="px-6 py-3">{{ item[3] }}</td>
+            <td class="px-6 py-3">{{ item[4] }}</td>
+            <td class="px-6 py-3">{{ item[5] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Card Mobile -->
+    <div class="md:hidden space-y-4">
+      {% for item in barang %}
+      <div class="border rounded-lg p-4 shadow-sm bg-white dark:bg-[#1e1e1e]">
+        <p class="text-sm"><span class="font-semibold">#{{ loop.index }}</span> - {{ item[1] }}</p>
+        <p class="text-gray-600 dark:text-gray-300 text-sm"><strong>Harga/kg:</strong> {{ item[2] }}</p>
+        <p class="text-gray-600 dark:text-gray-300 text-sm"><strong>Deskripsi:</strong> {{ item[3] }}</p>
+        <p class="text-gray-600 dark:text-gray-300 text-sm"><strong>Dibuat:</strong> {{ item[4] }}</p>
+        <p class="text-gray-600 dark:text-gray-300 text-sm"><strong>Update:</strong> {{ item[5] }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <script>
+    const toggle = document.getElementById('toggleDark');
+    const html = document.documentElement;
+
+    if (localStorage.theme === 'dark') {
+      html.classList.add('dark');
+    }
+
+    toggle.addEventListener('click', () => {
+      html.classList.toggle('dark');
+      if (html.classList.contains('dark')) {
+        localStorage.theme = 'dark';
+      } else {
+        localStorage.theme = 'light';
       }
-      updateClock();
     });
   </script>
 </body>
