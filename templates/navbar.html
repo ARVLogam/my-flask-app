@@ -1,58 +1,50 @@
-<nav class="bg-green-600 p-4 text-white fixed top-0 left-0 right-0 z-50">
+<nav class="bg-[#b91c1c] p-4 text-white fixed top-0 left-0 right-0 z-50">
   <div class="container mx-auto px-4">
     <div class="flex justify-between items-center">
-      <!-- Logo/Nama Aplikasi -->
       <div class="flex items-center space-x-3">
         <i class="fas fa-store text-2xl"></i>
         <h1 class="text-xl font-bold">Welcome, {{ nama }}!</h1>
       </div>
 
-      <!-- Menu Navigasi -->
       {% if role == 'admin' %}
       <div class="hidden md:flex items-center space-x-1">
-        <!-- Menu Kelola -->
         <a
           href="{{ url_for('dashboard') }}"
-          class="hover:bg-green-700 px-3 py-1 rounded transition flex items-center"
+          class="hover:bg-[#7f1d1d] px-3 py-1 rounded transition flex items-center"
         >
           <i class="fas fa-home mr-2"></i> Beranda
         </a>
         <a
           href="{{ url_for('menuAdmin', roleMenu='kelolaBarang') }}"
-          class="hover:bg-green-700 px-3 py-1 rounded transition flex items-center"
+          class="hover:bg-[#7f1d1d] px-3 py-1 rounded transition flex items-center"
         >
           <i class="fas fa-box mr-2"></i> Kelola Barang
         </a>
         <a
           href="{{ url_for('menuAdmin', roleMenu='kelolaUser') }}"
-          class="hover:bg-green-700 px-3 py-1 rounded transition flex items-center"
+          class="hover:bg-[#7f1d1d] px-3 py-1 rounded transition flex items-center"
         >
           <i class="fas fa-users mr-2"></i> Kelola User
         </a>
         {% endif %}
 
         <div class="relative group">
-          <button class="flex items-center space-x-2 hover:bg-green-700 px-3 py-2 rounded transition text-white">
+          <button class="flex items-center space-x-2 hover:bg-[#7f1d1d] px-3 py-2 rounded transition text-white">
             <i class="fas fa-user-circle text-2xl"></i>
             <span>Kelola Akun</span>
           </button>
 
-          <!-- Dropdown Menu yang Rapi -->
-          <div
-            class="absolute left-0 md:left-auto md:right-0 mt-1 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-100 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200"
-          >
+          <div class="absolute left-0 md:left-auto md:right-0 mt-1 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-100 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200">
             <div class="py-1">
-              <!-- Container dalam untuk padding yang konsisten -->
               <a
                 href="{{ url_for('editProfile') }}"
-                class="block px-4 py-2 text-gray-800 hover:bg-green-50 hover:text-green-600 text-sm"
+                class="block px-4 py-2 text-gray-800 hover:bg-red-50 hover:text-[#b91c1c] text-sm"
               >
-                <i class="fas fa-user-edit mr-2 w-4 text-center"></i> Edit
-                Profile
+                <i class="fas fa-user-edit mr-2 w-4 text-center"></i> Edit Profile
               </a>
               <a
                 href="{{ url_for('logout') }}"
-                class="block px-4 py-2 text-gray-800 hover:bg-green-50 hover:text-green-600 text-sm"
+                class="block px-4 py-2 text-gray-800 hover:bg-red-50 hover:text-[#b91c1c] text-sm"
               >
                 <i class="fas fa-sign-out-alt mr-2 w-4 text-center"></i> Logout
               </a>
@@ -62,66 +54,30 @@
       </div>
 
       {% if role == 'admin' %}
-  <!-- Mobile Menu Toggle Button -->
-  <button id="mobileMenuToggle" class="md:hidden text-white focus:outline-none">
-    <i class="fas fa-bars text-xl"></i>
-  </button>
-{% endif %}
-
+      <button id="mobileMenuToggle" class="md:hidden text-white focus:outline-none">
+        <i class="fas fa-bars text-xl"></i>
+      </button>
+      {% endif %}
     </div>
 
-    <!-- Mobile Menu - Perbaikan Positioning -->
-    <div
-      class="md:hidden mt-2 space-y-2 hidden absolute left-0 right-0 bg-green-600 px-4 pb-4 z-40"
-      id="mobileMenu"
-    >
+    <div class="md:hidden mt-2 space-y-2 hidden absolute left-0 right-0 bg-[#b91c1c] px-4 pb-4 z-40" id="mobileMenu">
       {% if role == 'admin' %}
-      <a
-        href="{{ url_for('dashboard') }}"
-        class="block hover:bg-green-700 px-1 py-2 rounded flex items-center"
-      >
+      <a href="{{ url_for('dashboard') }}" class="block hover:bg-[#7f1d1d] px-1 py-2 rounded flex items-center">
         <i class="fas fa-home mr-3 w-5"></i> Beranda
       </a>
-      <a
-        href="{{ url_for('menuAdmin', roleMenu='kelolaBarang') }}"
-        class="block hover:bg-green-700 px-1 py-2 rounded flex items-center"
-      >
+      <a href="{{ url_for('menuAdmin', roleMenu='kelolaBarang') }}" class="block hover:bg-[#7f1d1d] px-1 py-2 rounded flex items-center">
         <i class="fas fa-box mr-3 w-5"></i> Kelola Barang
       </a>
-      <a
-        href="{{ url_for('menuAdmin', roleMenu='kelolaUser') }}"
-        class="block hover:bg-green-700 px-1 py-2 rounded flex items-center"
-      >
+      <a href="{{ url_for('menuAdmin', roleMenu='kelolaUser') }}" class="block hover:bg-[#7f1d1d] px-1 py-2 rounded flex items-center">
         <i class="fas fa-users mr-3 w-5"></i> Kelola User
       </a>
       {% endif %}
-      <a
-        href="{{ url_for('editProfile') }}"
-        class="block hover:bg-green-700 px-1 py-2 rounded flex items-center"
-      >
+      <a href="{{ url_for('editProfile') }}" class="block hover:bg-[#7f1d1d] px-1 py-2 rounded flex items-center">
         <i class="fas fa-user-edit mr-3 w-5"></i> Edit Profile
       </a>
-      <a
-        href="{{ url_for('logout') }}"
-        class="block hover:bg-green-700 px-1 py-2 rounded flex items-center"
-      >
+      <a href="{{ url_for('logout') }}" class="block hover:bg-[#7f1d1d] px-1 py-2 rounded flex items-center">
         <i class="fas fa-sign-out-alt mr-3 w-5"></i> Logout
       </a>
     </div>
   </div>
 </nav>
-
-<!-- Padding untuk konten utama -->
-<main class="pt-16">
-  <!-- Konten halaman Anda -->
-</main>
-
-<!-- JavaScript untuk Mobile Menu -->
-<script>
-  document
-    .getElementById("mobileMenuToggle")
-    .addEventListener("click", function () {
-      const menu = document.getElementById("mobileMenu");
-      menu.classList.toggle("hidden");
-    });
-</script>
