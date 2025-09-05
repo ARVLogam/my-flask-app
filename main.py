@@ -189,26 +189,35 @@ def dashboard():
         user_terakhir=user_terakhir
     )
 
-@app.route('/reset-password/<token>', methods=['GET', 'POST'])
+@app.route("/reset-password/<token>", methods=["GET", "POST"])
 def reset_password(token):
-    email = verify_token(token)  # Fungsi untuk decode token
-    if not email:
-        flash("Token tidak valid atau kedaluwarsa", "danger")
-        return redirect(url_for('login'))
+    try:
+        email = ts.loads(token, salt="reset-password", max_age=3600)  # 1 jam
+    except SignatureExpired:
+        flash("Tautan reset kadaluarsa.", "error")
+        return redirect(url_for("forgot_password"))
+    except BadSignature:
+        flash("Token tidak valid.", "error")
+        return redirect(url_for("forgot_password"))
 
-    if request.method == 'POST':
-        new_password = request.form['password']
-        confirm = request.form['confirm_password']
-        if new_password != confirm:
-            flash("Konfirmasi password tidak cocok", "warning")
-            return redirect(request.url)
-        db = Database(DB_CONFIG)
-        db.update_user_password(email, new_password)
-        db.close()
-        flash("Password berhasil diubah", "success")
-        return redirect(url_for('login'))
+    if request.method == "POST":
+        pwd = request.form.get("password", "")
+        cpwd = request.form.get("confirm_password", "")
+        if not pwd or pwd != cpwd:
+            flash("Password dan konfirmasi tidak sama.", "error")
+            return redirect(url_for("reset_password", token=token))
 
-    return render_template('reset_password.html')
+        hashed = generate_password_hash(pwd)
+        # update berdasarkan email
+        ok = db.update_user_password_by_email(email, hashed)
+        if ok:
+            flash("Password berhasil direset. Silakan login.", "success")
+            return redirect(url_for("login"))
+        flash("Gagal menyimpan password baru.", "error")
+        return redirect(url_for("reset_password", token=token))
+
+    return render_template("reset_password.html")
+
 def verify_token(token, max_age=3600):
     s = URLSafeTimedSerializer(app.secret_key)
     try:
@@ -228,32 +237,32 @@ def send_email(to, subject, body):
     mail.send(msg)
 
 
-@app.route('/forgot-password', methods=['GET', 'POST'])
+@app.route("/forgot-password", methods=["GET", "POST"])
 def forgot_password():
-    if request.method == 'POST':
-        email = request.form['email']
-        db = Database(DB_CONFIG)
-        user = db.get_user_by_email(email)
-        
-        # Cek apakah email terdaftar
-        if db.check_email_exists(email):
-            token = generate_token(email)
-            reset_url = url_for('reset_password', token=token, _external=True)
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        user = db.get_user_by_email(email)  # Pastikan method ini ada
+        if not user:
+            flash("Email tidak terdaftar.", "error")
+            return redirect(url_for("forgot_password"))
 
-            try:
-                msg = Message("Reset Password", sender=app.config['MAIL_USERNAME'], recipients=[email])
-                msg.body = f"Klik link berikut untuk mereset password kamu: {reset_url}\n\nLink ini berlaku 1 jam."
-                mail.send(msg)
-                flash("Email reset password telah dikirim.", "info")
-            except Exception as e:
-                print("Gagal mengirim email:", e)
-                flash("Gagal mengirim email reset password", "error")
-        else:
-            flash("Email tidak ditemukan", "warning")
-            
-        return redirect(url_for('login'))
+        token = ts.dumps(email, salt="reset-password")
+        reset_url = url_for("reset_password", token=token, _external=True)
 
-    return render_template("forgot_password.html")
+        try:
+            msg = Message(
+                subject="Instruksi Reset Password",
+                recipients=[email],
+                body=f"Halo,\n\nKlik tautan berikut untuk reset password (berlaku 1 jam):\n{reset_url}\n\nJika tidak merasa meminta reset, abaikan email ini."
+            )
+            mail.send(msg)
+            flash("Instruksi reset sudah dikirim ke email kamu.", "success")
+        except Exception as e:
+            print("MAIL ERROR:", e)
+            flash("Gagal mengirim email. Coba lagi nanti.", "error")
+        return redirect(url_for("forgot_password"))
+
+    return render_template("forget_password.html")
 
 
 @app.route("/register", methods=['GET', 'POST'])
