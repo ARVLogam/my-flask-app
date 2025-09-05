@@ -63,15 +63,17 @@
                 <td class="px-6 py-4 text-sm text-gray-900">{{ loop.index }}</td>
                 <td class="px-6 py-4 text-sm text-gray-900">{{ user[1] }}</td>
                 <td class="px-6 py-4 text-sm">
-                  {% if item[2] == 'Admin' %}
-                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                  {% if user[2] == 'admin' %}
+                  <span
+                    class="px-2 inline-flex text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
                     Admin
                   </span>
-                {% else %}
-                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                  {% else %}
+                  <span
+                    class="px-2 inline-flex text-xs font-semibold rounded-full bg-green-100 text-green-800">
                     User
                   </span>
-                {% endif %}
+                  {% endif %}
                 </td>
                 <td class="px-6 py-4 text-sm text-gray-900">{{ user[3] }}</td>
                 <td class="px-6 py-4 text-sm text-gray-500">{{ user[4] }}</td>
