@@ -130,11 +130,10 @@
                   >
                     <i class="fas fa-edit"></i>
                   </a>
-                  <a
-                    href="#"
-                    onclick="confirmDelete( item[0] )"
-                    class="text-red-600 hover:text-red-900"
-                  >
+                  <a href="#"
+                     onclick="event.preventDefault(); confirmDelete({{ item[0] }})"
+                     class="text-red-600 hover:text-red-900"
+                     title="Hapus {{ item[1] }}">
                     <i class="fas fa-trash"></i>
                   </a>
                 </td>
