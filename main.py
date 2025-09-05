@@ -5,13 +5,15 @@ import os
 import traceback
 import logging
 from crud import Database, create_tables
-from itsdangerous import URLSafeTimedSerializer
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from dotenv import load_dotenv
 import os
 from functools import wraps
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from flask_mail import Mail, Message
+from config import MAIL_SETTINGS, SECRET_KEY
 
 def send_reset_email(recipient_email, token):
     sender_email = 'secrap7@gmail.com'  # Ganti dengan emailmu
@@ -81,7 +83,7 @@ from config import MAIL_SETTINGS
 
 app.config.update(MAIL_SETTINGS)
 mail = Mail(app)
-
+ts = URLSafeTimedSerializer(SECRET_KEY)
 
 from flask_mail import Mail, Message
 
@@ -231,7 +233,8 @@ def forgot_password():
     if request.method == 'POST':
         email = request.form['email']
         db = Database(DB_CONFIG)
-
+        user = db.get_user_by_email(email)
+        
         # Cek apakah email terdaftar
         if db.check_email_exists(email):
             token = generate_token(email)
