@@ -83,6 +83,7 @@ import os
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
 from PIL import Image
+from types import SimpleNamespace
 
 # Maksimal ukuran upload 4MB (opsional)
 app.config['MAX_CONTENT_LENGTH'] = 4 * 1024 * 1024
@@ -439,68 +440,73 @@ def editProfile():
             flash("Data pengguna tidak ditemukan", "error")
             return redirect(url_for("dashboard"))
 
-        user = {
-            "username": u[1],  # sesuaikan indeks dengan struktur tabelmu
-            "nama":     u[4],
-            "email":    u[5],
-            "nohp":     u[6],
-        }
-        avatar_url = url_for("static", filename=_avatar_relpath(user_id))
-        return render_template("editProfile.html", user=user, avatar_url=avatar_url)
+        # sesuaikan indeks kolom dengan struktur tabelmu
+        user = SimpleNamespace(
+            username=u[1],
+            nama=u[4],
+            email=u[5],
+            nohp=u[6],
+        )
 
-    # POST
-    try:
-        username = request.form.get("username", "").strip()
-        password = request.form.get("password", "").strip()  # opsional
-        nama     = request.form.get("nama", "").strip()
-        email    = request.form.get("email", "").strip()
-        nohp     = request.form.get("nohp", "").strip()
+        return render_template(
+            "editProfile.html",
+            user=user,
+            avatar_url=url_for("static", filename=_avatar_relpath(user_id)),
+        )
 
-        # Validasi sederhana
-        if not username or not nama or not email or not nohp:
-            flash("Semua field (kecuali password) wajib diisi", "error")
-            return redirect(url_for("editProfile"))
+    # --- POST: simpan perubahan ---
+    username = (request.form.get("username") or "").strip()
+    password = (request.form.get("password") or "").strip() or None
+    nama     = (request.form.get("nama") or "").strip()
+    email    = (request.form.get("email") or "").strip()
+    nohp     = (request.form.get("nohp") or "").strip()
 
-        # Cek duplikasi username/email milik user lain
-        if db.check_username_exists(username, user_id):
-            flash("Username sudah digunakan oleh pengguna lain", "error")
-            return redirect(url_for("editProfile"))
-        if db.check_email_exists_for_update(email, user_id):
-            flash("Email sudah digunakan oleh pengguna lain", "error")
-            return redirect(url_for("editProfile"))
-
-        # Simpan avatar (opsional). Tidak perlu simpan ke DB.
-        avatar_file = request.files.get("avatar")
-        if avatar_file and avatar_file.filename:
-            saved = _save_avatar(avatar_file, user_id)
-            if saved == "INVALID":
-                flash("Format gambar tidak diizinkan. Gunakan png/jpg/jpeg/webp.", "error")
-                return redirect(url_for("editProfile"))
-            if saved is None:
-                flash("Gagal menyimpan gambar. Coba file lain.", "error")
-                return redirect(url_for("editProfile"))
-
-        # Update user. Password hanya diubah jika diisi.
-        if password:
-            ok = db.update_user(user_id, username, nama, email, nohp, role=None, password=password)
-        else:
-            ok = db.update_user(user_id, username, nama, email, nohp, role=None)
-
-        if not ok:
-            flash("Gagal memperbarui profil", "error")
-            return redirect(url_for("editProfile"))
-
-        # Perbaharui session nama untuk navbar
-        session["nama"] = nama
-
-        flash("Profil berhasil diperbarui", "success")
-        return redirect(url_for("dashboard"))
-
-    except Exception as e:
-        # Supaya kelihatan error aslinya di log/container
-        import traceback; traceback.print_exc()
-        flash("Terjadi kesalahan saat menyimpan profil", "error")
+    # Validasi sederhana
+    if not all([username, nama, email, nohp]):
+        flash("Semua field kecuali password wajib diisi", "error")
         return redirect(url_for("editProfile"))
+
+    # Cek unik (kalau kamu punya function ini di CRUD)
+    if db.check_username_exists(username, user_id):
+        flash("Username sudah digunakan pengguna lain", "error")
+        return redirect(url_for("editProfile"))
+    if db.check_email_exists_for_update(email, user_id):
+        flash("Email sudah digunakan pengguna lain", "error")
+        return redirect(url_for("editProfile"))
+
+    # Update data user (password opsional)
+    ok = db.update_user(
+        user_id, username, nama, email, nohp,
+        role=None,
+        password=password  # None = tidak diubah
+    )
+    if not ok:
+        flash("Gagal memperbarui profil", "error")
+        return redirect(url_for("editProfile"))
+
+    # Simpan avatar bila ada file terpilih
+    file = request.files.get("avatar")
+    if file and file.filename:
+        res = _save_avatar(file, user_id)
+        if res == "INVALID":
+            flash("Format gambar tidak didukung (gunakan png/jpg/jpeg/webp).", "error")
+        elif res == "ERROR":
+            flash("Gagal menyimpan foto profil.", "error")
+        else:
+            flash("Foto profil diperbarui.", "success")
+
+    # refresh nama di session
+    session["nama"] = nama
+
+    flash("Profil berhasil diperbarui", "success")
+    return redirect(url_for("editProfile"))
+
+
+# (opsional) bila ukuran file > MAX_CONTENT_LENGTH
+@app.errorhandler(RequestEntityTooLarge)
+def _too_big(_e):
+    flash("File terlalu besar (maks 4 MB).", "error")
+    return redirect(request.referrer or url_for("editProfile"))
 
 
 
