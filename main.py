@@ -70,7 +70,7 @@ from flask_mail import Mail, Message
 from config import MAIL_SETTINGS
 
 app.config.update(MAIL_SETTINGS)
-#mail = Mail(app)
+mail = Mail(app)
 
 
 # Konfigurasi email
