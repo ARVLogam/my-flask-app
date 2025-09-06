@@ -81,38 +81,45 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 # === Avatar config ===
 AVATAR_FOLDER = os.path.join(app.static_folder, "img", "avatars")
 os.makedirs(AVATAR_FOLDER, exist_ok=True)
+app.config['MAX_CONTENT_LENGTH'] = 4 * 1024 * 1024  # 4 MB (opsional)
 
 ALLOWED_IMG = {"png", "jpg", "jpeg", "webp"}
 def _allowed_img(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_IMG
 
-def save_avatar(file_storage, user_id: int) -> str:
+def _save_avatar(file_storage, user_id: int):
     """
-    Simpan avatar ke static/img/avatars/user_<id>.webp
-    - Dinormalkan ke WEBP, canvas square, max 512px
-    - Return: relative filename (untuk disimpan/ditunjukkan), tapi navbar kita pakai pola nama tetap
+    Simpan avatar ke static/img/avatars/user_<id>.webp.
+    Return:
+      - 'INVALID' jika ekstensi tidak diizinkan
+      - relative path (mis. 'img/avatars/user_3.webp') jika sukses
+      - None jika gagal simpan
     """
+    if not file_storage or file_storage.filename == "":
+        return None
+
     filename = secure_filename(file_storage.filename)
-    if not filename or not _allowed_img(filename):
-        raise ValueError("Format gambar tidak didukung")
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext not in ALLOWED_IMAGE_EXT:
+        return "INVALID"
 
-    # Baca ke PIL
-    img = Image.open(file_storage.stream).convert("RGBA")
+    try:
+        # Normalisasi ke WEBP agar konsisten & ukuran kecil
+        img = Image.open(file_storage.stream).convert("RGB")
+        dst_abs = os.path.join(AVATAR_FOLDER, f"user_{user_id}.webp")
+        img.save(dst_abs, "WEBP", quality=90)
+        return f"img/avatars/user_{user_id}.webp"   # relative (dipakai di url_for('static', filename=...))
+    except Exception as e:
+        print("Gagal menyimpan avatar:", e)
+        return None
 
-    # Crop jadi square (center)
-    w, h = img.size
-    side = min(w, h)
-    left = (w - side) // 2
-    top = (h - side) // 2
-    img = img.crop((left, top, left + side, top + side))
+def _avatar_relpath(user_id: int) -> str:
+    """Kembalikan relative path avatar user jika ada, jika tidak pakai guest."""
+    candidate = os.path.join(AVATAR_FOLDER, f"user_{user_id}.webp")
+    if os.path.exists(candidate):
+        return f"img/avatars/user_{user_id}.webp"
+    return "img/avatars/guest.png"
 
-    # Resize ramah UI
-    img.thumbnail((512, 512), Image.LANCZOS)
-
-    # Simpan sebagai WEBP
-    out_path = os.path.join(AVATAR_FOLDER, f"user_{user_id}.webp")
-    img.save(out_path, "WEBP", quality=90)
-    return out_path  # tidak wajib dipakai karena navbar sudah tahu polanya
 
 
 app.config.update(MAIL_SETTINGS)
