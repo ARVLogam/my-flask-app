@@ -14,7 +14,7 @@ from flask_mail import Mail, Message
 
 from werkzeug.utils import secure_filename
 from PIL import Image  # optional, untuk normalisasi ke PNG (lebih aman)
-
+import io
 
 # app modules
 from crud import Database, create_tables
@@ -78,38 +78,41 @@ def _allowed_image(filename: str) -> bool:
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
-ALLOWED_IMAGE_EXT = {"png", "jpg", "jpeg", "webp"}
+# === Avatar config ===
 AVATAR_FOLDER = os.path.join(app.static_folder, "img", "avatars")
 os.makedirs(AVATAR_FOLDER, exist_ok=True)
 
-def _save_avatar(file_storage, user_id: int):
-    """Simpan avatar ke static/img/avatars/user_<id>.webp. 
-    Return relative path (di bawah /static) atau 'INVALID'."""
-    if not file_storage or file_storage.filename == "":
-        return None
+ALLOWED_IMG = {"png", "jpg", "jpeg", "webp"}
+def _allowed_img(filename: str) -> bool:
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_IMG
 
+def save_avatar(file_storage, user_id: int) -> str:
+    """
+    Simpan avatar ke static/img/avatars/user_<id>.webp
+    - Dinormalkan ke WEBP, canvas square, max 512px
+    - Return: relative filename (untuk disimpan/ditunjukkan), tapi navbar kita pakai pola nama tetap
+    """
     filename = secure_filename(file_storage.filename)
-    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
-    if ext not in ALLOWED_IMAGE_EXT:
-        return "INVALID"
+    if not filename or not _allowed_img(filename):
+        raise ValueError("Format gambar tidak didukung")
 
-    # Normalisasi ke WEBP agar konsisten & kecil
-    try:
-        img = Image.open(file_storage.stream).convert("RGB")
-        dst_abs = os.path.join(AVATAR_FOLDER, f"user_{user_id}.webp")
-        img.save(dst_abs, "WEBP", quality=90)
-        # kembalikan path relatif utk url_for('static', filename=...)
-        return f"img/avatars/user_{user_id}.webp"
-    except Exception as e:
-        print("Gagal menyimpan avatar:", e)
-        return None
+    # Baca ke PIL
+    img = Image.open(file_storage.stream).convert("RGBA")
 
-def _avatar_relpath(user_id: int) -> str:
-    """Path relatif avatar; jika belum ada file, kembalikan guest."""
-    candidate = os.path.join(AVATAR_FOLDER, f"user_{user_id}.webp")
-    if os.path.exists(candidate):
-        return f"img/avatars/user_{user_id}.webp"
-    return "img/avatars/guest.png"
+    # Crop jadi square (center)
+    w, h = img.size
+    side = min(w, h)
+    left = (w - side) // 2
+    top = (h - side) // 2
+    img = img.crop((left, top, left + side, top + side))
+
+    # Resize ramah UI
+    img.thumbnail((512, 512), Image.LANCZOS)
+
+    # Simpan sebagai WEBP
+    out_path = os.path.join(AVATAR_FOLDER, f"user_{user_id}.webp")
+    img.save(out_path, "WEBP", quality=90)
+    return out_path  # tidak wajib dipakai karena navbar sudah tahu polanya
 
 
 app.config.update(MAIL_SETTINGS)
@@ -401,9 +404,9 @@ def register():
 def editProfile():
     if "user_id" not in session:
         flash("Silakan login terlebih dahulu", "error")
-        return redirect(url_for("menuAdmin", roleMenu="kelolaUser"))
+        return redirect(url_for("login"))
 
-    user_id = int(session["user_id"])
+    user_id = session["user_id"]
     db = Database(DB_CONFIG)
 
     if request.method == "GET":
@@ -412,54 +415,83 @@ def editProfile():
             flash("Data pengguna tidak ditemukan", "error")
             return redirect(url_for("dashboard"))
 
+        # Susunan field contoh: (id, username, password_hash, role, nama, email, nohp, created_at)
         user_data = {
             "username": user[1],
-            "nama":     user[4],
-            "email":    user[5],
-            "nohp":     user[6],
+            "nama": user[4],
+            "email": user[5],
+            "nohp": user[6],
+            # cache-buster supaya avatar baru langsung tampil
+            "avatar_url": url_for(
+                "static",
+                filename=f"img/avatars/user_{user_id}.webp"
+            ) + f"?v={int(time.time())}"
         }
+        return render_template("editProfile.html", user=user_data)
 
-        # kirim avatar_url dengan cache-buster (?v=timestamp) agar perubahan langsung terlihat
-        avatar_rel = _avatar_relpath(user_id)
-        avatar_url = url_for("static", filename=avatar_rel) + f"?v={int(time.time())}"
+    # --- POST (update) ---
+    try:
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
+        nama     = request.form.get("nama", "").strip()
+        email    = request.form.get("email", "").strip().lower()
+        nohp     = request.form.get("nohp", "").strip()
 
-        return render_template("editProfile.html", user=user_data, avatar_url=avatar_url)
+        # Validasi dasar
+        if not username or not nama or not email:
+            flash("Username, nama, dan email wajib diisi", "error")
+            return redirect(url_for("editProfile"))
 
-    # POST (update data + avatar opsional)
-    username = request.form.get("username", "").strip()
-    password = request.form.get("password", "").strip()
-    nama     = request.form.get("nama", "").strip()
-    email    = request.form.get("email", "").strip()
-    nohp     = request.form.get("nohp", "").strip()
+        # Cek unik username/email untuk user lain
+        if db.check_username_exists(username, user_id):
+            flash("Username sudah digunakan oleh pengguna lain", "error")
+            return redirect(url_for("editProfile"))
 
-    # Validasi unik
-    if db.check_username_exists(username, user_id):
-        flash("Username sudah digunakan oleh pengguna lain", "error")
-        return redirect(url_for("editProfile"))
-    if db.check_email_exists_for_update(email, user_id):
-        flash("Email sudah digunakan oleh pengguna lain", "error")
-        return redirect(url_for("editProfile"))
+        if db.check_email_exists_for_update(email, user_id):
+            flash("Email sudah digunakan oleh pengguna lain", "error")
+            return redirect(url_for("editProfile"))
 
-    # Simpan avatar jika diunggah
-    avatar_file = request.files.get("avatar")
-    saved = _save_avatar(avatar_file, user_id)
-    if saved == "INVALID":
-        flash("Format gambar tidak didukung. Gunakan png/jpg/jpeg/webp.", "error")
-        return redirect(url_for("editProfile"))
+        # Siapkan password (opsional)
+        password_to_save = None
+        if password:
+            password_to_save = generate_password_hash(password)
 
-    # Simpan profil (password opsional)
-    if password:
-        result = db.update_user(user_id, username, nama, email, nohp, role=None, password=password)
-    else:
-        result = db.update_user(user_id, username, nama, email, nohp, role=None)
+        # Handle avatar (opsional)
+        file = request.files.get("avatar")
+        if file and file.filename:
+            try:
+                save_avatar(file, user_id)
+            except Exception as e:
+                print("Gagal simpan avatar:", e)
+                flash("Upload foto profil gagal. Pastikan format .png/.jpg/.jpeg/.webp", "error")
+                return redirect(url_for("editProfile"))
 
-    if result:
+        # Update DB
+        ok = db.update_user(
+            user_id,
+            username=username,
+            nama=nama,
+            email=email,
+            nohp=nohp,
+            role=None,                 # tidak diubah di halaman ini
+            password=password_to_save  # boleh None
+        )
+
+        if not ok:
+            flash("Gagal memperbarui profil", "error")
+            return redirect(url_for("editProfile"))
+
+        # Refresh session name biar navbar update
         session["nama"] = nama
         flash("Profil berhasil diperbarui", "success")
-    else:
-        flash("Gagal memperbarui profil", "error")
+        return redirect(url_for("dashboard"))
 
-    return redirect(url_for("editProfile"))
+    except Exception as e:
+        print("Error editProfile:", e)
+        traceback.print_exc()
+        flash("Terjadi kesalahan saat menyimpan profil", "error")
+        return redirect(url_for("editProfile"))
+
 
 
 @app.route("/logout")
