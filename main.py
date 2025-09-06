@@ -65,6 +65,18 @@ def save_product_image(file_storage, nama_barang: str) -> str | None:
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev")
 
+# ---- File upload config ----
+from werkzeug.utils import secure_filename
+
+UPLOAD_FOLDER = os.path.join(app.static_folder, "img", "products")
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
+app.config["MAX_CONTENT_LENGTH"] = 3 * 1024 * 1024  # 3 MB
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+def allowed_file(filename: str) -> bool:
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
 app.config.update(MAIL_SETTINGS)
 
 # Untuk debugging cepat (boleh dibiarkan)
@@ -475,6 +487,7 @@ def editBarang(id_barang):
     try:
         db = Database(DB_CONFIG)
 
+        # Validasi ID
         if not id_barang.isdigit():
             flash("ID barang tidak valid", "error")
             return redirect(url_for("dashboard"))
@@ -486,28 +499,45 @@ def editBarang(id_barang):
                 return redirect(url_for("dashboard"))
             return render_template("editBarang.html", barang=barang)
 
-        # POST
-        nama_barang = request.form.get("nama_barang", "").strip()
-        harga = request.form.get("harga", "")
-        deskripsi = request.form.get("deskripsi", "").strip()
+        # === POST ===
+        nama_barang = (request.form.get("nama_barang") or "").strip()
+        harga_str   = (request.form.get("harga") or "").strip()
+        deskripsi   = (request.form.get("deskripsi") or "").strip()
 
-        if not nama_barang or not harga or not deskripsi:
+        if not nama_barang or not harga_str or not deskripsi:
             flash("Semua field harus diisi", "error")
             return redirect(url_for("editBarang", id_barang=id_barang))
 
+        # Normalisasi harga (terima 81.000,00 atau 81000.00)
         try:
-            harga = float(harga.replace(",", "."))
+            harga = float(harga_str.replace(".", "").replace(",", "."))
         except ValueError:
             flash("Harga harus berupa angka", "error")
             return redirect(url_for("editBarang", id_barang=id_barang))
 
-        result = db.update_barang(id_barang, nama_barang, harga, deskripsi)
-        if result:
+        # Update data teks terlebih dahulu
+        updated = db.update_barang(id_barang, nama_barang, harga, deskripsi)
+
+        # Jika sukses, proses upload foto (opsional)
+        if updated:
+            file = request.files.get("foto")
+            if file and file.filename and allowed_file(file.filename):
+                try:
+                    # Simpan konsisten pakai nama barang_<ID>.png agar mudah dipanggil di template
+                    filename = f"barang_{id_barang}.png"
+                    save_path = os.path.join(UPLOAD_FOLDER, filename)
+                    file.save(save_path)
+                except Exception as e:
+                    # Jangan gagalkan update hanya karena upload gagal
+                    print(f"Upload foto gagal: {e}")
+                    flash("Perubahan tersimpan, namun foto gagal diunggah.", "warning")
+
             flash("Data barang berhasil diperbarui!", "success")
             return redirect(url_for("menuAdmin", roleMenu="kelolaBarang"))
-        else:
-            flash("Gagal memperbarui data barang", "error")
-            return redirect(url_for("editBarang", id_barang=id_barang))
+
+        # Jika update DB gagal
+        flash("Gagal memperbarui data barang", "error")
+        return redirect(url_for("editBarang", id_barang=id_barang))
 
     except Exception as e:
         print(f"Error in editBarang: {str(e)}")
