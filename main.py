@@ -8,7 +8,8 @@ import os
 import traceback
 import logging
 import psycopg2
-
+import threading
+import time
 from flask_mail import Mail, Message
 
 # app modules
@@ -23,6 +24,17 @@ load_dotenv()
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev")
 
+app.config.update(MAIL_SETTINGS)
+
+# Untuk debugging cepat (boleh dibiarkan)
+print("MAIL_SERVER:", app.config.get("MAIL_SERVER"))
+print("MAIL_PORT:", app.config.get("MAIL_PORT"))
+print("MAIL_USE_TLS:", app.config.get("MAIL_USE_TLS"))
+print("MAIL_TIMEOUT:", app.config.get("MAIL_TIMEOUT"))
+print("MAIL_USERNAME set?:", bool(app.config.get("MAIL_USERNAME")))
+print("MAIL_DEFAULT_SENDER set?:", bool(app.config.get("MAIL_DEFAULT_SENDER")))
+
+mail = Mail(app)
 # Log ringan (optional)
 logging.basicConfig(level=logging.INFO)
 logging.info("App start")
@@ -36,10 +48,23 @@ mail = Mail(app)
 
 # Helper kirim email
 def send_email(to, subject, body):
-    sender = app.config.get("MAIL_DEFAULT_SENDER") or app.config.get("MAIL_USERNAME")
-    msg = Message(subject, sender=sender, recipients=[to])
-    msg.body = body
-    mail.send(msg)
+    """Kirim email di thread terpisah + timeout supaya request tidak hang."""
+    start_ts = time.time()
+    print(f"[MAIL] Prepare send -> to={to}, subject={subject}")
+
+    def _worker():
+        try:
+            with app.app_context():
+                msg = Message(subject, recipients=[to])
+                msg.body = body
+                mail.send(msg)
+                print(f"[MAIL] Sent OK in {time.time() - start_ts:.2f}s")
+        except Exception as e:
+            # Jangan bikin request hang—cukup log errornya
+            print(f"[MAIL] ERROR: {e}")
+
+    t = threading.Thread(target=_worker, daemon=True)
+    t.start()  # langsung jalan di background
 
 # ---------------------------
 # DB config (normalisasi key)
@@ -152,12 +177,30 @@ def dashboard():
 @app.route("/forgot-password", methods=["GET", "POST"])
 def forgot_password():
     if request.method == "POST":
-        email = request.form.get("email", "").strip().lower()
+        email = (request.form.get("email") or "").strip().lower()
+
+        # (opsional) validasi format sederhana biar gak kirim ke string kosong/aneh
+        if not email or "@" not in email:
+            flash("Masukkan email yang valid.", "error")
+            return redirect(url_for("forgot_password"))
+
         try:
             db = Database(DB_CONFIG)
-            if db.check_email_exists(email):
-                token = generate_token(email)
+
+            # Jangan bocorkan apakah email ada/tidak
+            user_exists = False
+            try:
+                user_exists = db.check_email_exists(email)
+            except Exception as e:
+                # kalau terjadi error saat cek, log saja—tetap kasih pesan generik
+                print("[FORGOT] check_email_exists error:", e)
+
+            if user_exists:
+                # Buat token & link reset
+                token = generate_token(email)  # pastikan pakai SALT di helper
                 reset_url = url_for("reset_password", token=token, _external=True)
+
+                # Kirim email di background (tidak blok UI)
                 try:
                     send_email(
                         to=email,
@@ -169,17 +212,29 @@ def forgot_password():
                             "Jika tidak meminta reset, abaikan email ini."
                         ),
                     )
+                    print("[FORGOT] reset email dispatched to:", email)
                 except Exception as e:
-                    print("Gagal mengirim email:", e)
+                    # Jangan bikin request gagal hanya karena kirim email error
+                    print("[FORGOT] send_email error:", e)
 
-            # Pesan generik (keamanan): sama saja walau email tidak terdaftar
+            # Pesan generik selalu sama (keamanan)
             flash("Jika email terdaftar, instruksi reset sudah dikirim.", "success")
             return redirect(url_for("forgot_password"))
+
         except Exception as e:
-            print("Error di forgot_password:", e)
+            print("[FORGOT] unexpected error:", e)
             flash("Terjadi kesalahan. Coba lagi nanti.", "error")
             return redirect(url_for("forgot_password"))
 
+        finally:
+            # Tutup koneksi DB kalau class Database kamu punya .close()
+            try:
+                if "db" in locals() and hasattr(db, "close"):
+                    db.close()
+            except Exception as e:
+                print("[FORGOT] db.close error:", e)
+
+    # GET → tampilkan form
     return render_template("forget_password.html")
 
 @app.route("/reset-password/<token>", methods=["GET", "POST"])
