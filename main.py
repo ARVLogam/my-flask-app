@@ -248,7 +248,7 @@ def forgot_password():
             flash("Terjadi kesalahan. Coba lagi nanti.", "error")
             return redirect(url_for('forgot_password'))
 
-    return render_template("forgot_password.html")  # ← samakan nama file
+    return render_template("forget_password.html")  # ← samakan nama file
 
 
 
