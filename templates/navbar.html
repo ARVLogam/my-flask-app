@@ -1,90 +1,79 @@
-<nav class="bg-[#b91c1c] p-4 text-white fixed top-0 left-0 right-0 z-50">
-  <div class="container mx-auto px-4">
-    <div class="flex justify-between items-center">
-      <div class="flex items-center space-x-3">
-        <i class="fas fa-store text-2xl"></i>
-        <h1 class="text-xl font-bold">Welcome, {{ nama }}!</h1>
-      </div>
-
+<!-- Navbar Admin/User -->
+<nav class="sticky top-0 z-40 bg-white/90 backdrop-blur shadow-sm">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+    <!-- Left: Logo + brand -->
+    <div class="flex items-center gap-3">
+      <a href="{{ url_for('dashboard') }}" class="flex items-center gap-2">
+        <img src="{{ url_for('static', filename='img/logo.PNG') }}"
+             alt="Logo" class="h-8 w-auto">
+        <span class="hidden sm:block font-semibold tracking-wide">ARV LOGAM</span>
+      </a>
       {% if role == 'admin' %}
-      <div class="hidden md:flex items-center space-x-1">
-        <a
-          href="{{ url_for('dashboard') }}"
-          class="hover:bg-[#7f1d1d] px-3 py-1 rounded transition flex items-center"
-        >
-          <i class="fas fa-home mr-2"></i> Beranda
-        </a>
-        <a
-          href="{{ url_for('menuAdmin', roleMenu='kelolaBarang') }}"
-          class="hover:bg-[#7f1d1d] px-3 py-1 rounded transition flex items-center"
-        >
-          <i class="fas fa-box mr-2"></i> Kelola Barang
-        </a>
-        <a
-          href="{{ url_for('menuAdmin', roleMenu='kelolaUser') }}"
-          class="hover:bg-[#7f1d1d] px-3 py-1 rounded transition flex items-center"
-        >
-          <i class="fas fa-users mr-2"></i> Kelola User
-        </a>
-        {% endif %}
+      <span class="ml-2 text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">Admin</span>
+      {% endif %}
+    </div>
 
-        <div class="relative group">
-          <button class="flex items-center space-x-2 hover:bg-[#7f1d1d] px-3 py-2 rounded transition text-white">
-            <i class="fas fa-user-circle text-2xl"></i>
-            <span>Kelola Akun</span>
-          </button>
+    <!-- Middle: Search (opsional) -->
+    <form action="{{ url_for('dashboard') }}" method="get" class="hidden md:flex flex-1 mx-6">
+      <div class="w-full relative">
+        <input name="q" placeholder="Cari produk…" class="w-full rounded-full border border-neutral-300 pl-10 pr-4 py-2 outline-none focus:ring-2 focus:ring-red-400">
+        <svg class="w-5 h-5 absolute left-3 top-2.5 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-4.3-4.3M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"/></svg>
+      </div>
+    </form>
 
-          <div class="absolute left-0 md:left-auto md:right-0 mt-1 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-100 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200">
-            <div class="py-1">
-              <a
-                href="{{ url_for('editProfile') }}"
-                class="block px-4 py-2 text-gray-800 hover:bg-red-50 hover:text-[#b91c1c] text-sm"
-              >
-                <i class="fas fa-user-edit mr-2 w-4 text-center"></i> Edit Profile
-              </a>
-              <a
-                href="{{ url_for('logout') }}"
-                class="block px-4 py-2 text-gray-800 hover:bg-red-50 hover:text-[#b91c1c] text-sm"
-              >
-                <i class="fas fa-sign-out-alt mr-2 w-4 text-center"></i> Logout
-              </a>
-            </div>
-          </div>
+    <!-- Right: Actions -->
+    <div class="flex items-center gap-2">
+      {% if role == 'admin' %}
+      <!-- Kelola dropdown (admin only) -->
+      <div class="relative group">
+        <button class="hidden sm:inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-200 hover:bg-neutral-50">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z"/></svg>
+          <span>Kelola</span>
+        </button>
+        <!-- menu -->
+        <div class="absolute right-0 mt-2 w-56 rounded-xl border border-neutral-200 bg-white shadow-lg py-2 invisible opacity-0 group-hover:visible group-hover:opacity-100 transition">
+          <a href="{{ url_for('menuAdmin', roleMenu='kelolaBarang') }}" class="block px-4 py-2 hover:bg-neutral-50">Kelola Barang</a>
+          <a href="{{ url_for('menuAdmin', roleMenu='kelolaUser') }}" class="block px-4 py-2 hover:bg-neutral-50">Kelola User</a>
+          <a href="{{ url_for('addBarang') }}" class="block px-4 py-2 hover:bg-neutral-50">Tambah Barang</a>
         </div>
       </div>
-
-      {% if role == 'admin' %}
-      <button id="mobileMenuToggle" class="md:hidden text-white focus:outline-none">
-        <i class="fas fa-bars text-xl"></i>
-      </button>
       {% endif %}
-    </div>
 
-    <div class="md:hidden mt-2 space-y-2 hidden absolute left-0 right-0 bg-[#b91c1c] px-4 pb-4 z-40" id="mobileMenu">
-      {% if role == 'admin' %}
-      <a href="{{ url_for('dashboard') }}" class="block hover:bg-[#7f1d1d] px-1 py-2 rounded flex items-center">
-        <i class="fas fa-home mr-3 w-5"></i> Beranda
-      </a>
-      <a href="{{ url_for('menuAdmin', roleMenu='kelolaBarang') }}" class="block hover:bg-[#7f1d1d] px-1 py-2 rounded flex items-center">
-        <i class="fas fa-box mr-3 w-5"></i> Kelola Barang
-      </a>
-      <a href="{{ url_for('menuAdmin', roleMenu='kelolaUser') }}" class="block hover:bg-[#7f1d1d] px-1 py-2 rounded flex items-center">
-        <i class="fas fa-users mr-3 w-5"></i> Kelola User
-      </a>
-      {% endif %}
-      <a href="{{ url_for('editProfile') }}" class="block hover:bg-[#7f1d1d] px-1 py-2 rounded flex items-center">
-        <i class="fas fa-user-edit mr-3 w-5"></i> Edit Profile
-      </a>
-      <a href="{{ url_for('logout') }}" class="block hover:bg-[#7f1d1d] px-1 py-2 rounded flex items-center">
-        <i class="fas fa-sign-out-alt mr-3 w-5"></i> Logout
-      </a>
+      <!-- Avatar dropdown -->
+      <div class="relative group">
+        <button class="inline-flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full border border-neutral-200 hover:bg-neutral-50">
+          <img src="{{ url_for('static', filename='img/avatar-default.png') }}" class="w-8 h-8 rounded-full object-cover" alt="avatar">
+          <span class="hidden sm:block text-sm">{{ nama or 'Pengguna' }}</span>
+          <svg class="w-4 h-4 text-neutral-500 hidden sm:block" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.94l3.71-3.71a.75.75 0 1 1 1.06 1.06l-4.24 4.24a.75.75 0 0 1-1.06 0L5.21 8.27a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd"/></svg>
+        </button>
+        <div class="absolute right-0 mt-2 w-56 rounded-xl border border-neutral-200 bg-white shadow-lg py-2 invisible opacity-0 group-hover:visible group-hover:opacity-100 transition">
+          <a href="{{ url_for('editProfile') }}" class="block px-4 py-2 hover:bg-neutral-50">Edit Profil</a>
+          {% if role == 'admin' %}
+          <a href="{{ url_for('menuAdmin', roleMenu='kelolaBarang') }}" class="block px-4 py-2 hover:bg-neutral-50">Kelola Barang</a>
+          <a href="{{ url_for('menuAdmin', roleMenu='kelolaUser') }}" class="block px-4 py-2 hover:bg-neutral-50">Kelola User</a>
+          {% endif %}
+          <div class="my-2 border-t border-neutral-200"></div>
+          <a href="{{ url_for('logout') }}" class="block px-4 py-2 text-red-600 hover:bg-red-50">Keluar</a>
+        </div>
+      </div>
     </div>
   </div>
-  <script>
-  document.getElementById("mobileMenuToggle").addEventListener("click", function () {
-    const menu = document.getElementById("mobileMenu");
-    menu.classList.toggle("hidden");
-  });
-</script>
-
 </nav>
+
+<!-- Mobile bottom bar (admin only) -->
+{% if role == 'admin' %}
+<nav class="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 bg-white shadow-xl border border-neutral-200 rounded-full px-4 py-2 flex sm:hidden items-center gap-5">
+  <a href="{{ url_for('menuAdmin', roleMenu='kelolaBarang') }}" class="flex flex-col items-center text-xs">
+    <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z"/></svg>
+    Barang
+  </a>
+  <a href="{{ url_for('addBarang') }}" class="flex flex-col items-center text-xs">
+    <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2h6Z"/></svg>
+    Tambah
+  </a>
+  <a href="{{ url_for('menuAdmin', roleMenu='kelolaUser') }}" class="flex flex-col items-center text-xs">
+    <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4.42 0-8 2.24-8 5v1h16v-1c0-2.76-3.58-5-8-5Z"/></svg>
+    User
+  </a>
+</nav>
+{% endif %}
