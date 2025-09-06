@@ -226,6 +226,7 @@ def dashboard():
         total_pengguna=total_pengguna,
         produk_terakhir=produk_terakhir,
         user_terakhir=user_terakhir,
+        cache_bust=int(time.time())
     )
 
 @app.route("/forgot-password", methods=["GET", "POST"])
