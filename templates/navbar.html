@@ -1,89 +1,108 @@
 <!-- templates/navbar.html -->
-<nav class="sticky top-0 z-50 bg-white border-b border-neutral-200/70">
+<header class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-neutral-200">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center gap-3">
+
     <!-- Logo -->
-    <a href="{{ url_for('dashboard') }}" class="shrink-0 flex items-center gap-2">
-      <img src="{{ url_for('static', filename='img/logo.PNG') }}" alt="ARV LOGAM" class="h-7 w-auto" />
+    <a href="{{ url_for('dashboard') }}" class="shrink-0">
+      <img src="{{ url_for('static', filename='img/logo.PNG') }}" alt="Logo" class="h-8 w-auto"/>
     </a>
 
-    <!-- Search (opsional) -->
-    <form class="flex-1 max-w-xl relative hidden sm:block">
+    <!-- Search -->
+    <form action="#" class="relative flex-1 max-w-2xl hidden sm:block">
       <input type="search" placeholder="Cari produk..." 
-        class="w-full rounded-xl border border-neutral-300 bg-white py-2.5 pl-4 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500" />
-      <svg class="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-4.35-4.35M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/>
+             class="w-full rounded-2xl border border-neutral-300 bg-white py-2.5 pl-10 pr-4 text-sm
+                    focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500">
+      <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="m21 21-4.35-4.35M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/>
       </svg>
     </form>
 
-    <!-- Tombol Admin (untuk role admin saja) -->
-    {% if session.get('role') == 'admin' %}
-    <div class="relative">
-      <button id="btnAdmin" type="button"
-        class="inline-flex items-center gap-2 rounded-xl bg-red-600 text-white px-3 py-2 hover:bg-red-700 focus:ring-2 focus:ring-red-500">
-        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path stroke-linecap="round" stroke-width="2" d="M4 6h16M4 12h10M4 18h16"/>
-        </svg>
-        <span>Admin</span>
-      </button>
+    <div class="flex items-center gap-3 ml-auto">
 
-      <!-- Menu admin -->
-      <div id="menuAdmin"
-        class="invisible opacity-0 pointer-events-none absolute right-0 mt-2 w-56 rounded-2xl bg-white shadow-xl ring-1 ring-black/5 transition-all z-50">
-        <a href="{{ url_for('menuAdmin', roleMenu='kelolaBarang') }}"
-           class="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50">
-          <span class="text-base">📦</span><span>Kelola Barang</span>
-        </a>
-        <a href="{{ url_for('menuAdmin', roleMenu='kelolaUser') }}"
-           class="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50">
-          <span class="text-base">👥</span><span>Kelola User</span>
-        </a>
-        <a href="{{ url_for('editProfile') }}"
-           class="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50">
-          <span class="text-base">🛠️</span><span>Edit Profil</span>
-        </a>
+      {# === ADMIN BUTTON (hanya untuk role admin) === #}
+      {% if role == 'admin' %}
+      <div class="relative" data-admin-menu>
+        <button type="button" id="btnAdmin"
+                class="inline-flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-xl hover:bg-red-700">
+          <i class="fa-solid fa-bars"></i>
+          <span>Admin</span>
+        </button>
+
+        <!-- Dropdown Admin: HANYA 2 item -->
+        <div id="menuAdmin"
+             class="hidden absolute right-0 mt-2 w-56 rounded-2xl border border-neutral-200 bg-white shadow-xl">
+          <a href="{{ url_for('menuAdmin', roleMenu='kelolaBarang') }}"
+             class="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50">
+            <i class="fa-solid fa-box text-amber-600"></i>
+            <span>Kelola Barang</span>
+          </a>
+          <a href="{{ url_for('menuAdmin', roleMenu='kelolaUser') }}"
+             class="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50">
+            <i class="fa-solid fa-users text-violet-600"></i>
+            <span>Kelola User</span>
+          </a>
+        </div>
       </div>
-    </div>
-    {% endif %}
+      {% endif %}
 
-    <!-- Profil -->
-    <div class="relative">
-      <button id="btnProfile" type="button"
-        class="inline-flex items-center gap-3 rounded-xl border border-neutral-300 bg-white px-3 py-2 hover:bg-neutral-50">
-        <span class="text-sm text-neutral-700 hidden sm:inline">Halo, {{ session.get('nama','') }}</span>
-        <img src="{{ url_for('static', filename='img/avatar.png') }}" class="h-7 w-7 rounded-full object-cover" alt="avatar" />
-      </button>
+      <!-- USER MENU -->
+      <div class="relative" data-user-menu>
+        <button type="button" id="btnUser"
+                class="inline-flex items-center gap-3 px-4 py-2 rounded-2xl border border-neutral-300 bg-white hover:bg-neutral-100">
+          <span class="hidden sm:block text-sm text-neutral-700">Halo, {{ nama }}</span>
+          <img src="{{ url_for('static', filename='img/avatar.png') }}" alt="avatar" class="h-7 w-7 rounded-full object-cover">
+        </button>
 
-      <div id="menuProfile"
-        class="invisible opacity-0 pointer-events-none absolute right-0 mt-2 w-44 rounded-2xl bg-white shadow-xl ring-1 ring-black/5 transition-all z-50">
-        <a href="{{ url_for('editProfile') }}" class="block px-4 py-3 hover:bg-neutral-50">Profil</a>
-        <a href="{{ url_for('logout') }}" class="block px-4 py-3 text-red-600 hover:bg-neutral-50">Keluar</a>
+        <div id="menuUser"
+             class="hidden absolute right-0 mt-2 w-56 rounded-2xl border border-neutral-200 bg-white shadow-xl">
+          <a href="{{ url_for('editProfile') }}" class="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50">
+            <i class="fa-solid fa-user-pen text-blue-600"></i>
+            <span>Edit Profil</span>
+          </a>
+          <a href="{{ url_for('logout') }}" class="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 text-red-600">
+            <i class="fa-solid fa-right-from-bracket"></i>
+            <span>Keluar</span>
+          </a>
+        </div>
       </div>
     </div>
   </div>
-</nav>
+</header>
 
 <script>
+  // Toggle & auto-close dropdown
   (function () {
-    const btnAdmin   = document.getElementById('btnAdmin');
-    const menuAdmin  = document.getElementById('menuAdmin');
-    const btnProfile = document.getElementById('btnProfile');
-    const menuProfile= document.getElementById('menuProfile');
+    const adminBtn  = document.getElementById('btnAdmin');
+    const adminMenu = document.getElementById('menuAdmin');
+    const userBtn   = document.getElementById('btnUser');
+    const userMenu  = document.getElementById('menuUser');
 
-    function show(el){ el.classList.remove('invisible','opacity-0','pointer-events-none'); }
-    function hide(el){ el.classList.add('invisible','opacity-0','pointer-events-none'); }
-
-    function toggleOne(target, other){
-      const opened = !target.classList.contains('invisible');
-      hide(other);
-      opened ? hide(target) : show(target);
+    function hideAll() {
+      adminMenu && adminMenu.classList.add('hidden');
+      userMenu  && userMenu.classList.add('hidden');
     }
 
-    btnAdmin  && btnAdmin.addEventListener('click',  (e)=>{ e.stopPropagation(); toggleOne(menuAdmin, menuProfile); });
-    btnProfile&& btnProfile.addEventListener('click',(e)=>{ e.stopPropagation(); toggleOne(menuProfile, menuAdmin); });
+    adminBtn && adminBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      adminMenu.classList.toggle('hidden');
+      userMenu && userMenu.classList.add('hidden');
+    });
 
-    // klik di luar ⇒ tutup dua-duanya
-    document.addEventListener('click', ()=>{ hide(menuAdmin); hide(menuProfile); });
-    // Esc ⇒ tutup juga
-    document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ hide(menuAdmin); hide(menuProfile); }});
+    userBtn && userBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      userMenu.classList.toggle('hidden');
+      adminMenu && adminMenu.classList.add('hidden');
+    });
+
+    document.addEventListener('click', (e) => {
+      const inAdmin = e.target.closest('[data-admin-menu]');
+      const inUser  = e.target.closest('[data-user-menu]');
+      if (!inAdmin && !inUser) hideAll();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') hideAll();
+    });
   })();
 </script>
