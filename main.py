@@ -487,8 +487,7 @@ def editBarang(id_barang):
     try:
         db = Database(DB_CONFIG)
 
-        # Validasi ID
-        if not id_barang.isdigit():
+        if not str(id_barang).isdigit():
             flash("ID barang tidak valid", "error")
             return redirect(url_for("dashboard"))
 
@@ -499,50 +498,68 @@ def editBarang(id_barang):
                 return redirect(url_for("dashboard"))
             return render_template("editBarang.html", barang=barang)
 
-        # === POST ===
-        nama_barang = (request.form.get("nama_barang") or "").strip()
-        harga_str   = (request.form.get("harga") or "").strip()
-        deskripsi   = (request.form.get("deskripsi") or "").strip()
+        # --- POST ---
+        nama_barang = request.form.get("nama_barang", "").strip()
+        harga_raw    = request.form.get("harga", "").strip()
+        deskripsi   = request.form.get("deskripsi", "").strip()
 
-        if not nama_barang or not harga_str or not deskripsi:
+        if not nama_barang or not harga_raw or not deskripsi:
             flash("Semua field harus diisi", "error")
             return redirect(url_for("editBarang", id_barang=id_barang))
 
-        # Normalisasi harga (terima 81.000,00 atau 81000.00)
+        # normalisasi harga
         try:
-            harga = float(harga_str.replace(".", "").replace(",", "."))
+            harga = float(harga_raw.replace(".", "").replace(",", "."))
         except ValueError:
             flash("Harga harus berupa angka", "error")
             return redirect(url_for("editBarang", id_barang=id_barang))
 
-        # Update data teks terlebih dahulu
-        updated = db.update_barang(id_barang, nama_barang, harga, deskripsi)
+        # update data text dulu
+        ok = db.update_barang(id_barang, nama_barang, harga, deskripsi)
+        if not ok:
+            flash("Gagal memperbarui data barang", "error")
+            return redirect(url_for("editBarang", id_barang=id_barang))
 
-        # Jika sukses, proses upload foto (opsional)
-        if updated:
-            file = request.files.get("foto")
-            if file and file.filename and allowed_file(file.filename):
+        # --- proses upload gambar (opsional) ---
+        file = request.files.get("foto")
+        if file and file.filename:
+            if not _allowed_image(file.filename):
+                flash("Format gambar tidak didukung. Gunakan png/jpg/jpeg/webp.", "error")
+                return redirect(url_for("editBarang", id_barang=id_barang))
+
+            # selalu simpan sebagai PNG dengan nama konsisten
+            filename = f"barang_{id_barang}.png"
+            save_path = os.path.join(UPLOAD_FOLDER, filename)
+
+            # Simpan ke disk sementara, lalu convert → PNG
+            tmp_name = secure_filename(file.filename)
+            tmp_path = os.path.join(UPLOAD_FOLDER, f"__tmp_{tmp_name}")
+            file.save(tmp_path)
+
+            try:
+                with Image.open(tmp_path) as im:
+                    im.convert("RGBA").save(save_path, format="PNG", optimize=True)
+                os.remove(tmp_path)
+                flash("Data & foto berhasil diperbarui!", "success")
+            except Exception as e:
+                # fallback: bila PIL gagal, setidaknya simpan file apa adanya
                 try:
-                    # Simpan konsisten pakai nama barang_<ID>.png agar mudah dipanggil di template
-                    filename = f"barang_{id_barang}.png"
-                    save_path = os.path.join(UPLOAD_FOLDER, filename)
-                    file.save(save_path)
-                except Exception as e:
-                    # Jangan gagalkan update hanya karena upload gagal
-                    print(f"Upload foto gagal: {e}")
-                    flash("Perubahan tersimpan, namun foto gagal diunggah.", "warning")
-
+                    os.replace(tmp_path, save_path)
+                    flash("Data berhasil, foto tersimpan apa adanya.", "warning")
+                except Exception:
+                    if os.path.exists(tmp_path):
+                        os.remove(tmp_path)
+                    flash("Data tersimpan, namun foto gagal diunggah.", "error")
+        else:
             flash("Data barang berhasil diperbarui!", "success")
-            return redirect(url_for("menuAdmin", roleMenu="kelolaBarang"))
 
-        # Jika update DB gagal
-        flash("Gagal memperbarui data barang", "error")
-        return redirect(url_for("editBarang", id_barang=id_barang))
+        return redirect(url_for("menuAdmin", roleMenu="kelolaBarang"))
 
     except Exception as e:
-        print(f"Error in editBarang: {str(e)}")
+        print(f"Error in editBarang: {e}")
         flash("Terjadi kesalahan sistem", "error")
         return redirect(url_for("dashboard"))
+
 
 @app.route("/deleteBarang/<id_barang>", methods=["POST"])
 def deleteBarang(id_barang):
