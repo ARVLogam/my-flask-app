@@ -66,28 +66,34 @@ def handle_exception(e):
     return "Internal Server Error", 500
 
 
-from flask_mail import Mail, Message
 from config import MAIL_SETTINGS
+from flask_mail import Mail, Message
 
+# --- SETELAH app dibuat & secret_key diset ---
 app.config.update(MAIL_SETTINGS)
-app.config['MAIL_SUPPRESS_SEND'] = True
-mail = Mail(app)
 
+# pastikan SUPPRESS_SEND tidak aktif di produksi
+# app.config['MAIL_SUPPRESS_SEND'] = True  # aktifkan HANYA saat debug kirim
 
+# sanity check (boleh dibiarkan):
 print("MAIL_SERVER:", app.config.get("MAIL_SERVER"))
 print("MAIL_PORT:", app.config.get("MAIL_PORT"))
 print("MAIL_USE_TLS:", app.config.get("MAIL_USE_TLS"))
+print("MAIL_USE_SSL:", app.config.get("MAIL_USE_SSL"))
 print("MAIL_USERNAME set?:", bool(app.config.get("MAIL_USERNAME")))
 print("MAIL_DEFAULT_SENDER set?:", bool(app.config.get("MAIL_DEFAULT_SENDER")))
+
+mail = Mail(app)
+
 
 
 
 # Konfigurasi email
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'secrap7@gmail.com'
-app.config['MAIL_PASSWORD'] = 'itlukqqxvhkqvuwq'  # gunakan App Password di sini   
+#app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+#app.config['MAIL_PORT'] = 587
+#app.config['MAIL_USE_TLS'] = True
+#app.config['MAIL_USERNAME'] = 'secrap7@gmail.com'
+#app.config['MAIL_PASSWORD'] = 'itlukqqxvhkqvuwq'  # gunakan App Password di sini   
 
 @app.route("/mail-test")
 def mail_test():
