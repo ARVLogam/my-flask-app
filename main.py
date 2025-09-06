@@ -9,14 +9,6 @@ from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
 from crud import Database, create_tables
 from config import MAIL_SETTINGS  # pastikan MAIL_SETTINGS ambil dari .env
-import sys
-
-
-@app.errorhandler(Exception)
-def handle_exception(e):
-    print("=== ERROR DETAIL ===", file=sys.stderr)
-    traceback.print_exc()
-    return "Internal Server Error", 500
 
 
 def send_email(to, subject, body):
@@ -56,8 +48,15 @@ except Exception as e:
     traceback.print_exc()
 
 app = Flask(__name__, static_folder='static')
-import os
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev")
+
+import sys
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    print("=== ERROR DETAIL ===", file=sys.stderr)
+    traceback.print_exc()
+    return "Internal Server Error", 500
 
 
 from flask_mail import Mail, Message
