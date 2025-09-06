@@ -6,164 +6,99 @@
   <title>Masuk | Aplikasi</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
-  <meta name="color-scheme" content="light dark">
-  <style>
-    /* pola halus di background */
-    .pattern {
-      background-image:
-        radial-gradient(rgba(255,255,255,0.08) 1px, transparent 1px),
-        radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px);
-      background-position: 0 0, 25px 25px;
-      background-size: 50px 50px;
-    }
-  </style>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-red-700 via-red-600 to-red-500 pattern">
-  <!-- Flash message -->
+<body class="min-h-screen bg-gradient-to-br from-red-700 via-red-600 to-red-500 flex items-center justify-center px-4 py-10">
+  <!-- Flash -->
   <div class="fixed top-4 inset-x-0 z-50 px-4">
     {% include 'flashProtection.html' %}
   </div>
 
-  <!-- Container -->
-  <div class="min-h-screen flex items-center justify-center px-4 py-10">
-    <div class="w-full max-w-md">
-      <!-- Card -->
-      <div class="backdrop-blur-md bg-white/80 dark:bg-neutral-900/70 shadow-xl rounded-2xl p-6 md:p-8 border border-white/40 dark:border-neutral-800">
-        <!-- Logo / Judul -->
-        <div class="flex items-center justify-center mb-6">
-          <!-- kalau punya logo -->
-          <!-- <img src="{{ url_for('static', filename='img/logo.PNG') }}" alt="Logo" class="h-12 w-12 rounded-lg shadow"> -->
-          <div class="text-center">
-            <h1 class="text-2xl md:text-3xl font-bold text-red-700 dark:text-red-400">Selamat Datang 👋</h1>
-            <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">Silakan masuk untuk melanjutkan</p>
+  <!-- Card -->
+  <div class="w-full max-w-md bg-white shadow-2xl rounded-2xl overflow-hidden">
+    <!-- Bagian gambar -->
+    <div class="w-full h-40 bg-red-100 flex items-center justify-center relative">
+      <img 
+        src="{{ url_for('static', filename='img/logo.PNG') }}" 
+        alt="Logo" 
+        class="h-24 w-24 object-contain rounded-xl shadow-lg bg-white p-2 absolute -bottom-12"
+      />
+    </div>
+
+    <!-- Bagian form -->
+    <div class="pt-16 pb-8 px-6 md:px-8">
+      <h2 class="text-2xl font-bold text-center text-red-700 mb-6">Masuk ke Akun</h2>
+
+      <form action="{{ url_for('login') }}" method="POST" class="space-y-5" id="loginForm">
+        <!-- Username -->
+        <div>
+          <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><i class="fa-regular fa-user"></i></span>
+            <input 
+              type="text" name="username" id="username" required 
+              placeholder="nama_pengguna"
+              class="w-full pl-10 pr-3 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500"
+            />
           </div>
         </div>
 
-        <!-- Form -->
-        <form action="{{ url_for('login') }}" method="POST" class="space-y-5" id="loginForm">
-          <!-- Username -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1" for="username">
-              Username
+        <!-- Password -->
+        <div>
+          <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><i class="fa-solid fa-lock"></i></span>
+            <input 
+              type="password" name="password" id="password" required 
+              placeholder="••••••••"
+              class="w-full pl-10 pr-10 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500"
+            />
+            <button type="button" id="togglePassBtn" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              <i class="fa-regular fa-eye" id="togglePassIcon"></i>
+            </button>
+          </div>
+          <div class="flex justify-between items-center mt-2">
+            <label class="flex items-center gap-2 text-sm text-gray-600">
+              <input type="checkbox" class="rounded border-gray-300 text-red-600 focus:ring-red-500"/> Ingat saya
             </label>
-            <div class="relative">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                <i class="fa-regular fa-user"></i>
-              </span>
-              <input
-                id="username"
-                name="username"
-                type="text"
-                required
-                autocomplete="username"
-                placeholder="nama_pengguna"
-                class="w-full pl-10 pr-3 py-2.5 rounded-xl border border-gray-300 dark:border-neutral-700 bg-white/90 dark:bg-neutral-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition"
-              />
-            </div>
+            <a href="{{ url_for('forgot_password') }}" class="text-sm text-red-600 hover:text-red-700 font-medium">Lupa password?</a>
           </div>
+        </div>
 
-          <!-- Password -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1" for="password">
-              Password
-            </label>
-            <div class="relative">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                <i class="fa-solid fa-lock"></i>
-              </span>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                autocomplete="current-password"
-                placeholder="••••••••"
-                class="w-full pl-10 pr-10 py-2.5 rounded-xl border border-gray-300 dark:border-neutral-700 bg-white/90 dark:bg-neutral-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition"
-              />
-              <button
-                type="button"
-                class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                aria-label="Tampilkan/sembunyikan password"
-                id="togglePassBtn"
-              >
-                <i class="fa-regular fa-eye" id="togglePassIcon"></i>
-              </button>
-            </div>
+        <!-- Tombol -->
+        <button 
+          type="submit" 
+          class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 rounded-lg shadow-md transition"
+          id="submitBtn"
+        >
+          Masuk
+        </button>
 
-            <!-- opsi -->
-            <div class="flex items-center justify-between mt-2">
-              <label class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                <input type="checkbox" class="rounded border-gray-300 dark:border-neutral-700 text-red-600 focus:ring-red-500">
-                Ingat saya
-              </label>
-              <a href="{{ url_for('forgot_password') }}" class="text-sm text-red-700 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 font-medium">
-                Lupa password?
-              </a>
-            </div>
-          </div>
+        <!-- Divider -->
+        <div class="flex items-center gap-3">
+          <div class="h-px bg-gray-300 flex-1"></div>
+          <span class="text-xs text-gray-500">atau</span>
+          <div class="h-px bg-gray-300 flex-1"></div>
+        </div>
 
-          <!-- Tombol -->
-          <button
-            type="submit"
-            class="w-full inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 rounded-xl shadow-md shadow-red-800/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition"
-            id="submitBtn"
-          >
-            <span>Masuk</span>
-            <i class="fa-solid fa-arrow-right-to-bracket"></i>
-          </button>
-
-          <!-- Divider kecil -->
-          <div class="flex items-center gap-3">
-            <div class="h-px bg-gray-300 dark:bg-neutral-700 flex-1"></div>
-            <span class="text-xs text-gray-500 dark:text-gray-400">atau</span>
-            <div class="h-px bg-gray-300 dark:bg-neutral-700 flex-1"></div>
-          </div>
-
-          <!-- Link daftar -->
-          <p class="text-center text-sm text-gray-600 dark:text-gray-300">
-            Belum punya akun?
-            <a href="{{ url_for('register') }}" class="text-red-700 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 font-semibold">
-              Daftar sekarang
-            </a>
-          </p>
-        </form>
-      </div>
-
-      <!-- Footer kecil -->
-      <p class="text-center text-xs text-white/80 mt-6">
-        &copy; {{ 2025 }} Aplikasi Kamu. All rights reserved.
-      </p>
+        <!-- Register -->
+        <p class="text-center text-sm text-gray-600">
+          Belum punya akun? 
+          <a href="{{ url_for('register') }}" class="text-red-600 hover:text-red-700 font-semibold">Daftar</a>
+        </p>
+      </form>
     </div>
   </div>
 
   <script>
-    // Toggle tampil/sembunyi password
+    // Toggle password
     const passInput = document.getElementById('password');
     const toggleBtn = document.getElementById('togglePassBtn');
     const toggleIcon = document.getElementById('togglePassIcon');
-
     toggleBtn?.addEventListener('click', () => {
-      const isHidden = passInput.type === 'password';
-      passInput.type = isHidden ? 'text' : 'password';
+      const hidden = passInput.type === 'password';
+      passInput.type = hidden ? 'text' : 'password';
       toggleIcon.classList.toggle('fa-eye');
       toggleIcon.classList.toggle('fa-eye-slash');
-    });
-
-    // Loading state saat submit (hindari double submit)
-    const form = document.getElementById('loginForm');
-    const submitBtn = document.getElementById('submitBtn');
-
-    form?.addEventListener('submit', () => {
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = `
-        <span class="inline-flex items-center gap-2">
-          <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4A4 4 0 004 12z"></path>
-          </svg>
-          Memproses...
-        </span>
-      `;
     });
   </script>
 </body>
