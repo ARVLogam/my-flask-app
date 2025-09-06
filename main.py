@@ -12,9 +12,11 @@ from config import MAIL_SETTINGS  # pastikan MAIL_SETTINGS ambil dari .env
 
 
 def send_email(to, subject, body):
-    msg = Message(subject, recipients=[to])  # sender otomatis dari MAIL_DEFAULT_SENDER
+    sender = app.config.get("MAIL_DEFAULT_SENDER") or app.config.get("MAIL_USERNAME")
+    msg = Message(subject, sender=sender, recipients=[to])
     msg.body = body
     mail.send(msg)
+
 
 
 def login_required(f):
@@ -231,14 +233,6 @@ def reset_password(token):
 
     return render_template('reset_password.html')
 
-def verify_token(token, max_age=3600):
-    s = URLSafeTimedSerializer(app.secret_key)
-    try:
-        email = s.loads(token, max_age=max_age)
-        return email
-    except Exception as e:
-        print(f"Token error: {e}")
-        return None
 
 RESET_SALT = "reset-password"
 
