@@ -1,151 +1,107 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Edit Barang</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
-      rel="stylesheet"
-    />
-  </head>
-  <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
-    {% include 'flashProtection.html' %}
-    <div class="w-full max-w-md bg-white rounded-lg shadow-md overflow-hidden">
-      <!-- Header Form -->
-      <div class="bg-red-600 py-4 px-6">
-        <h1 class="text-2xl font-bold text-white text-center">Edit Barang</h1>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Edit Barang</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
+</head>
+<body class="bg-neutral-100 min-h-screen py-8">
+  {% include 'flashProtection.html' %}
+  <div class="max-w-2xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden">
+    <div class="bg-red-600 py-5 px-6">
+      <h1 class="text-2xl font-bold text-white text-center">Edit Barang</h1>
+    </div>
+
+    <form method="POST"
+          action="{{ url_for('editBarang', id_barang=barang[0]) }}"
+          enctype="multipart/form-data"
+          class="p-6 space-y-5">
+
+      <!-- Nama -->
+      <div>
+        <label for="nama_barang" class="block text-sm font-medium text-neutral-700 mb-1">Nama Barang</label>
+        <div class="relative">
+          <i class="fa-solid fa-box absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"></i>
+          <input type="text" id="nama_barang" name="nama_barang"
+                 class="w-full pl-10 pr-3 py-2 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                 required placeholder="Masukkan nama barang"
+                 value="{{ barang[1] if barang else '' }}" />
+        </div>
       </div>
 
-      <!-- Form Container -->
-<!-- Form Container -->
-<form
-  method="POST"
-  action="{{ url_for('editBarang', id_barang=barang[0]) }}"
-  enctype="multipart/form-data"   <!-- ⬅ WAJIB supaya file bisa terkirim -->
-  class="p-6 space-y-4"
->
-  <!-- Nama Barang -->
-  <div>
-    <label
-      for="nama_barang"
-      class="block text-sm font-medium text-gray-700 mb-1"
-    >
-      Nama Barang
-    </label>
-    <div class="relative">
-      <div
-        class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
-      >
-        <i class="fas fa-box text-gray-400"></i>
+      <!-- Harga -->
+      <div>
+        <label for="harga" class="block text-sm font-medium text-neutral-700 mb-1">Harga</label>
+        <div class="relative">
+          <i class="fa-solid fa-tag absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"></i>
+          <input type="text" inputmode="decimal" id="harga" name="harga"
+                 class="w-full pl-10 pr-3 py-2 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                 value="{{ '{:,.2f}'.format(barang[2]).replace(',', '.') if barang else '' }}"
+                 placeholder="cth 150000" required />
+        </div>
+        <p class="text-xs text-neutral-500 mt-1">Masukkan angka saja. Koma/ titik akan dinormalisasi.</p>
       </div>
-      <input
-        type="text"
-        id="nama_barang"
-        name="nama_barang"
-        class="w-full pl-10 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-        placeholder="Masukkan nama barang"
-        value="{{ barang[1] if barang else '' }}"
-        required
-      />
-    </div>
-  </div>
 
-  <!-- Harga -->
-  <div>
-    <label for="harga" class="block text-sm font-medium text-gray-700 mb-1">
-      Harga
-    </label>
-    <div class="relative">
-      <div
-        class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
-      >
-        <i class="fas fa-tag text-gray-400"></i>
+      <!-- Deskripsi -->
+      <div>
+        <label for="deskripsi" class="block text-sm font-medium text-neutral-700 mb-1">Deskripsi</label>
+        <div class="relative">
+          <i class="fa-solid fa-align-left absolute left-3 top-3 text-neutral-400"></i>
+          <textarea id="deskripsi" name="deskripsi" rows="4"
+                    class="w-full pl-10 pr-3 py-2 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    required>{{ barang[3] if barang else '' }}</textarea>
+        </div>
       </div>
-      <input
-        type="number"
-        id="harga"
-        name="harga"
-        class="w-full pl-10 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-        value="{{ barang[2] if barang else '' }}"
-        placeholder="Masukkan harga"
-        required
-        min="0"
-        step="0.01"
-      />
-    </div>
-    <p class="text-xs text-gray-500 mt-1">
-      Masukkan harga (contoh: 150000)
-    </p>
-  </div>
 
-  <!-- Deskripsi -->
-  <div>
-    <label
-      for="deskripsi"
-      class="block text-sm font-medium text-gray-700 mb-1"
-    >
-      Deskripsi
-    </label>
-    <div class="relative">
-      <div
-        class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
-      >
-        <i class="fas fa-align-left text-gray-400"></i>
+      <!-- Foto Produk -->
+      <div>
+        <label class="block text-sm font-medium text-neutral-700 mb-1">Foto Produk</label>
+
+        <!-- Preview -->
+        {% set preview = url_for('static', filename='img/products/barang_' ~ barang[0] ~ '.png') %}
+        <div class="flex items-start gap-4">
+          <img id="imgPreview" src="{{ preview }}" alt="Preview"
+               class="w-32 h-32 object-contain rounded border border-neutral-200 bg-neutral-50 p-1"
+               onerror="this.style.display='none'"/>
+
+          <!-- Dropzone / file input -->
+          <label for="foto"
+                 class="flex-1 border-2 border-dashed border-neutral-300 rounded-lg p-4 text-center cursor-pointer hover:border-red-400 transition">
+            <i class="fa-regular fa-image text-2xl mb-2 text-neutral-500"></i>
+            <div class="text-sm text-neutral-600">Tarik & letakkan gambar di sini atau <span class="text-red-600 font-medium">pilih file</span></div>
+            <div class="text-xs text-neutral-500 mt-1">png, jpg, jpeg, webp • maks ±5MB</div>
+            <input id="foto" name="foto" type="file" accept="image/*" class="hidden" />
+          </label>
+        </div>
       </div>
-      <textarea
-        id="deskripsi"
-        name="deskripsi"
-        class="w-full pl-10 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-        placeholder="Masukkan deskripsi barang"
-        rows="3"
-        required
-      >{{ barang[3] if barang else '' }}</textarea>
-    </div>
+
+      <button type="submit"
+              class="w-full bg-red-600 text-white py-2.5 rounded-lg font-medium hover:bg-red-700 transition flex items-center justify-center gap-2">
+        <i class="fa-solid fa-floppy-disk"></i> Simpan Perubahan
+      </button>
+
+      <a href="{{ url_for('menuAdmin', roleMenu='kelolaBarang') }}"
+         class="block text-center w-full bg-neutral-200 text-neutral-800 py-2.5 rounded-lg hover:bg-neutral-300 transition">
+        Batal
+      </a>
+    </form>
   </div>
 
-  <!-- Foto Produk -->
-  <div>
-    <label for="foto" class="block text-sm font-medium text-gray-700 mb-1">
-      Foto Produk
-    </label>
-    <input
-      type="file"
-      id="foto"
-      name="foto"
-      accept="image/*"
-      class="w-full text-sm text-gray-700 border border-gray-300 rounded-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-    />
-    <p class="text-xs text-gray-500 mt-1">Upload gambar (.png, .jpg, .jpeg, .webp)</p>
-
-    {% set img_path = 'img/products/barang_' ~ barang[0] ~ '.png' %}
-    <div class="mt-2">
-      <img
-        src="{{ url_for('static', filename=img_path) }}"
-        alt="Preview Foto"
-        class="h-32 rounded border border-gray-200 object-contain bg-gray-50 p-1"
-        onerror="this.style.display='none'"
-      />
-    </div>
-  </div>
-
-  <!-- Submit Button -->
-  <button
-    type="submit"
-    class="w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition duration-300 flex items-center justify-center"
-  >
-    <i class="fas fa-save mr-2"></i> Simpan Perubahan
-  </button>
-
-  <!-- Cancel Button -->
-  <a
-    href="{{ url_for('dashboard') }}"
-    class="block text-center w-full bg-gray-200 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-300 transition duration-300"
-  >
-    Batal
-  </a>
-</form>
-    </div>
-  </body>
+  <script>
+    // live preview
+    const input = document.getElementById('foto');
+    const img   = document.getElementById('imgPreview');
+    if (input) {
+      input.addEventListener('change', e => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const url = URL.createObjectURL(file);
+        img.src = url;
+        img.style.display = 'block';
+      });
+    }
+  </script>
+</body>
 </html>
