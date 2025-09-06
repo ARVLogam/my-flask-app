@@ -684,8 +684,9 @@ def deleteUser():
 
     return redirect(url_for("menuAdmin", roleMenu="kelolaUser"))
 
-@app.route("/menuAdmin", methods=["GET", "POST"])
+@app.route("/menuAdmin", methods=["GET"])
 def menuAdmin():
+    # Hanya admin
     if not check_role("admin"):
         flash("Anda tidak memiliki akses ke halaman ini", "error")
         return redirect("/")
@@ -693,22 +694,27 @@ def menuAdmin():
     try:
         role = session.get("role")
         nama = session.get("nama")
-        roleMenu = request.args.get("roleMenu")
+        # default ke kelolaUser
+        roleMenu = (request.args.get("roleMenu") or "kelolaUser").strip().lower()
 
         db = Database(DB_CONFIG)
 
-        if roleMenu == "kelolaBarang":
-            data_barang = db.read_all_barang()
-            return render_template("kelolaBarang.html", role=role, nama=nama, barang=data_barang)
-        elif roleMenu == "kelolaUser":
+        # LEGACY: jika masih ada link lama menuju kelola barang → arahkan ke dashboard
+        if roleMenu in ("kelolabarang", "barang", "produk"):
+            flash("Kelola barang kini dipindahkan ke Dashboard. Gunakan tombol Edit pada kartu produk.", "info")
+            return redirect(url_for("dashboard"))
+
+        # Satu-satunya halaman admin yang aktif: Kelola User
+        if roleMenu in ("kelolauser", "user"):
             data_users = db.read_all_users()
             return render_template("kelolaUser.html", role=role, nama=nama, users=data_users)
-        else:
-            return render_template("admin_dashboard.html", role=role, nama=nama)
+
+        # Jika parameter tidak dikenal, fallback ke kelolaUser
+        return redirect(url_for("menuAdmin", roleMenu="kelolaUser"))
 
     except Exception as e:
         print("Terjadi error di menuAdmin:", e)
-        flash(f"Terjadi kesalahan: {str(e)}", "error")
+        flash("Terjadi kesalahan. Coba lagi nanti.", "error")
         return redirect("/")
 
 # ---------------------------
