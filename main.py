@@ -74,23 +74,23 @@ except Exception as e:
     traceback.print_exc()
 
 app = Flask(__name__, static_folder='static')
-app.secret_key = os.urandom(24)  # Secret key for session management
+import os
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev")
 
-from flask_mail import Mail
+
+from flask_mail import Mail, Message
 from config import MAIL_SETTINGS
 
 app.config.update(MAIL_SETTINGS)
 mail = Mail(app)
 
 
-from flask_mail import Mail, Message
-
 # Konfigurasi email
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'secrap7@gmail.com'
-app.config['MAIL_PASSWORD'] = 'itlukqqxvhkqvuwq'  # gunakan App Password di sini   
+#app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+#app.config['MAIL_PORT'] = 587
+#app.config['MAIL_USE_TLS'] = True
+#app.config['MAIL_USERNAME'] = 'secrap7@gmail.com'
+#app.config['MAIL_PASSWORD'] = 'itlukqqxvhkqvuwq'  # gunakan App Password di sini   
 
 mail = Mail(app)
 
@@ -666,9 +666,9 @@ def menuAdmin():
 
 
 db = Database(DB_CONFIG)  # <-- ini penting!
-create_tables(DB_CONFIG)
 
 if __name__ == '__main__':
+     create_tables(DB_CONFIG)
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
 
