@@ -9,9 +9,6 @@ from itsdangerous import URLSafeTimedSerializer
 from dotenv import load_dotenv
 import os
 from functools import wraps
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from flask_mail import Mail, Message
 
 def send_email(to, subject, body):
