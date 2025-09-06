@@ -27,3 +27,4 @@ WTForms==3.2.1
 Flask-Mail
 python-dotenv
 pytz
+pillow==10.4.0
