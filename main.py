@@ -71,6 +71,12 @@ from config import MAIL_SETTINGS
 
 app.config.update(MAIL_SETTINGS)
 mail = Mail(app)
+print("MAIL_SERVER:", app.config.get("MAIL_SERVER"))
+print("MAIL_PORT:", app.config.get("MAIL_PORT"))
+print("MAIL_USE_TLS:", app.config.get("MAIL_USE_TLS"))
+print("MAIL_USERNAME set?:", bool(app.config.get("MAIL_USERNAME")))
+print("MAIL_DEFAULT_SENDER set?:", bool(app.config.get("MAIL_DEFAULT_SENDER")))
+
 
 
 # Konfigurasi email
@@ -80,6 +86,21 @@ app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USERNAME'] = 'secrap7@gmail.com'
 app.config['MAIL_PASSWORD'] = 'itlukqqxvhkqvuwq'  # gunakan App Password di sini   
 
+@app.route("/mail-test")
+def mail_test():
+    try:
+        to = os.getenv("MAIL_USERNAME")  # kirim ke dirimu sendiri dulu
+        msg = Message(
+            "TEST: Flask-Mail OK?",
+            recipients=[to],
+            body="Halo! Ini email test dari Flask-Mail."
+        )
+        mail.send(msg)
+        return "OK: email test terkirim (cek inbox/spam)."
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return f"ERROR saat kirim email: {e}", 500
 
 
 # Pindahkan error handler setelah inisialisasi app
