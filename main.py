@@ -12,6 +12,17 @@ import threading
 import time
 from flask_mail import Mail, Message
 
+from werkzeug.utils import secure_filename
+from PIL import Image  # optional, untuk normalisasi ke PNG (lebih aman)
+
+# --- Konfigurasi upload ---
+ALLOWED_IMAGE_EXT = {"png", "jpg", "jpeg", "webp"}
+UPLOAD_FOLDER = os.path.join(app.static_folder, "img", "products")
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+def _allowed_image(filename: str) -> bool:
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_IMAGE_EXT
+
 
 # app modules
 from crud import Database, create_tables
@@ -64,17 +75,6 @@ def save_product_image(file_storage, nama_barang: str) -> str | None:
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev")
-
-# ---- File upload config ----
-from werkzeug.utils import secure_filename
-
-UPLOAD_FOLDER = os.path.join(app.static_folder, "img", "products")
-ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
-app.config["MAX_CONTENT_LENGTH"] = 3 * 1024 * 1024  # 3 MB
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-def allowed_file(filename: str) -> bool:
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 app.config.update(MAIL_SETTINGS)
