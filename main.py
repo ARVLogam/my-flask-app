@@ -78,24 +78,35 @@ def _allowed_image(filename: str) -> bool:
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
-# === Avatar config ===
+# --- Avatar upload (letakkan SETELAH app = Flask(...)) ---
+import os
+from werkzeug.utils import secure_filename
+from werkzeug.exceptions import RequestEntityTooLarge
+from PIL import Image
+
+# Maksimal ukuran upload 4MB (opsional)
+app.config['MAX_CONTENT_LENGTH'] = 4 * 1024 * 1024
+
+# Folder penyimpanan avatar
 AVATAR_FOLDER = os.path.join(app.static_folder, "img", "avatars")
 os.makedirs(AVATAR_FOLDER, exist_ok=True)
-app.config['MAX_CONTENT_LENGTH'] = 4 * 1024 * 1024  # 4 MB (opsional)
 
-ALLOWED_IMG = {"png", "jpg", "jpeg", "webp"}
+# Ekstensi gambar yang diizinkan
+ALLOWED_IMAGE_EXT = {"png", "jpg", "jpeg", "webp"}
+
 def _allowed_img(filename: str) -> bool:
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_IMG
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_IMAGE_EXT
 
 def _save_avatar(file_storage, user_id: int):
     """
     Simpan avatar ke static/img/avatars/user_<id>.webp.
     Return:
       - 'INVALID' jika ekstensi tidak diizinkan
-      - relative path (mis. 'img/avatars/user_3.webp') jika sukses
-      - None jika gagal simpan
+      - 'ERROR'   jika gagal proses/simpan
+      - relative path 'img/avatars/user_<id>.webp' jika sukses
+      - None      jika tidak ada file
     """
-    if not file_storage or file_storage.filename == "":
+    if not file_storage or not getattr(file_storage, "filename", ""):
         return None
 
     filename = secure_filename(file_storage.filename)
@@ -108,17 +119,23 @@ def _save_avatar(file_storage, user_id: int):
         img = Image.open(file_storage.stream).convert("RGB")
         dst_abs = os.path.join(AVATAR_FOLDER, f"user_{user_id}.webp")
         img.save(dst_abs, "WEBP", quality=90)
-        return f"img/avatars/user_{user_id}.webp"   # relative (dipakai di url_for('static', filename=...))
-    except Exception as e:
-        print("Gagal menyimpan avatar:", e)
-        return None
+        return f"img/avatars/user_{user_id}.webp"
+    except Exception:
+        import traceback; traceback.print_exc()
+        return "ERROR"
 
 def _avatar_relpath(user_id: int) -> str:
-    """Kembalikan relative path avatar user jika ada, jika tidak pakai guest."""
+    """Kembalikan relative path avatar user jika ada, kalau tidak pakai guest."""
     candidate = os.path.join(AVATAR_FOLDER, f"user_{user_id}.webp")
     if os.path.exists(candidate):
         return f"img/avatars/user_{user_id}.webp"
     return "img/avatars/guest.png"
+
+# Handler jika file melebihi MAX_CONTENT_LENGTH
+@app.errorhandler(RequestEntityTooLarge)
+def _file_too_big(_):
+    flash("File terlalu besar (maks 4 MB).", "error")
+    return redirect(request.referrer or url_for("editProfile"))
 
 
 
@@ -202,7 +219,7 @@ def inject_csrf():
 def handle_exception(e):
     traceback.print_exc()
     return "Internal Server Error", 500
-
+    
 # ---------------------------
 # Token reset password
 # ---------------------------
