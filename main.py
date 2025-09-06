@@ -70,7 +70,10 @@ from flask_mail import Mail, Message
 from config import MAIL_SETTINGS
 
 app.config.update(MAIL_SETTINGS)
+app.config['MAIL_SUPPRESS_SEND'] = True
 mail = Mail(app)
+
+
 print("MAIL_SERVER:", app.config.get("MAIL_SERVER"))
 print("MAIL_PORT:", app.config.get("MAIL_PORT"))
 print("MAIL_USE_TLS:", app.config.get("MAIL_USE_TLS"))
