@@ -1,76 +1,136 @@
 <!-- templates/navbar.html -->
-<nav class="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-200">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+<nav class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-neutral-200">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16">
+    <div class="h-full flex items-center gap-3">
 
-    <!-- kiri: logo + link beranda -->
-    <a href="{{ url_for('dashboard') }}" class="flex items-center gap-3">
-      <img src="{{ url_for('static', filename='img/logo.PNG') }}" alt="Logo" class="h-8 w-auto">
-      <span class="font-semibold text-gray-800">ARV LOGAM</span>
-    </a>
+      <!-- Logo -->
+      <a href="{{ url_for('dashboard') }}" class="shrink-0 flex items-center gap-2">
+        <img src="{{ url_for('static', filename='img/logo.PNG') }}"
+             alt="ARV LOGAM" class="h-7 w-auto">
+        <span class="hidden sm:block font-semibold text-neutral-800">ARV LOGAM</span>
+      </a>
 
-    <!-- tengah: pencarian (opsional) -->
-    <form action="{{ url_for('dashboard') }}" method="get" class="hidden md:block w-full max-w-xl mx-6">
-      <input name="q" type="text" placeholder="Cari produk..."
-             class="w-full rounded-xl border border-gray-300 bg-white px-4 h-10 focus:outline-none focus:ring-2 focus:ring-red-500">
-    </form>
-
-    <!-- kanan: menu -->
-    <div class="flex items-center gap-2">
-
-      {% if role == 'admin' %}
-      <!-- menu admin -->
-      <details class="relative">
-        <summary class="list-none inline-flex items-center gap-2 px-3 h-10 rounded-lg bg-red-600 text-white cursor-pointer hover:bg-red-700">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
-          Admin
-        </summary>
-        <div class="absolute right-0 mt-2 w-56 rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden">
-          <a class="block px-4 py-3 hover:bg-gray-50" href="{{ url_for('menuAdmin', roleMenu='kelolaBarang') }}">Kelola Barang</a>
-          <a class="block px-4 py-3 hover:bg-gray-50" href="{{ url_for('menuAdmin', roleMenu='kelolaUser') }}">Kelola User</a>
-          <a class="block px-4 py-3 hover:bg-gray-50" href="{{ url_for('editProfile') }}">Edit Profil</a>
-        </div>
-      </details>
-      {% endif %}
-
-      <!-- profil -->
-      <details class="relative">
-        <summary class="list-none inline-flex items-center gap-3 px-3 h-10 rounded-lg border border-gray-200 bg-white cursor-pointer hover:bg-gray-50">
-          <div class="text-right hidden sm:block">
-            <div class="text-xs text-gray-500">Halo,</div>
-            <div class="text-sm font-medium text-gray-800 truncate max-w-[120px]">{{ nama or 'Pengguna' }}</div>
-          </div>
-          <img src="{{ url_for('static', filename='img/avatar_default.png') }}"
-               class="h-8 w-8 rounded-full ring-1 ring-gray-200" alt="avatar">
-        </summary>
-        <div class="absolute right-0 mt-2 w-52 rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden">
-          <a class="block px-4 py-3 hover:bg-gray-50" href="{{ url_for('editProfile') }}">Edit Profil</a>
-          <a class="block px-4 py-3 text-red-600 hover:bg-red-50" href="{{ url_for('logout') }}">Keluar</a>
-        </div>
-      </details>
-
-      <!-- toggle search di mobile -->
-      <button id="openSearch" class="md:hidden inline-flex items-center justify-center h-10 w-10 rounded-lg border border-gray-200 hover:bg-gray-50">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+      <!-- Search (sembunyikan di hp kecil, muncul ≥sm) -->
+      <form action="#" class="relative hidden sm:block flex-1">
+        <input type="search" placeholder="Cari produk..."
+               class="w-full rounded-xl border border-neutral-300 bg-white py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-400"
+             viewBox="0 0 24 24" fill="none" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"/>
+                d="m21 21-4.35-4.35M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/>
         </svg>
-      </button>
-    </div>
-  </div>
+      </form>
 
-  <!-- search bar mobile -->
-  <div id="mobileSearch" class="md:hidden hidden px-4 pb-3">
-    <form action="{{ url_for('dashboard') }}" method="get">
-      <input name="q" type="text" placeholder="Cari produk..."
-             class="w-full rounded-xl border border-gray-300 bg-white px-4 h-10 focus:outline-none focus:ring-2 focus:ring-red-500">
-    </form>
+      <!-- Right actions -->
+      <div class="ml-auto flex items-center gap-2 sm:gap-3">
+
+        {% if role == 'admin' %}
+        <!-- Admin toggle -->
+        <div class="relative">
+          <button type="button"
+                  class="inline-flex items-center gap-2 rounded-xl bg-red-600 px-3 sm:px-4 py-2 text-white hover:bg-red-700 focus:outline-none"
+                  data-menu-toggle="adminMenu" aria-haspopup="true" aria-expanded="false">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h16v2H4v-2z"/>
+            </svg>
+            <span class="hidden sm:inline">Admin</span>
+          </button>
+
+          <!-- Admin dropdown -->
+          <div id="adminMenu"
+               class="hidden absolute right-0 mt-2 w-56 rounded-xl border border-neutral-200 bg-white shadow-xl p-1">
+            <a href="{{ url_for('menuAdmin', roleMenu='kelolaBarang') }}"
+               class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-50">
+              <span class="i">📦</span> Kelola Barang
+            </a>
+            <a href="{{ url_for('menuAdmin', roleMenu='kelolaUser') }}"
+               class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-50">
+              <span class="i">👥</span> Kelola User
+            </a>
+            <a href="{{ url_for('editProfile') }}"
+               class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-50">
+              <span class="i">🛠️</span> Edit Profil
+            </a>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Profil -->
+        <div class="relative">
+          <button type="button"
+                  class="flex items-center gap-2 rounded-full border border-neutral-300 bg-white px-2 py-1.5 hover:bg-neutral-50"
+                  data-menu-toggle="profileMenu" aria-haspopup="true" aria-expanded="false">
+            <span class="hidden sm:inline text-sm text-neutral-700">Halo, {{ nama }}</span>
+            <img class="h-8 w-8 rounded-full object-cover"
+                 src="{{ url_for('static', filename='img/avatar.png') }}" alt="avatar">
+          </button>
+
+          <!-- Profile dropdown -->
+          <div id="profileMenu"
+               class="hidden absolute right-0 mt-2 w-56 rounded-xl border border-neutral-200 bg-white shadow-xl p-1">
+            <a href="{{ url_for('editProfile') }}"
+               class="block px-3 py-2 rounded-lg hover:bg-neutral-50">Profil saya</a>
+            <a href="{{ url_for('logout') }}"
+               class="block px-3 py-2 rounded-lg hover:bg-neutral-50 text-red-600">Keluar</a>
+          </div>
+        </div>
+
+        <!-- Search button (hanya di hp) -->
+        <button class="sm:hidden inline-flex items-center justify-center h-10 w-10 rounded-xl border border-neutral-300">
+          <svg class="h-5 w-5 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="m21 21-4.35-4.35M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/>
+          </svg>
+        </button>
+
+      </div>
+    </div>
   </div>
 </nav>
 
 <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const btn = document.getElementById('openSearch');
-    const panel = document.getElementById('mobileSearch');
-    if (btn && panel) btn.addEventListener('click', () => panel.classList.toggle('hidden'));
-  });
+  // ===== Dropdown controller (eksklusif & auto-close) =====
+  (function () {
+    const toggles = document.querySelectorAll('[data-menu-toggle]');
+    const menus = new Map(); // id -> element
+
+    toggles.forEach(btn => {
+      const id = btn.getAttribute('data-menu-toggle');
+      const menu = document.getElementById(id);
+      if (!menu) return;
+      menus.set(id, menu);
+
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = !menu.classList.contains('hidden');
+        closeAll();
+        if (!isOpen) openMenu(id, btn);
+      });
+    });
+
+    function openMenu(id, btn) {
+      const menu = menus.get(id);
+      if (!menu) return;
+      menu.classList.remove('hidden');
+      btn?.setAttribute('aria-expanded', 'true');
+    }
+
+    function closeAll() {
+      menus.forEach((menu, id) => {
+        if (!menu.classList.contains('hidden')) {
+          menu.classList.add('hidden');
+        }
+      });
+      toggles.forEach(b => b.setAttribute('aria-expanded', 'false'));
+    }
+
+    // Klik di luar menutup semua
+    document.addEventListener('click', closeAll);
+    // Esc untuk menutup
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAll(); });
+    // Klik item menu menutup juga
+    document.querySelectorAll('#adminMenu a, #profileMenu a').forEach(a => {
+      a.addEventListener('click', () => setTimeout(closeAll, 0));
+    });
+  })();
 </script>
