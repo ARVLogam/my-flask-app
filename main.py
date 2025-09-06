@@ -1,15 +1,14 @@
 from flask import Flask, render_template, redirect, request, session, flash, url_for
-from werkzeug.security import check_password_hash
-import psycopg2
-import os
-import traceback
-import logging
-from crud import Database, create_tables
-from itsdangerous import URLSafeTimedSerializer
-from dotenv import load_dotenv
-import os
+from werkzeug.security import check_password_hash, generate_password_hash
+import os, traceback, logging
+import psycopg2  # (opsional: bisa dihapus kalau tidak dipakai langsung)
 from functools import wraps
+from dotenv import load_dotenv
+
 from flask_mail import Mail, Message
+from itsdangerous import URLSafeTimedSerializer
+from crud import Database, create_tables
+from config import MAIL_SETTINGS  # pastikan MAIL_SETTINGS ambil dari .env
 
 def send_email(to, subject, body):
     msg = Message(subject, recipients=[to])  # sender otomatis dari MAIL_DEFAULT_SENDER
@@ -162,23 +161,31 @@ def dashboard():
 
 @app.route('/reset-password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
-    email = verify_token(token)  # Fungsi untuk decode token
+    email = verify_token(token)
     if not email:
-        flash("Token tidak valid atau kedaluwarsa", "danger")
-        return redirect(url_for('login'))
+        flash("Token tidak valid atau kedaluwarsa.", "error")
+        return redirect(url_for('forgot_password'))
 
     if request.method == 'POST':
-        new_password = request.form['password']
-        confirm = request.form['confirm_password']
-        if new_password != confirm:
-            flash("Konfirmasi password tidak cocok", "warning")
+        new_password = request.form.get('password', '')
+        confirm = request.form.get('confirm_password', '')
+        if not new_password or new_password != confirm:
+            flash("Konfirmasi password tidak cocok.", "error")
             return redirect(request.url)
+
         db = Database(DB_CONFIG)
-        db.update_user_password(email, new_password)
-        flash("Password berhasil diubah", "success")
-        return redirect(url_for('login'))
+        hashed = generate_password_hash(new_password)
+        # Pastikan crud.py punya method ini (atau method setara yang meng-hash di dalam):
+        ok = db.update_user_password_by_email(email, hashed)
+        if ok:
+            flash("Password berhasil diubah. Silakan login.", "success")
+            return redirect(url_for('login'))
+        else:
+            flash("Gagal menyimpan password baru.", "error")
+            return redirect(request.url)
 
     return render_template('reset_password.html')
+
 def verify_token(token, max_age=3600):
     s = URLSafeTimedSerializer(app.secret_key)
     try:
@@ -188,34 +195,32 @@ def verify_token(token, max_age=3600):
         print(f"Token error: {e}")
         return None
 
+RESET_SALT = "reset-password"
+
 def generate_token(email):
     s = URLSafeTimedSerializer(app.secret_key)
-    return s.dumps(email)
-    
-def send_email(to, subject, body):
-    msg = Message(subject, sender=app.config['MAIL_USERNAME'], recipients=[to])
-    msg.body = body
-    mail.send(msg)
+    return s.dumps(email, salt=RESET_SALT)
+
+def verify_token(token, max_age=3600):
+    s = URLSafeTimedSerializer(app.secret_key)
+    try:
+        return s.loads(token, salt=RESET_SALT, max_age=max_age)
+    except Exception as e:
+        print(f"Token error: {e}")
+        return None
 
 
 @app.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
-
         try:
             db = Database(DB_CONFIG)
-
-            # Cek keberadaan email TANPA membocorkan ke user
             user_exists = db.check_email_exists(email)
-
             if user_exists:
-                # buat token & kirim email
-                token = generate_token(email)  # pastikan pakai SALT di helper
+                token = generate_token(email)
                 reset_url = url_for('reset_password', token=token, _external=True)
-
                 try:
-                    # gunakan helper agar rapi (atau buat Message di sini jika belum punya)
                     send_email(
                         to=email,
                         subject="Reset Password",
@@ -227,20 +232,15 @@ def forgot_password():
                         )
                     )
                 except Exception as e:
-                    # Jangan bocorkan detail ke user; log saja
                     print("Gagal mengirim email:", e)
-
-            # Pesan generik: selalu sama, baik email ada atau tidak
             flash("Jika email terdaftar, instruksi reset sudah dikirim.", "success")
             return redirect(url_for('forgot_password'))
-
         except Exception as e:
             print("Error di forgot_password:", e)
             flash("Terjadi kesalahan. Coba lagi nanti.", "error")
             return redirect(url_for('forgot_password'))
 
-    # GET → tampilkan form
-    return render_template("forgot_password.html")
+    return render_template("forget_password.html")  # ← samakan nama file
 
 
 
