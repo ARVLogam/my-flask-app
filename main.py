@@ -12,6 +12,7 @@ import threading
 import time
 from flask_mail import Mail, Message
 
+
 # app modules
 from crud import Database, create_tables
 from config import MAIL_SETTINGS, DB_CONFIG as RAW_DB  # dari config.py
@@ -20,6 +21,46 @@ from config import MAIL_SETTINGS, DB_CONFIG as RAW_DB  # dari config.py
 # Init dasar
 # ---------------------------
 load_dotenv()
+
+# ====== Upload Foto Produk (Admin) ======
+from werkzeug.utils import secure_filename
+from pathlib import Path
+import re
+
+# Folder upload
+UPLOAD_FOLDER = Path("static/img/products")
+UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
+
+# Ekstensi yang diijinkan
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
+
+def allowed_file(filename: str) -> bool:
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+_slug_re = re.compile(r"[^a-z0-9]+")
+def slugify(text: str) -> str:
+    return _slug_re.sub("-", text.lower()).strip("-")
+
+def save_product_image(file_storage, nama_barang: str) -> str | None:
+    """
+    Simpan foto produk ke static/img/products dengan nama file berbasis slug.
+    Return: relative path (contoh: 'img/products/kabel-tembaga.png') atau None.
+    """
+    if not file_storage or file_storage.filename == "":
+        return None
+    if not allowed_file(file_storage.filename):
+        return None
+
+    ext = file_storage.filename.rsplit(".", 1)[1].lower()
+    slug = slugify(nama_barang)
+    filename = secure_filename(f"{slug}.{ext}")
+    dest = UPLOAD_FOLDER / filename
+    file_storage.save(dest)
+
+    # kembalikan path RELATIF dari /static
+    return f"img/products/{filename}"
+
+
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev")
@@ -370,37 +411,52 @@ def logout():
 # ---------------------------
 # CRUD Barang
 # ---------------------------
-@app.route("/addBarang", methods=["GET", "POST"])
+@app.route('/addBarang', methods=['GET', 'POST'])
 def addBarang():
-    if not check_role("admin"):
+    if not check_role('admin'):
         flash("Akses tidak diizinkan", "error")
-        return redirect("/")
+        return redirect('/')
 
-    if request.method == "POST":
+    if request.method == 'POST':
         try:
-            nama_barang = request.form["nama_barang"]
-            harga = request.form["harga"]
-            deskripsi = request.form["deskripsi"]
+            nama_barang = request.form.get('nama_barang', '').strip()
+            harga = request.form.get('harga', '').strip()
+            deskripsi = request.form.get('deskripsi', '').strip()
+            foto_file = request.files.get('foto')  # <--- ambil file
+
+            if not nama_barang or not harga or not deskripsi:
+                flash("Semua field harus diisi!", "error")
+                return render_template("addBarang.html")
 
             try:
-                harga = float(harga)
+                harga = float(harga.replace(',', '.'))
             except ValueError:
                 flash("Harga harus berupa angka!", "error")
                 return render_template("addBarang.html")
 
             db = Database(DB_CONFIG)
-
             if db.get_data_barang_nama_harga(nama_barang, harga):
                 flash("Nama dan Harga Barang sudah terdaftar", "error")
                 return render_template("addBarang.html")
 
+            # simpan dulu barang di DB
             barang_id = db.create_barang(nama_barang, harga, deskripsi)
-            if barang_id:
-                flash("Tambah Barang Berhasil", "success")
-                return redirect(url_for("menuAdmin", roleMenu="kelolaBarang"))
-            else:
+            if not barang_id:
                 flash("Tambah Barang Gagal, silakan ulangi", "error")
                 return render_template("addBarang.html")
+
+            # simpan foto (opsional)
+            relpath = save_product_image(foto_file, nama_barang)
+            if relpath:
+                # kalau tabel kamu belum ada kolom foto, lewati bagian ini.
+                # jika SUDAH ada kolom foto, panggil method update foto kamu:
+                try:
+                    db.update_barang_foto(barang_id, relpath)  # <-- buat method ini di crud.py jika ada kolom foto
+                except Exception:
+                    pass  # aman, tetap lanjut walau tanpa kolom foto
+
+            flash("Tambah Barang Berhasil", "success")
+            return redirect(url_for("menuAdmin", roleMenu="kelolaBarang"))
 
         except Exception as e:
             print(f"Error in addBarang: {str(e)}")
@@ -408,6 +464,7 @@ def addBarang():
             return render_template("addBarang.html")
 
     return render_template("addBarang.html")
+
 
 @app.route("/editBarang/<id_barang>", methods=["GET", "POST"])
 def editBarang(id_barang):
