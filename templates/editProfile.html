@@ -1,3 +1,4 @@
+<!-- templates/editProfile.html -->
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -16,12 +17,19 @@
       <h1 class="text-2xl font-bold text-white text-center">Edit Profil Pengguna</h1>
     </div>
 
+    <!-- IMPORTANT: enctype untuk upload -->
     <form method="POST" enctype="multipart/form-data" class="p-6 space-y-5">
       <!-- Avatar -->
       <div class="flex items-start gap-4">
-        <img id="avatarPreview" src="{{ avatar_url }}" alt="Avatar" class="h-20 w-20 rounded-full object-cover border"/>
+        <img
+          id="avatarPreview"
+          src="{{ avatar_url or url_for('static', filename='img/avatars/guest.png') }}"
+          alt="Avatar"
+          class="h-20 w-20 rounded-full object-cover border"
+          onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/avatars/guest.png') }}';"
+        />
         <div class="flex-1">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Foto Profil</label>
+          <label for="avatarInput" class="block text-sm font-medium text-gray-700 mb-1">Foto Profil</label>
           <input
             type="file"
             name="avatar"
@@ -43,7 +51,8 @@
           <input
             type="text" id="username" name="username"
             class="w-full pl-10 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-            value="{{ user.username }}" required
+            value="{{ user.username }}"
+            required
           />
         </div>
       </div>
@@ -73,7 +82,8 @@
           <input
             type="text" id="nama" name="nama"
             class="w-full pl-10 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-            value="{{ user.nama }}" required
+            value="{{ user.nama }}"
+            required
           />
         </div>
       </div>
@@ -88,7 +98,8 @@
           <input
             type="email" id="email" name="email"
             class="w-full pl-10 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-            value="{{ user.email }}" required
+            value="{{ user.email }}"
+            required
           />
         </div>
       </div>
@@ -103,7 +114,8 @@
           <input
             type="text" id="nohp" name="nohp"
             class="w-full pl-10 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-            value="{{ user.nohp }}" required
+            value="{{ user.nohp }}"
+            required
           />
         </div>
       </div>
