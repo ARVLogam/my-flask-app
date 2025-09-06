@@ -7,10 +7,10 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
 </head>
-<body class="bg-neutral-100 min-h-screen py-8">
+<body class="bg-neutral-100 min-h-screen flex items-center justify-center p-4">
   {% include 'flashProtection.html' %}
-  <div class="max-w-2xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden">
-    <div class="bg-red-600 py-5 px-6">
+  <div class="w-full max-w-xl bg-white rounded-2xl shadow-lg overflow-hidden">
+    <div class="bg-red-600 py-4 px-6">
       <h1 class="text-2xl font-bold text-white text-center">Edit Barang</h1>
     </div>
 
@@ -21,87 +21,81 @@
 
       <!-- Nama -->
       <div>
-        <label for="nama_barang" class="block text-sm font-medium text-neutral-700 mb-1">Nama Barang</label>
+        <label class="block text-sm font-medium text-neutral-700 mb-1">Nama Barang</label>
         <div class="relative">
           <i class="fa-solid fa-box absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"></i>
-          <input type="text" id="nama_barang" name="nama_barang"
-                 class="w-full pl-10 pr-3 py-2 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                 required placeholder="Masukkan nama barang"
-                 value="{{ barang[1] if barang else '' }}" />
+          <input type="text" name="nama_barang" required
+                 value="{{ barang[1] if barang else '' }}"
+                 class="w-full pl-10 p-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"/>
         </div>
       </div>
 
       <!-- Harga -->
       <div>
-        <label for="harga" class="block text-sm font-medium text-neutral-700 mb-1">Harga</label>
+        <label class="block text-sm font-medium text-neutral-700 mb-1">Harga</label>
         <div class="relative">
           <i class="fa-solid fa-tag absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"></i>
-          <input type="text" inputmode="decimal" id="harga" name="harga"
-                 class="w-full pl-10 pr-3 py-2 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                 value="{{ '{:,.2f}'.format(barang[2]).replace(',', '.') if barang else '' }}"
-                 placeholder="cth 150000" required />
+          <input type="text" name="harga" required
+                 value="{{ '{:,.0f}'.format(barang[2]).replace(',', '.') if barang else '' }}"
+                 placeholder="contoh: 150.000"
+                 class="w-full pl-10 p-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"/>
         </div>
-        <p class="text-xs text-neutral-500 mt-1">Masukkan angka saja. Koma/ titik akan dinormalisasi.</p>
+        <p class="text-xs text-neutral-500 mt-1">Boleh pakai titik/koma. Contoh: 150.000 atau 150,000.00</p>
       </div>
 
       <!-- Deskripsi -->
       <div>
-        <label for="deskripsi" class="block text-sm font-medium text-neutral-700 mb-1">Deskripsi</label>
+        <label class="block text-sm font-medium text-neutral-700 mb-1">Deskripsi</label>
         <div class="relative">
           <i class="fa-solid fa-align-left absolute left-3 top-3 text-neutral-400"></i>
-          <textarea id="deskripsi" name="deskripsi" rows="4"
-                    class="w-full pl-10 pr-3 py-2 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    required>{{ barang[3] if barang else '' }}</textarea>
+          <textarea name="deskripsi" rows="3" required
+                    class="w-full pl-10 p-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500">{{ barang[3] if barang else '' }}</textarea>
         </div>
       </div>
 
-      <!-- Foto Produk -->
+      <!-- Foto -->
       <div>
-        <label class="block text-sm font-medium text-neutral-700 mb-1">Foto Produk</label>
-
-        <!-- Preview -->
-        {% set preview = url_for('static', filename='img/products/barang_' ~ barang[0] ~ '.png') %}
-        <div class="flex items-start gap-4">
-          <img id="imgPreview" src="{{ preview }}" alt="Preview"
-               class="w-32 h-32 object-contain rounded border border-neutral-200 bg-neutral-50 p-1"
-               onerror="this.style.display='none'"/>
-
-          <!-- Dropzone / file input -->
-          <label for="foto"
-                 class="flex-1 border-2 border-dashed border-neutral-300 rounded-lg p-4 text-center cursor-pointer hover:border-red-400 transition">
-            <i class="fa-regular fa-image text-2xl mb-2 text-neutral-500"></i>
-            <div class="text-sm text-neutral-600">Tarik & letakkan gambar di sini atau <span class="text-red-600 font-medium">pilih file</span></div>
-            <div class="text-xs text-neutral-500 mt-1">png, jpg, jpeg, webp • maks ±5MB</div>
-            <input id="foto" name="foto" type="file" accept="image/*" class="hidden" />
-          </label>
+        <label class="block text-sm font-medium text-neutral-700 mb-2">Foto Produk (opsional)</label>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div class="rounded-lg border border-neutral-200 p-2 bg-neutral-50">
+            <img id="preview"
+                 src="{{ image_url if image_url else url_for('static', filename='img/no-image.png') }}"
+                 alt="Preview"
+                 class="w-full aspect-[4/3] object-contain"/>
+          </div>
+          <div>
+            <input type="file" name="foto" accept=".png,.jpg,.jpeg,.webp"
+                   class="block w-full text-sm text-neutral-700
+                          file:mr-4 file:py-2 file:px-4
+                          file:rounded-lg file:border-0
+                          file:text-sm file:font-semibold
+                          file:bg-neutral-100 file:text-neutral-700
+                          hover:file:bg-neutral-200"/>
+            <p class="text-xs text-neutral-500 mt-2">Maks. beberapa MB. Format: png, jpg, jpeg, webp</p>
+          </div>
         </div>
       </div>
 
-      <button type="submit"
-              class="w-full bg-red-600 text-white py-2.5 rounded-lg font-medium hover:bg-red-700 transition flex items-center justify-center gap-2">
-        <i class="fa-solid fa-floppy-disk"></i> Simpan Perubahan
-      </button>
-
-      <a href="{{ url_for('menuAdmin', roleMenu='kelolaBarang') }}"
-         class="block text-center w-full bg-neutral-200 text-neutral-800 py-2.5 rounded-lg hover:bg-neutral-300 transition">
-        Batal
-      </a>
+      <!-- Actions -->
+      <div class="flex gap-3 pt-2">
+        <button type="submit"
+                class="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-lg py-2.5 font-medium">
+          <i class="fa-solid fa-floppy-disk mr-2"></i>Simpan Perubahan
+        </button>
+        <a href="{{ url_for('menuAdmin', roleMenu='kelolaBarang') }}"
+           class="flex-1 text-center bg-neutral-200 hover:bg-neutral-300 text-neutral-800 rounded-lg py-2.5 font-medium">Batal</a>
+      </div>
     </form>
   </div>
 
   <script>
-    // live preview
-    const input = document.getElementById('foto');
-    const img   = document.getElementById('imgPreview');
-    if (input) {
-      input.addEventListener('change', e => {
-        const file = e.target.files && e.target.files[0];
-        if (!file) return;
-        const url = URL.createObjectURL(file);
-        img.src = url;
-        img.style.display = 'block';
-      });
-    }
+    // Preview live
+    const fileInput = document.querySelector('input[name="foto"]');
+    const preview   = document.getElementById('preview');
+    fileInput?.addEventListener('change', e => {
+      const f = e.target.files?.[0];
+      if (f) preview.src = URL.createObjectURL(f);
+    });
   </script>
 </body>
 </html>
