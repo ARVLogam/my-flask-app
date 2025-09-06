@@ -18,12 +18,11 @@ EMAIL_ADDRESS = 'secrap7@gmail.com'
 EMAIL_PASSWORD = 'itlukqqxvhkqvuwq'
 
 MAIL_SETTINGS = {
-MAIL_SERVER=smtp.gmail.com
-MAIL_PORT=587
-MAIL_USE_TLS=true
-MAIL_USE_SSL=false
-MAIL_USERNAME=secrap7@gmail.com
-MAIL_PASSWORD=<APP_PASSWORD_GMAIL>
-MAIL_DEFAULT_SENDER=secrap7@gmail.com
-
+    "MAIL_SERVER": "smtp.gmail.com",
+    "MAIL_PORT": 587,
+    "MAIL_USE_TLS": True,
+    "MAIL_USE_SSL": False,
+    "MAIL_USERNAME": "secrap7@gmail.com",
+    "MAIL_PASSWORD": "itlukqqxvhkqvuwq",   # App Password Gmail
+    "MAIL_DEFAULT_SENDER": "secrap7@gmail.com"
 }
