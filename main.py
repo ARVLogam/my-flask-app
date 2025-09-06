@@ -417,87 +417,74 @@ def editProfile():
     db = Database(DB_CONFIG)
 
     if request.method == "GET":
-        user = db.get_user_by_id(user_id)
-        if not user:
+        u = db.get_user_by_id(user_id)
+        if not u:
             flash("Data pengguna tidak ditemukan", "error")
             return redirect(url_for("dashboard"))
 
-        # Susunan field contoh: (id, username, password_hash, role, nama, email, nohp, created_at)
-        user_data = {
-            "username": user[1],
-            "nama": user[4],
-            "email": user[5],
-            "nohp": user[6],
-            # cache-buster supaya avatar baru langsung tampil
-            "avatar_url": url_for(
-                "static",
-                filename=f"img/avatars/user_{user_id}.webp"
-            ) + f"?v={int(time.time())}"
+        user = {
+            "username": u[1],  # sesuaikan indeks dengan struktur tabelmu
+            "nama":     u[4],
+            "email":    u[5],
+            "nohp":     u[6],
         }
-        return render_template("editProfile.html", user=user_data)
+        avatar_url = url_for("static", filename=_avatar_relpath(user_id))
+        return render_template("editProfile.html", user=user, avatar_url=avatar_url)
 
-    # --- POST (update) ---
+    # POST
     try:
         username = request.form.get("username", "").strip()
-        password = request.form.get("password", "").strip()
+        password = request.form.get("password", "").strip()  # opsional
         nama     = request.form.get("nama", "").strip()
-        email    = request.form.get("email", "").strip().lower()
+        email    = request.form.get("email", "").strip()
         nohp     = request.form.get("nohp", "").strip()
 
-        # Validasi dasar
-        if not username or not nama or not email:
-            flash("Username, nama, dan email wajib diisi", "error")
+        # Validasi sederhana
+        if not username or not nama or not email or not nohp:
+            flash("Semua field (kecuali password) wajib diisi", "error")
             return redirect(url_for("editProfile"))
 
-        # Cek unik username/email untuk user lain
+        # Cek duplikasi username/email milik user lain
         if db.check_username_exists(username, user_id):
             flash("Username sudah digunakan oleh pengguna lain", "error")
             return redirect(url_for("editProfile"))
-
         if db.check_email_exists_for_update(email, user_id):
             flash("Email sudah digunakan oleh pengguna lain", "error")
             return redirect(url_for("editProfile"))
 
-        # Siapkan password (opsional)
-        password_to_save = None
-        if password:
-            password_to_save = generate_password_hash(password)
-
-        # Handle avatar (opsional)
-        file = request.files.get("avatar")
-        if file and file.filename:
-            try:
-                save_avatar(file, user_id)
-            except Exception as e:
-                print("Gagal simpan avatar:", e)
-                flash("Upload foto profil gagal. Pastikan format .png/.jpg/.jpeg/.webp", "error")
+        # Simpan avatar (opsional). Tidak perlu simpan ke DB.
+        avatar_file = request.files.get("avatar")
+        if avatar_file and avatar_file.filename:
+            saved = _save_avatar(avatar_file, user_id)
+            if saved == "INVALID":
+                flash("Format gambar tidak diizinkan. Gunakan png/jpg/jpeg/webp.", "error")
+                return redirect(url_for("editProfile"))
+            if saved is None:
+                flash("Gagal menyimpan gambar. Coba file lain.", "error")
                 return redirect(url_for("editProfile"))
 
-        # Update DB
-        ok = db.update_user(
-            user_id,
-            username=username,
-            nama=nama,
-            email=email,
-            nohp=nohp,
-            role=None,                 # tidak diubah di halaman ini
-            password=password_to_save  # boleh None
-        )
+        # Update user. Password hanya diubah jika diisi.
+        if password:
+            ok = db.update_user(user_id, username, nama, email, nohp, role=None, password=password)
+        else:
+            ok = db.update_user(user_id, username, nama, email, nohp, role=None)
 
         if not ok:
             flash("Gagal memperbarui profil", "error")
             return redirect(url_for("editProfile"))
 
-        # Refresh session name biar navbar update
+        # Perbaharui session nama untuk navbar
         session["nama"] = nama
+
         flash("Profil berhasil diperbarui", "success")
         return redirect(url_for("dashboard"))
 
     except Exception as e:
-        print("Error editProfile:", e)
-        traceback.print_exc()
+        # Supaya kelihatan error aslinya di log/container
+        import traceback; traceback.print_exc()
         flash("Terjadi kesalahan saat menyimpan profil", "error")
         return redirect(url_for("editProfile"))
+
 
 
 
