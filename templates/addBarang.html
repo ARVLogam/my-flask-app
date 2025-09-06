@@ -15,12 +15,24 @@
       <div class="bg-red-600 py-4 px-6">
         <h1 class="text-2xl font-bold text-white text-center">Tambah Barang</h1>
       </div>
+      <!-- Tambahan di form tambah/ubah barang -->
+      <div class="space-y-1">
+        <label class="text-sm text-neutral-700">Foto Produk (PNG/JPG/WebP)</label>
+        <input type="file" name="foto" accept=".png,.jpg,.jpeg,.webp"
+               class="block w-full border border-neutral-300 rounded-lg p-2">
+        <p class="text-xs text-neutral-500">Opsional. Maks 5MB.</p>
+      </div>
 
       <form
         action="{{ url_for('addBarang') }}"
         method="post"
         class="p-6 space-y-4"
-      >
+        action=""  
+        enctype="multipart/form-data" 
+        class="space-y-4">
+  <!-- ... fields ... -->
+</form>
+>
         <!-- Nama Barang -->
         <div>
           <label
