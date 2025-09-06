@@ -12,35 +12,12 @@ from functools import wraps
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from flask_mail import Mail, Message
 
-def send_reset_email(recipient_email, token):
-    sender_email = 'secrap7@gmail.com'  # Ganti dengan emailmu
-    sender_password = 'pmbnqjbiosnuzszt'  # Ganti dengan App Password (bukan password biasa)
-    reset_link = f"https://my-flask-app-production-9042.up.railway.app/forgot-password/{token}"  # Ganti ke domain aslimu saat deploy
-
-    subject = "Reset Password"
-    body = f'''
-    Hai,\n
-    Klik link berikut untuk mereset password kamu:\n
-    {reset_link}\n
-    Jika kamu tidak meminta reset password, abaikan email ini.
-    '''
-
-    msg = MIMEMultipart()
-    msg['From'] = sender_email
-    msg['To'] = recipient_email
-    msg['Subject'] = subject
-    msg.attach(MIMEText(body, 'plain'))
-
-    try:
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
-        server.login(sender_email, sender_password)
-        server.send_message(msg)
-        server.quit()
-        print('Email berhasil dikirim.')
-    except Exception as e:
-        print('Gagal mengirim email:', e)
+def send_email(to, subject, body):
+    msg = Message(subject, recipients=[to])  # sender otomatis dari MAIL_DEFAULT_SENDER
+    msg.body = body
+    mail.send(msg)
 
 
 def login_required(f):
@@ -82,17 +59,16 @@ from flask_mail import Mail, Message
 from config import MAIL_SETTINGS
 
 app.config.update(MAIL_SETTINGS)
-mail = Mail(app)
+#mail = Mail(app)
 
 
 # Konfigurasi email
-#app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-#app.config['MAIL_PORT'] = 587
-#app.config['MAIL_USE_TLS'] = True
-#app.config['MAIL_USERNAME'] = 'secrap7@gmail.com'
-#app.config['MAIL_PASSWORD'] = 'itlukqqxvhkqvuwq'  # gunakan App Password di sini   
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'secrap7@gmail.com'
+app.config['MAIL_PASSWORD'] = 'itlukqqxvhkqvuwq'  # gunakan App Password di sini   
 
-mail = Mail(app)
 
 
 # Pindahkan error handler setelah inisialisasi app
@@ -202,7 +178,6 @@ def reset_password(token):
             return redirect(request.url)
         db = Database(DB_CONFIG)
         db.update_user_password(email, new_password)
-        db.close()
         flash("Password berhasil diubah", "success")
         return redirect(url_for('login'))
 
@@ -229,28 +204,47 @@ def send_email(to, subject, body):
 @app.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
     if request.method == 'POST':
-        email = request.form['email']
-        db = Database(DB_CONFIG)
+        email = request.form.get('email', '').strip().lower()
 
-        # Cek apakah email terdaftar
-        if db.check_email_exists(email):
-            token = generate_token(email)
-            reset_url = url_for('reset_password', token=token, _external=True)
+        try:
+            db = Database(DB_CONFIG)
 
-            try:
-                msg = Message("Reset Password", sender=app.config['MAIL_USERNAME'], recipients=[email])
-                msg.body = f"Klik link berikut untuk mereset password kamu: {reset_url}\n\nLink ini berlaku 1 jam."
-                mail.send(msg)
-                flash("Email reset password telah dikirim.", "info")
-            except Exception as e:
-                print("Gagal mengirim email:", e)
-                flash("Gagal mengirim email reset password", "error")
-        else:
-            flash("Email tidak ditemukan", "warning")
-            
-        return redirect(url_for('login'))
+            # Cek keberadaan email TANPA membocorkan ke user
+            user_exists = db.check_email_exists(email)
 
-    return render_template("forgot_password.html")
+            if user_exists:
+                # buat token & kirim email
+                token = generate_token(email)  # pastikan pakai SALT di helper
+                reset_url = url_for('reset_password', token=token, _external=True)
+
+                try:
+                    # gunakan helper agar rapi (atau buat Message di sini jika belum punya)
+                    send_email(
+                        to=email,
+                        subject="Reset Password",
+                        body=(
+                            "Halo,\n\n"
+                            "Klik tautan berikut untuk mengatur ulang password (berlaku 1 jam):\n"
+                            f"{reset_url}\n\n"
+                            "Jika tidak meminta reset, abaikan email ini."
+                        )
+                    )
+                except Exception as e:
+                    # Jangan bocorkan detail ke user; log saja
+                    print("Gagal mengirim email:", e)
+
+            # Pesan generik: selalu sama, baik email ada atau tidak
+            flash("Jika email terdaftar, instruksi reset sudah dikirim.", "success")
+            return redirect(url_for('forgot_password'))
+
+        except Exception as e:
+            print("Error di forgot_password:", e)
+            flash("Terjadi kesalahan. Coba lagi nanti.", "error")
+            return redirect(url_for('forgot_password'))
+
+    # GET → tampilkan form
+    return render_template("forget_password.html")
+
 
 
 @app.route("/register", methods=['GET', 'POST'])
@@ -352,9 +346,16 @@ def editProfile():
         
         # Update data user
         if password.strip():
-            result = db.update_user(user_id, username, nama, email, nohp, password)
+            result = db.update_user(
+                user_id, username, nama, email, nohp,
+                role=None,
+                password=password
+            )
         else:
-            result = db.update_user(user_id, username, nama, email, nohp)
+            result = db.update_user(
+                user_id, username, nama, email, nohp,
+                role=None
+            )
         
         if result:
             # Update nama di session jika diperlukan
@@ -665,10 +666,10 @@ def menuAdmin():
     
 
 
-db = Database(DB_CONFIG)  # <-- ini penting!
+
 
 if __name__ == '__main__':
-     create_tables(DB_CONFIG)
+    create_tables(DB_CONFIG)
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
 
