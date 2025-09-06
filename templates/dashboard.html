@@ -1,182 +1,191 @@
+<!-- templates/dashboard.html -->
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <link
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
-      rel="stylesheet"
-    />
-  </head>
-  <body class="bg-gray-100">
-    {% include 'navbar.html' %}
-    
-    <!-- Main Content -->
-    <div class="container mx-auto p-6 pt-28">
-      <!-- Dashboard Header with Clock -->
-      <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div
-          class="flex flex-col md:flex-row justify-between items-start md:items-center"
-        >
-          <div>
-            <img src="{{ url_for('static', filename='img/logo.PNG') }}" width="300" class="text-gray-600">
-            Selamat datang kembali, {{ nama }} di Sistem Management ARV LOGAM
-          </div>
-          <div class="mt-4 md:mt-0 bg-gray-100 px-4 py-2 rounded-lg">
-            <div class="text-lg font-medium text-gray-700 flex items-center">
-              <i class="far fa-clock mr-3"></i>
-              <div>
-                <div id="liveDayDate" class="text-sm"></div>
-                <div id="liveTime" class="font-semibold"></div>
-              </div>
-            </div>
-          </div>
-        </div>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Etalase Produk</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    * { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    .card-shadow { box-shadow: 0 10px 25px rgba(0,0,0,.06); }
+    .line-clamp-2 {
+      display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+    }
+    .scrollbar-hide::-webkit-scrollbar{display:none}
+    .scrollbar-hide{ -ms-overflow-style:none; scrollbar-width:none }
+  </style>
+</head>
+<body class="bg-neutral-50 min-h-screen">
+
+  <!-- Top bar -->
+  <header class="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-neutral-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-3">
+      <!-- Logo besar tanpa frame -->
+      <a href="{{ url_for('dashboard') }}" class="shrink-0">
+        <img
+          src="{{ url_for('static', filename='img/logo.PNG') }}"
+          alt="Logo"
+          class="h-9 w-auto"
+          loading="eager"
+        />
+      </a>
+
+      <!-- Search -->
+      <div class="flex-1">
+        <form id="searchForm" class="relative">
+          <input
+            id="searchInput"
+            type="search"
+            placeholder="Cari produk…"
+            class="w-full rounded-xl border border-neutral-300 bg-white py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+          />
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-4.35-4.35M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/>
+          </svg>
+        </form>
       </div>
 
-      {% include 'flashProtection.html' %}
-
-      <!-- Produk Section for Both Admin and User -->
-      <div class="bg-white overflow-hidden shadow-md rounded-lg mb-6">
-        <div class="p-4 bg-gray-50 border-b">
-          <h2 class="text-lg font-semibold text-gray-700">Daftar Produk</h2>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <!-- <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  ID
-                </th> -->
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  NO
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Nama Barang
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Harga/kg
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Deskripsi
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tanggal Dibuat
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tanggal Update
-                </th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              {% for item in barang %}
-              <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {{ loop.index }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {{ item[1] }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {{ item[2] }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ item[3] }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ item[4] if item[4] else '' }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ item[5] if item[5] else '' }}
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
+      <!-- User/menu simple -->
+      <div class="hidden sm:flex items-center gap-3">
+        <span class="text-sm text-neutral-600">Halo, {{ nama }}</span>
+        <a href="{{ url_for('logout') }}" class="text-sm text-red-600 hover:text-red-700">Keluar</a>
       </div>
-
-      <!-- Stats Cards (Optional) -->
-      {% if role == 'admin' %}
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <div class="bg-white rounded-lg shadow-md p-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-gray-500">Total Produk</p>
-              <h3 class="text-2xl font-bold">{{ total_produk }}</h3>
-            </div>
-            <div class="bg-blue-100 p-3 rounded-full">
-              <i class="fas fa-box text-blue-600 text-xl"></i>
-            </div>
-          </div>
-        </div>
-        <div class="bg-white rounded-lg shadow-md p-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-gray-500">Produk Terakhir Ditambahkan</p>
-              <h3 class="text-lg font-semibold">
-                {{ produk_terakhir[1] if produk_terakhir else 'Tidak ada' }}
-              </h3>
-            </div>
-            <div class="bg-green-100 p-3 rounded-full">
-              <i class="fas fa-plus text-green-600 text-xl"></i>
-            </div>
-          </div>
-        </div>
-      </div>
-      {% endif %}
     </div>
 
-    <script>
-      // Clock and mobile menu scripts
-      document.addEventListener('DOMContentLoaded', function() {
-        // Close menu when clicking outside
-        document.addEventListener('click', function(event) {
-          const menu = document.getElementById("mobileMenu");
-          const toggle = document.getElementById("mobileMenuToggle");
-          
-          if (menu && toggle && !menu.contains(event.target) && !toggle.contains(event.target)) {
-            menu.classList.add('hidden');
-            const icon = toggle.querySelector('i');
-            icon.classList.remove('fa-times');
-            icon.classList.add('fa-bars');
-          }
+    <!-- Category pills (opsional; statis contoh) -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-3">
+      <div class="flex gap-2 overflow-x-auto scrollbar-hide">
+        {% set categories = ['Semua','Besi','Tembaga','Aluminium','Kuningan','Aksesoris'] %}
+        {% for c in categories %}
+          <button
+            data-cat="{{ c|lower }}"
+            class="cat-pill px-4 py-2 text-sm rounded-full border border-neutral-300 bg-white hover:bg-neutral-100"
+          >{{ c }}</button>
+        {% endfor %}
+      </div>
+    </div>
+  </header>
+
+  <!-- Flash -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+    {% include 'flashProtection.html' %}
+  </div>
+
+  <!-- Grid -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <!-- Info bar -->
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <h1 class="text-xl sm:text-2xl font-bold text-neutral-900">Etalase Produk</h1>
+      <div class="text-sm text-neutral-600">
+        Total produk: <strong>{{ total_produk }}</strong>
+      </div>
+    </div>
+
+    <!-- Kartu-kartu -->
+    <div id="gridProduk" class="grid gap-4 sm:gap-5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+      {% for item in barang %}
+        {# asumsi struktur: item[0]=id, item[1]=nama, item[2]=harga, item[3]=deskripsi #}
+        {% set nama = item[1] %}
+        {% set harga = item[2] %}
+        {% set desk  = item[3] %}
+        {# coba tebak gambar: products/<slug>.png; kalau gagal pakai no-image.png #}
+        {% set slug = nama|lower|replace(' ', '-') %}
+        {% set img_try = url_for('static', filename='img/products/' ~ slug ~ '.png') %}
+        {% set img_fallback = url_for('static', filename='img/no-image.png') %}
+
+        <article
+          class="card group bg-white rounded-2xl card-shadow border border-neutral-100 flex flex-col overflow-hidden"
+          data-name="{{ nama|lower }}"
+          data-cat="semua"
+        >
+          <div class="relative aspect-[4/3] overflow-hidden bg-neutral-100">
+            <img
+              src="{{ img_try }}"
+              alt="{{ nama }}"
+              class="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+              onerror="this.onerror=null;this.src='{{ img_fallback }}';"
+              loading="lazy"
+            />
+            <div class="absolute left-2 top-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full shadow">Terlaris</div>
+          </div>
+
+          <div class="p-3 sm:p-4 flex-1 flex flex-col">
+            <h3 class="font-semibold text-neutral-900 text-sm sm:text-base line-clamp-2 min-h-[2.5rem]">{{ nama }}</h3>
+            <p class="text-xs text-neutral-500 mt-1 line-clamp-2 min-h-[2rem]">{{ desk }}</p>
+
+            <div class="mt-3 sm:mt-4">
+              <div class="text-base sm:text-lg font-bold text-red-600">
+                Rp {{ '{:,.0f}'.format(harga).replace(',', '.') }}
+              </div>
+            </div>
+
+            <div class="mt-3 sm:mt-4 grid grid-cols-2 gap-2">
+              <a href="#" class="text-center text-sm border border-neutral-300 rounded-lg py-2 hover:bg-neutral-50">Detail</a>
+
+              {% if role == 'admin' %}
+                <a href="{{ url_for('editBarang', id_barang=item[0]) }}"
+                   class="text-center text-sm bg-red-600 text-white rounded-lg py-2 hover:bg-red-700">Edit</a>
+              {% else %}
+                <button class="text-center text-sm bg-red-600 text-white rounded-lg py-2 hover:bg-red-700">Tambah</button>
+              {% endif %}
+            </div>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+
+    <!-- Empty state -->
+    {% if barang|length == 0 %}
+      <div class="text-center py-20 text-neutral-500">
+        Belum ada produk. {% if role == 'admin' %}<a href="{{ url_for('addBarang') }}" class="text-red-600 hover:underline">Tambah sekarang</a>.{% endif %}
+      </div>
+    {% endif %}
+  </main>
+
+  <!-- Footer mini -->
+  <footer class="border-t border-neutral-200 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-sm text-neutral-500">
+      © {{  (now() if false)  }} Sistem Management ARV LOGAM • Dibuat dengan ❤️
+    </div>
+  </footer>
+
+  <script>
+    // Pencarian client-side
+    const searchInput = document.getElementById('searchInput');
+    const grid = document.getElementById('gridProduk');
+    const cards = Array.from(grid.querySelectorAll('.card'));
+
+    function runFilter() {
+      const q = (searchInput.value || '').toLowerCase().trim();
+      cards.forEach(c => {
+        const name = c.dataset.name || '';
+        const show = !q || name.includes(q);
+        c.style.display = show ? '' : 'none';
+      });
+    }
+    searchInput.addEventListener('input', runFilter);
+
+    // Kategori (contoh sederhana — semua diberi data-cat='semua')
+    const catPills = document.querySelectorAll('.cat-pill');
+    catPills.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const chosen = btn.dataset.cat;
+        catPills.forEach(b => b.classList.remove('bg-red-600','text-white','border-red-600'));
+        btn.classList.add('bg-red-600','text-white','border-red-600');
+
+        cards.forEach(c => {
+          const cat = c.dataset.cat || 'semua';
+          c.style.display = (chosen === 'semua' || cat === chosen) ? '' : 'none';
         });
 
-        // Enhanced live clock function
-        function updateClock() {
-          const now = new Date();
-
-          // Format options
-          const dayDateOptions = {
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          };
-
-          const timeOptions = {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-            hour12: false,
-          };
-
-          document.getElementById("liveDayDate").textContent =
-            now.toLocaleDateString("id-ID", dayDateOptions);
-          document.getElementById("liveTime").textContent =
-            now.toLocaleTimeString("id-ID", timeOptions);
-
-          // Update every second
-          setTimeout(updateClock, 1000);
-        }
-
-        // Initialize clock
-        updateClock();
+        // reset search saat ganti kategori
+        searchInput.value = '';
       });
-    </script>
-  </body>
+    });
+  </script>
+</body>
 </html>
