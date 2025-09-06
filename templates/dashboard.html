@@ -31,53 +31,7 @@
 
   
   <!-- Top bar -->
-  <header class="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-neutral-200">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-3">
-      <!-- Logo besar tanpa frame -->
-      <a href="{{ url_for('dashboard') }}" class="shrink-0">
-        <img
-          src="{{ url_for('static', filename='img/logo.PNG') }}"
-          alt="Logo"
-          class="h-9 w-auto"
-          loading="eager"
-        />
-      </a>
 
-      <!-- Search -->
-      <div class="flex-1">
-        <form id="searchForm" class="relative">
-          <input
-            id="searchInput"
-            type="search"
-            placeholder="Cari produk…"
-            class="w-full rounded-xl border border-neutral-300 bg-white py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
-          />
-          <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-4.35-4.35M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/>
-          </svg>
-        </form>
-      </div>
-
-      <!-- User/menu simple -->
-      <div class="hidden sm:flex items-center gap-3">
-        <span class="text-sm text-neutral-600">Halo, {{ nama }}</span>
-        <a href="{{ url_for('logout') }}" class="text-sm text-red-600 hover:text-red-700">Keluar</a>
-      </div>
-    </div>
-
-    <!-- Category pills (opsional; statis contoh) -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-3">
-      <div class="flex gap-2 overflow-x-auto scrollbar-hide">
-        {% set categories = ['Semua','Besi','Tembaga','Aluminium','Kuningan','Aksesoris'] %}
-        {% for c in categories %}
-          <button
-            data-cat="{{ c|lower }}"
-            class="cat-pill px-4 py-2 text-sm rounded-full border border-neutral-300 bg-white hover:bg-neutral-100"
-          >{{ c }}</button>
-        {% endfor %}
-      </div>
-    </div>
-  </header>
 
   <!-- Flash -->
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
