@@ -18,29 +18,39 @@
     </form>
 
     <div class="flex items-center gap-3 ml-auto">
-      {# ===== TOMBOL ADMIN (khusus admin) ===== #}
-      {% if (role|default('')) == 'admin' %}
-      <div class="relative" data-admin-menu>
-        <button type="button" id="btnAdmin"
-                class="inline-flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-xl hover:bg-red-700">
-          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M3 6h18v2H3V6zm0 5.5h18v2H3v-2zM3 17h18v2H3v-2z"/>
+    {% if (role|default('')) == 'admin' %}
+    <div class="relative" data-admin-menu>
+      <button type="button" id="btnAdmin"
+              class="inline-flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-xl hover:bg-red-700">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M3 6h18v2H3V6zm0 5.5h18v2H3v-2zM3 17h18v2H3v-2z"/>
+        </svg>
+        <span>Admin</span>
+      </button>
+    
+      <div id="menuAdmin"
+           class="hidden absolute right-0 mt-2 w-56 rounded-2xl border border-neutral-200 bg-white shadow-xl overflow-hidden z-50">
+        <!-- Tambah Barang -->
+        <a href="{{ url_for('addBarang') }}"
+           class="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 nav-close">
+          <svg class="h-5 w-5 text-emerald-600" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M11 11V6h2v5h5v2h-5v5h-2v-5H6v-2h5z"/>
           </svg>
-          <span>Admin</span>
-        </button>
-
-        <div id="menuAdmin"
-             class="hidden absolute right-0 mt-2 w-56 rounded-2xl border border-neutral-200 bg-white shadow-xl overflow-hidden z-50">
-          <a href="{{ url_for('menuAdmin', roleMenu='kelolaUser') }}"
-             class="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 nav-close">
-            <svg class="h-5 w-5 text-violet-600" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
-            </svg>
-            <span>Kelola User</span>
-          </a>
-        </div>
+          <span>Tambah Barang</span>
+        </a>
+    
+        <!-- Kelola User -->
+        <a href="{{ url_for('menuAdmin', roleMenu='kelolaUser') }}"
+           class="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 nav-close">
+          <svg class="h-5 w-5 text-violet-600" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+          </svg>
+          <span>Kelola User</span>
+        </a>
       </div>
-      {% endif %}
+    </div>
+    {% endif %}
+
 
       <!-- MENU USER -->
       <div class="relative" data-user-menu>
