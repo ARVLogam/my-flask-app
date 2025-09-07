@@ -1,304 +1,325 @@
 import psycopg2
-from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import generate_password_hash
 from datetime import datetime
-import pytz 
 
 class Database:
-    def __init__(self, config):
-        self.config = config
-        self.conn = psycopg2.connect(**config)
-        self.cur = self.conn.cursor()
-        self.connection = None
-        self.cursor = None
+    def __init__(self, config: dict):
+        self.config = {
+            "host": config.get("host"),
+            "dbname": config.get("database") or config.get("dbname"),
+            "user": config.get("user"),
+            "password": config.get("password"),
+            "port": config.get("port"),
+        }
 
-    def connect(self):
-        self.connection = psycopg2.connect(**self.config)
-        self.cursor = self.connection.cursor()
+    # ---------- helpers ----------
+    def _get_conn(self):
+        return psycopg2.connect(**self.config)
 
-    def close(self):
-        if self.cur:
-            self.cur.close()
-        if self.conn:
-            self.conn.close()
-        if self.cursor:
-            self.cursor.close()
-        if self.connection:
-            self.connection.close()
-    def get_user(self, username):
+    # ---------- USERS ----------
+    def get_user(self, username: str):
+        conn = self._get_conn()
+        cur = conn.cursor()
         try:
-            self.connect()
-            query = """
-                SELECT id, username, password, role, nama, email, nohp 
-                FROM users WHERE username = %s
-            """
-            self.cursor.execute(query, (username,))
-            user = self.cursor.fetchone()
-            return user
+            cur.execute("""
+                SELECT id, username, password, role, nama, email, nohp
+                FROM users
+                WHERE username = %s
+            """, (username,))
+            return cur.fetchone()
         except Exception as e:
-            print(f"Database error: {e}")
+            print("get_user error:", e)
             return None
         finally:
-            self.close()
+            cur.close(); conn.close()
 
-    def get_user_by_id(self, user_id):
+    def get_user_by_id(self, user_id: int):
+        conn = self._get_conn()
+        cur = conn.cursor()
         try:
-            self.connect()
-            query = """
-                SELECT id, username, password, role, nama, email, nohp 
-                FROM users WHERE id = %s
-            """
-            self.cursor.execute(query, (user_id,))
-            return self.cursor.fetchone()
+            cur.execute("""
+                SELECT id, username, password, role, nama, email, nohp
+                FROM users
+                WHERE id = %s
+            """, (user_id,))
+            return cur.fetchone()
         except Exception as e:
-            print(f"Database error: {e}")
+            print("get_user_by_id error:", e)
             return None
         finally:
-            self.close()
+            cur.close(); conn.close()
 
     def create_user(self, username, password, role, nama, email, nohp):
+        conn = self._get_conn()
+        cur = conn.cursor()
         try:
-            self.connect()
-            hashed_password = generate_password_hash(password)
-            query = """
-                INSERT INTO users (username, password, role, nama, email, nohp) 
-                VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
-            """
-            self.cursor.execute(query, (username, hashed_password, role, nama, email, nohp))
-            user_id = self.cursor.fetchone()[0]
-            self.connection.commit()
+            hashed = generate_password_hash(password)
+            cur.execute("""
+                INSERT INTO users (username, password, role, nama, email, nohp)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                RETURNING id
+            """, (username, hashed, role, nama, email, nohp))
+            user_id = cur.fetchone()[0]
+            conn.commit()
             return user_id
         except Exception as e:
-            print(f"Database error: {e}")
-            self.connection.rollback()
+            print("create_user error:", e)
+            conn.rollback()
             return None
         finally:
-            self.close()
+            cur.close(); conn.close()
 
-def update_user(self, user_id, username, nama, email, nohp, role=None, password=None):
-    conn = self._get_conn()
-    cur = conn.cursor()
-    try:
-        if password is not None:
-            cur.execute("""
-                UPDATE users
-                SET username=%s, nama=%s, email=%s, nohp=%s, {role_clause} password=%s
-                WHERE id=%s
-            """.format(role_clause=("role=%s, " if role else "")),
-            ([username, nama, email, nohp] + ([role] if role else []) + [password, user_id]))
-        else:
-            cur.execute("""
-                UPDATE users
-                SET username=%s, nama=%s, email=%s, nohp=%s {role_clause}
-                WHERE id=%s
-            """.format(role_clause=(", role=%s" if role else "")),
-            ([username, nama, email, nohp] + ([role] if role else []) + [user_id]))
-        conn.commit()
-        return True
-    except Exception as e:
-        print("update_user error:", e)
-        conn.rollback()
-        return False
-    finally:
-        cur.close()
-        conn.close()
-        
-    def delete_user(self, user_id):
+    def update_user(self, user_id, username, nama, email, nohp, role=None, password=None):
+        """
+        Update profil. Jika password diberikan (bukan None/''), akan di-hash.
+        `role` optional: jika None tidak diubah.
+        """
+        conn = self._get_conn()
+        cur = conn.cursor()
         try:
-            with self.conn.cursor() as cur:
-                cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
-                self.conn.commit()
-                return True
-        except Exception as e:
-            print(f"Database error saat menghapus user: {e}")
-            self.conn.rollback()
-            return False
+            params = [username, nama, email, nohp]
+            sets   = ["username=%s", "nama=%s", "email=%s", "nohp=%s"]
 
-    def update_user_password(self, email, new_password):
-        try:
-            hashed_pw = generate_password_hash(new_password)
-            self.cur.execute("UPDATE users SET password = %s WHERE email = %s", (hashed_pw, email))
-            self.conn.commit()
+            if role is not None:
+                sets.append("role=%s")
+                params.append(role)
+
+            if password:
+                sets.append("password=%s")
+                params.append(generate_password_hash(password))
+
+            q = f"UPDATE users SET {', '.join(sets)}, updated_at=CURRENT_TIMESTAMP WHERE id=%s"
+            params.append(user_id)
+
+            cur.execute(q, tuple(params))
+            conn.commit()
             return True
         except Exception as e:
-            print(f"Database error: {e}")
-            self.conn.rollback()
+            print("update_user error:", e)
+            conn.rollback()
             return False
+        finally:
+            cur.close(); conn.close()
+
+    def delete_user(self, user_id: int):
+        conn = self._get_conn()
+        cur = conn.cursor()
+        try:
+            cur.execute("DELETE FROM users WHERE id=%s", (user_id,))
+            conn.commit()
+            return True
+        except Exception as e:
+            print("delete_user error:", e)
+            conn.rollback()
+            return False
+        finally:
+            cur.close(); conn.close()
+
+    def update_user_password_by_email(self, email, new_hashed_password):
+        """
+        Dipakai oleh reset password di main.py (sudah menerima password yang SUDAH di-hash).
+        """
+        conn = self._get_conn()
+        cur = conn.cursor()
+        try:
+            cur.execute("UPDATE users SET password=%s, updated_at=CURRENT_TIMESTAMP WHERE email=%s",
+                        (new_hashed_password, email))
+            conn.commit()
+            return True
+        except Exception as e:
+            print("update_user_password_by_email error:", e)
+            conn.rollback()
+            return False
+        finally:
+            cur.close(); conn.close()
 
     def check_email_exists(self, email):
+        conn = self._get_conn()
+        cur = conn.cursor()
         try:
-            self.connect()
-            query = "SELECT id FROM users WHERE email = %s"
-            self.cursor.execute(query, (email,))
-            return self.cursor.fetchone() is not None
+            cur.execute("SELECT 1 FROM users WHERE email=%s LIMIT 1", (email,))
+            return cur.fetchone() is not None
         except Exception as e:
-            print(f"Database error: {e}")
+            print("check_email_exists error:", e)
             return False
         finally:
-            self.close()
+            cur.close(); conn.close()
 
     def check_email_exists_for_update(self, email, exclude_id):
+        conn = self._get_conn()
+        cur = conn.cursor()
         try:
-            self.connect()
-            query = "SELECT id FROM users WHERE email = %s AND id != %s"
-            self.cursor.execute(query, (email, exclude_id))
-            return self.cursor.fetchone() is not None
+            cur.execute("SELECT 1 FROM users WHERE email=%s AND id<>%s LIMIT 1", (email, exclude_id))
+            return cur.fetchone() is not None
         except Exception as e:
-            print(f"Database error: {e}")
+            print("check_email_exists_for_update error:", e)
             return False
         finally:
-            self.close()
+            cur.close(); conn.close()
 
     def check_username_exists(self, username, exclude_id=None):
+        conn = self._get_conn()
+        cur = conn.cursor()
         try:
-            self.connect()
             if exclude_id:
-                query = "SELECT id FROM users WHERE username = %s AND id != %s"
-                self.cursor.execute(query, (username, exclude_id))
+                cur.execute("SELECT 1 FROM users WHERE username=%s AND id<>%s LIMIT 1",
+                            (username, exclude_id))
             else:
-                query = "SELECT id FROM users WHERE username = %s"
-                self.cursor.execute(query, (username,))
-            return self.cursor.fetchone() is not None
+                cur.execute("SELECT 1 FROM users WHERE username=%s LIMIT 1", (username,))
+            return cur.fetchone() is not None
         except Exception as e:
-            print(f"Database error: {e}")
+            print("check_username_exists error:", e)
             return False
         finally:
-            self.close()
+            cur.close(); conn.close()
 
     def count_users(self):
+        conn = self._get_conn()
+        cur = conn.cursor()
         try:
-            self.connect()
-            query = "SELECT COUNT(*) FROM users"
-            self.cursor.execute(query)
-            result = self.cursor.fetchone()
-            return result[0] if result else 0
+            cur.execute("SELECT COUNT(*) FROM users")
+            row = cur.fetchone()
+            return row[0] if row else 0
         except Exception as e:
-            print(f"Database error: {e}")
+            print("count_users error:", e)
             return 0
         finally:
-            self.close()
+            cur.close(); conn.close()
 
     def read_all_users(self):
+        conn = self._get_conn()
+        cur = conn.cursor()
         try:
-            self.connect()
-            query = """
+            cur.execute("""
                 SELECT id, username, role, nama, email, nohp, created_at, updated_at
-                FROM users ORDER BY id
-            """
-            self.cursor.execute(query)
-            return self.cursor.fetchall()
+                FROM users
+                ORDER BY id
+            """)
+            return cur.fetchall()
         except Exception as e:
-            print(f"Database error: {e}")
+            print("read_all_users error:", e)
             return []
         finally:
-            self.close()
+            cur.close(); conn.close()
 
+    # ---------- BARANG ----------
     def create_barang(self, nama_barang, harga, deskripsi):
+        conn = self._get_conn()
+        cur = conn.cursor()
         try:
-            self.connect()
-            query = """
+            cur.execute("""
                 INSERT INTO barang (nama_barang, harga, deskripsi)
-                VALUES (%s, %s, %s) RETURNING id
-            """
-            self.cursor.execute(query, (nama_barang, harga, deskripsi))
-            barang_id = self.cursor.fetchone()[0]
-            self.connection.commit()
+                VALUES (%s, %s, %s)
+                RETURNING id
+            """, (nama_barang, harga, deskripsi))
+            barang_id = cur.fetchone()[0]
+            conn.commit()
             return barang_id
         except Exception as e:
-            print(f"Database Error: {e}")
-            self.connection.rollback()
+            print("create_barang error:", e)
+            conn.rollback()
             return None
         finally:
-            self.close()
+            cur.close(); conn.close()
 
-    def get_barang_by_id(self, id_barang):
+    def get_barang_by_id(self, barang_id):
+        conn = self._get_conn()
+        cur = conn.cursor()
         try:
-            self.connect()
-            query = """
+            cur.execute("""
                 SELECT id, nama_barang, harga, deskripsi
-                FROM barang WHERE id = %s
-            """
-            self.cursor.execute(query, (id_barang,))
-            return self.cursor.fetchone()
+                FROM barang
+                WHERE id=%s
+            """, (barang_id,))
+            return cur.fetchone()
         except Exception as e:
-            print(f'Database Error {e}')
+            print("get_barang_by_id error:", e)
             return None
         finally:
-            self.close()
+            cur.close(); conn.close()
 
     def get_data_barang_nama_harga(self, nama_barang, harga):
+        conn = self._get_conn()
+        cur = conn.cursor()
         try:
-            self.connect()
-            query = """
-                SELECT id, nama_barang, harga FROM barang 
-                WHERE nama_barang = %s AND harga = %s
-            """
-            self.cursor.execute(query, (nama_barang, harga))
-            return self.cursor.fetchone()
+            cur.execute("""
+                SELECT id, nama_barang, harga
+                FROM barang
+                WHERE nama_barang=%s AND harga=%s
+            """, (nama_barang, harga))
+            return cur.fetchone()
         except Exception as e:
-            print(f"Database error: {e}")
+            print("get_data_barang_nama_harga error:", e)
             return None
         finally:
-            self.close()
+            cur.close(); conn.close()
 
     def read_all_barang(self):
+        conn = self._get_conn()
+        cur = conn.cursor()
         try:
-            self.connect()
-            query = """
-                SELECT id, nama_barang, harga, deskripsi, 
-                       to_char(created_at, 'DD-MM-YYYY HH24:MI') as created, 
-                       to_char(updated_at, 'DD-MM-YYYY HH24:MI') as updated
-                FROM barang ORDER BY id
-            """
-            self.cursor.execute(query)
-            return self.cursor.fetchall()
+            cur.execute("""
+                SELECT id, nama_barang, harga, deskripsi,
+                       to_char(created_at, 'DD-MM-YYYY HH24:MI') AS created,
+                       to_char(updated_at, 'DD-MM-YYYY HH24:MI') AS updated
+                FROM barang
+                ORDER BY id
+            """)
+            return cur.fetchall()
         except Exception as e:
-            print(f"Database error: {e}")
+            print("read_all_barang error:", e)
             return []
         finally:
-            self.close()
+            cur.close(); conn.close()
 
     def update_barang(self, barang_id, nama_barang, harga, deskripsi):
-        try:
-            self.connect()
-            query = """
-                UPDATE barang 
-                SET nama_barang = %s, 
-                    harga = %s, 
-                    deskripsi = %s,
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE id = %s RETURNING id
-            """
-            self.cursor.execute(query, (nama_barang, harga, deskripsi, barang_id))
-            updated_id = self.cursor.fetchone()
-            self.connection.commit()
-            return updated_id[0] if updated_id else None
-        except Exception as e:
-            print(f"Database Error saat update barang: {e}")
-            self.connection.rollback()
-            return None
-        finally:
-            self.close()
-    
-    def delete_barang(self, barang_id):
-        try:
-            self.connect()
-            query = "DELETE FROM barang WHERE id = %s RETURNING id"
-            self.cursor.execute(query, (barang_id,))
-            deleted_id = self.cursor.fetchone()
-            self.connection.commit()
-            return deleted_id[0] if deleted_id else None
-        except Exception as e:
-            print(f"Database Error saat menghapus barang: {e}")
-            self.connection.rollback()
-            return None
-        finally:
-            self.close()
-
-# Fungsi create_tables di luar class
-def create_tables(db_config):
-    try:
-        conn = psycopg2.connect(**db_config)
+        conn = self._get_conn()
         cur = conn.cursor()
+        try:
+            cur.execute("""
+                UPDATE barang
+                SET nama_barang=%s, harga=%s, deskripsi=%s,
+                    updated_at=CURRENT_TIMESTAMP
+                WHERE id=%s
+                RETURNING id
+            """, (nama_barang, harga, deskripsi, barang_id))
+            row = cur.fetchone()
+            conn.commit()
+            return row[0] if row else None
+        except Exception as e:
+            print("update_barang error:", e)
+            conn.rollback()
+            return None
+        finally:
+            cur.close(); conn.close()
+
+    def delete_barang(self, barang_id):
+        conn = self._get_conn()
+        cur = conn.cursor()
+        try:
+            cur.execute("DELETE FROM barang WHERE id=%s RETURNING id", (barang_id,))
+            row = cur.fetchone()
+            conn.commit()
+            return row[0] if row else None
+        except Exception as e:
+            print("delete_barang error:", e)
+            conn.rollback()
+            return None
+        finally:
+            cur.close(); conn.close()
+
+
+# ---------- bootstrap tables ----------
+def create_tables(db_config):
+    conn = psycopg2.connect(
+        host=db_config.get("host"),
+        dbname=db_config.get("database") or db_config.get("dbname"),
+        user=db_config.get("user"),
+        password=db_config.get("password"),
+        port=db_config.get("port"),
+    )
+    cur = conn.cursor()
+    try:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
@@ -324,6 +345,7 @@ def create_tables(db_config):
         """)
         conn.commit()
     except Exception as e:
-        print(f"Error creating tables: {e}")
+        print("create_tables error:", e)
+        conn.rollback()
     finally:
-        conn.close()
+        cur.close(); conn.close()
