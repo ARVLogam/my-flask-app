@@ -382,43 +382,59 @@ def addBarang():
             nama_barang = (request.form.get('nama_barang') or '').strip()
             harga_raw   = (request.form.get('harga') or '').strip()
             deskripsi   = (request.form.get('deskripsi') or '').strip()
-            foto_file   = request.files.get('foto')
+            foto_file   = request.files.get('foto')  # opsional
 
             if not nama_barang or not harga_raw or not deskripsi:
                 flash("Semua field harus diisi!", "error")
                 return render_template("addBarang.html")
 
+            # normalisasi harga: dukung format 150.000 atau 150,000.00
             try:
-                harga = float(harga_raw.replace(".", "").replace(",", "."))
+                harga = float(harga_raw.replace('.', '').replace(',', '.'))
             except ValueError:
                 flash("Harga harus berupa angka!", "error")
                 return render_template("addBarang.html")
 
             db = Database(DB_CONFIG)
-            if db.get_data_barang_nama_harga(nama_barang, harga):
-                flash("Nama dan Harga Barang sudah terdaftar", "error")
-                return render_template("addBarang.html")
 
+            # (opsional) contoh validasi unik sederhana
+            # if db.get_data_barang_nama_harga(nama_barang, harga):
+            #     flash("Nama dan Harga Barang sudah terdaftar", "error")
+            #     return render_template("addBarang.html")
+
+            # 1) simpan record dulu untuk dapatkan ID
             barang_id = db.create_barang(nama_barang, harga, deskripsi)
             if not barang_id:
-                flash("Tambah Barang Gagal, silakan ulangi", "error")
+                flash("Tambah Barang gagal. Coba lagi.", "error")
                 return render_template("addBarang.html")
 
-            # simpan foto (opsional)
+            # 2) simpan foto (opsional) -> prod_<ID>.webp
             if foto_file and foto_file.filename:
-                res = save_product_image(foto_file, int(barang_id))
-                if res == "INVALID":
+                fname = secure_filename(foto_file.filename)
+                ext = fname.rsplit('.', 1)[-1].lower() if '.' in fname else ''
+                if ext not in {"png", "jpg", "jpeg", "webp"}:
                     flash("Format gambar tidak didukung (png/jpg/jpeg/webp).", "warning")
-                elif res is None:
-                    flash("Gagal menyimpan gambar.", "warning")
+                else:
+                    try:
+                        img = Image.open(foto_file.stream)
+                        if img.mode in ("RGBA", "P"):
+                            img = img.convert("RGB")
+                        dst_path = os.path.join(app.static_folder, "img", "products", f"prod_{barang_id}.webp")
+                        img.save(dst_path, "WEBP", quality=90)
+                    except Exception as e:
+                        print("[ADD BARANG] gagal simpan foto:", e)
+                        flash("Barang tersimpan, namun foto gagal diunggah.", "warning")
 
-            flash("Tambah Barang Berhasil", "success")
+            flash("Barang berhasil ditambahkan!", "success")
+            # balik ke dashboard (admin mengelola barang via tombol Edit di kartu)
             return redirect(url_for("dashboard"))
-        except Exception:
-            logging.exception("addBarang error")
-            flash("Terjadi kesalahan saat menyimpan data", "error")
+
+        except Exception as e:
+            print("[ADD BARANG] error:", e)
+            flash("Terjadi kesalahan saat menyimpan data.", "error")
             return render_template("addBarang.html")
 
+    # GET
     return render_template("addBarang.html")
 
 @app.route("/editBarang/<id_barang>", methods=["GET", "POST"])
