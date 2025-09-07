@@ -18,6 +18,7 @@
   </style>
 </head>
 <body class="bg-neutral-50 min-h-screen">
+
   {% include 'navbar.html' %}
 
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
@@ -32,28 +33,26 @@
 
     <div id="gridProduk" class="grid gap-4 sm:gap-5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
       {% for item in barang %}
-        {# Struktur yang dipakai di CRUD kamu:
-           item[0]=id, item[1]=nama, item[2]=harga, item[3]=deskripsi
-           jika ada kolom waktu update, jadikan item[6] (opsional) #}
+        {# item[0]=id, item[1]=nama, item[2]=harga, item[3]=deskripsi #}
         {% set id    = item[0] %}
         {% set nama  = item[1] %}
         {% set harga = item[2] %}
         {% set desk  = item[3] %}
-        {% set cache = (item[6] or '') %}
 
         <article class="card group bg-white rounded-2xl card-shadow border border-neutral-100 flex flex-col overflow-hidden"
                  data-name="{{ nama|lower }}" data-cat="semua">
-        <div class="relative aspect-[4/3] overflow-hidden bg-neutral-100">
-          <img
-            src="{{ url_for('static', filename='img/products/%s.png' % id) }}"
-            alt="{{ nama }}"
-            class="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
-            onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/no-image.png') }}';"
-            loading="lazy"
-          />
-          <div class="absolute left-2 top-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full shadow">Terlaris</div>
-        </div>
-
+          <div class="relative aspect-[4/3] overflow-hidden bg-neutral-100">
+            <img
+              src="{{ url_for('static', filename='img/products/' ~ id ~ '.png') }}"
+              data-id="{{ id }}"
+              data-tried="png"
+              alt="{{ nama }}"
+              class="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+              onerror="tryNextExt(this)"
+              loading="lazy"
+            />
+            <div class="absolute left-2 top-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full shadow">Terlaris</div>
+          </div>
 
           <div class="p-3 sm:p-4 flex-1 flex flex-col">
             <h3 class="font-semibold text-neutral-900 text-sm sm:text-base line-clamp-2 min-h-[2.5rem]">{{ nama }}</h3>
@@ -93,20 +92,19 @@
   </footer>
 
   <script>
-    // Fallback: coba .png -> .jpg -> .webp -> no-image
+    // Fallback berantai: .png -> .jpg -> .webp -> no-image
     function tryNextExt(img) {
       const base = "{{ url_for('static', filename='img/products/') }}";
       const noimg = "{{ url_for('static', filename='img/no-image.png') }}";
       const id = img.getAttribute('data-id');
       const tried = img.getAttribute('data-tried') || 'png';
-      const cache = '{{ ("" ) }}'; // bisa diisi timestamp kalau mau
 
       if (tried === 'png') {
         img.setAttribute('data-tried', 'jpg');
-        img.src = `${base}${id}.jpg`;
+        img.src = base + id + '.jpg';
       } else if (tried === 'jpg') {
         img.setAttribute('data-tried', 'webp');
-        img.src = `${base}${id}.webp`;
+        img.src = base + id + '.webp';
       } else {
         img.onerror = null;
         img.src = noimg;
