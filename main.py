@@ -121,6 +121,16 @@ def _save_avatar(file_storage, user_id: int):
         import traceback; traceback.print_exc()
         return "ERROR"
 
+@app.context_processor
+def inject_common_vars():
+    # nama & role dari session (punya default)
+    nama = session.get('nama') or 'Pengguna'
+    role = session.get('role') or ''
+    # avatar_url kalau kamu sudah set saat login / editProfile; kalau tidak, kosong
+    avatar_url = session.get('avatar_url')  # boleh None
+    return dict(nama=nama, role=role, avatar_url=avatar_url)
+
+
 # Error jika file terlalu besar
 @app.errorhandler(RequestEntityTooLarge)
 def _too_big(_e):
