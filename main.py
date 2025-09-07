@@ -11,9 +11,10 @@ import psycopg2
 import threading
 import time
 from flask_mail import Mail, Message
-
+from types import SimpleNamespace
 from werkzeug.utils import secure_filename
-from PIL import Image  # optional, untuk normalisasi ke PNG (lebih aman)
+from werkzeug.exceptions import RequestEntityTooLarge
+from PIL import Image
 import io
 
 # app modules
@@ -79,24 +80,20 @@ def _allowed_image(filename: str) -> bool:
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 # --- Avatar upload (letakkan SETELAH app = Flask(...)) ---
-import os
-from werkzeug.utils import secure_filename
-from werkzeug.exceptions import RequestEntityTooLarge
-from PIL import Image
-from types import SimpleNamespace
 
-# Maksimal ukuran upload 4MB (opsional)
-app.config['MAX_CONTENT_LENGTH'] = 4 * 1024 * 1024
+# === KONFIGURASI AVATAR (LETakkan SETELAH app = Flask(...)) ===
+app.config['MAX_CONTENT_LENGTH'] = 4 * 1024 * 1024  # 4 MB
 
-# Folder penyimpanan avatar
+ALLOWED_IMAGE_EXT = {"png", "jpg", "jpeg", "webp"}
 AVATAR_FOLDER = os.path.join(app.static_folder, "img", "avatars")
 os.makedirs(AVATAR_FOLDER, exist_ok=True)
 
-# Ekstensi gambar yang diizinkan
-ALLOWED_IMAGE_EXT = {"png", "jpg", "jpeg", "webp"}
-
-def _allowed_img(filename: str) -> bool:
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_IMAGE_EXT
+def _avatar_relpath(user_id: int | None) -> str:
+    """Kembalikan path relatif avatar user; jika tidak ada/guest, pakai guest.png"""
+    if not user_id:
+        return "img/avatars/guest.png"
+    candidate = os.path.join(AVATAR_FOLDER, f"user_{user_id}.webp")
+    return f"img/avatars/user_{user_id}.webp" if os.path.exists(candidate) else "img/avatars/guest.png"
 
 def _save_avatar(file_storage, user_id: int):
     """
@@ -116,7 +113,6 @@ def _save_avatar(file_storage, user_id: int):
         return "INVALID"
 
     try:
-        # Normalisasi ke WEBP agar konsisten & ukuran kecil
         img = Image.open(file_storage.stream).convert("RGB")
         dst_abs = os.path.join(AVATAR_FOLDER, f"user_{user_id}.webp")
         img.save(dst_abs, "WEBP", quality=90)
@@ -125,19 +121,21 @@ def _save_avatar(file_storage, user_id: int):
         import traceback; traceback.print_exc()
         return "ERROR"
 
-def _avatar_relpath(user_id: int) -> str:
-    """Kembalikan relative path avatar user jika ada, kalau tidak pakai guest."""
-    candidate = os.path.join(AVATAR_FOLDER, f"user_{user_id}.webp")
-    if os.path.exists(candidate):
-        return f"img/avatars/user_{user_id}.webp"
-    return "img/avatars/guest.png"
-
-# Handler jika file melebihi MAX_CONTENT_LENGTH
+# Error jika file terlalu besar
 @app.errorhandler(RequestEntityTooLarge)
-def _file_too_big(_):
+def _too_big(_e):
     flash("File terlalu besar (maks 4 MB).", "error")
     return redirect(request.referrer or url_for("editProfile"))
 
+# Inject avatar_url & nama ke SEMUA template (buat navbar aman di semua halaman)
+@app.context_processor
+def inject_user_context():
+    uid = session.get("user_id")
+    return {
+        "avatar_url": _avatar_relpath(uid),
+        "nama": session.get("nama", "Pengguna"),
+        "role": session.get("role", ""),
+    }
 
 
 app.config.update(MAIL_SETTINGS)
@@ -451,23 +449,22 @@ def editProfile():
 
         return render_template(
             "editProfile.html",
-            user=user,
-            avatar_url=url_for("static", filename=_avatar_relpath(user_id)),
+            user=user,                     # untuk {{ user.username }} dll
+            avatar_url=_avatar_relpath(user_id),  # dipakai juga di navbar
         )
 
-    # --- POST: simpan perubahan ---
+    # --- POST: simpan perubahan profil + (opsional) avatar ---
     username = (request.form.get("username") or "").strip()
     password = (request.form.get("password") or "").strip() or None
     nama     = (request.form.get("nama") or "").strip()
     email    = (request.form.get("email") or "").strip()
     nohp     = (request.form.get("nohp") or "").strip()
 
-    # Validasi sederhana
     if not all([username, nama, email, nohp]):
         flash("Semua field kecuali password wajib diisi", "error")
         return redirect(url_for("editProfile"))
 
-    # Cek unik (kalau kamu punya function ini di CRUD)
+    # Unik check (pastikan method ini ada di CRUD)
     if db.check_username_exists(username, user_id):
         flash("Username sudah digunakan pengguna lain", "error")
         return redirect(url_for("editProfile"))
@@ -479,28 +476,29 @@ def editProfile():
     ok = db.update_user(
         user_id, username, nama, email, nohp,
         role=None,
-        password=password  # None = tidak diubah
+        password=password  # None = tidak mengubah password
     )
     if not ok:
         flash("Gagal memperbarui profil", "error")
         return redirect(url_for("editProfile"))
 
-    # Simpan avatar bila ada file terpilih
+    # Simpan avatar bila ada
     file = request.files.get("avatar")
     if file and file.filename:
         res = _save_avatar(file, user_id)
         if res == "INVALID":
-            flash("Format gambar tidak didukung (gunakan png/jpg/jpeg/webp).", "error")
+            flash("Format gambar tidak didukung (png/jpg/jpeg/webp).", "error")
         elif res == "ERROR":
             flash("Gagal menyimpan foto profil.", "error")
         else:
             flash("Foto profil diperbarui.", "success")
 
-    # refresh nama di session
+    # refresh session display name
     session["nama"] = nama
 
     flash("Profil berhasil diperbarui", "success")
     return redirect(url_for("editProfile"))
+
 
 
 # (opsional) bila ukuran file > MAX_CONTENT_LENGTH
