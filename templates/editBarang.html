@@ -54,26 +54,21 @@
       </div>
 
       <!-- Foto -->
-      <div>
-        <label class="block text-sm font-medium text-neutral-700 mb-2">Foto Produk (opsional)</label>
-        <div class="grid sm:grid-cols-2 gap-4">
-          <div class="rounded-lg border border-neutral-200 p-2 bg-neutral-50">
-            <img id="preview"
-                 src="{{ image_url if image_url else url_for('static', filename='img/no-image.png') }}"
-                 alt="Preview"
-                 class="w-full aspect-[4/3] object-contain"/>
+    <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Foto Produk (opsional)</label>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="rounded-md border p-2 bg-neutral-50">
+            {% set nowimg = 'img/products/prod_' ~ barang[0] ~ '.webp' %}
+            <img src="{{ url_for('static', filename=nowimg) }}"
+                 onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/no-image.png') }}';"
+                 class="w-full h-40 object-contain" alt="preview">
           </div>
-          <div>
-            <input type="file" name="foto" accept=".png,.jpg,.jpeg,.webp"
-                   class="block w-full text-sm text-neutral-700
-                          file:mr-4 file:py-2 file:px-4
-                          file:rounded-lg file:border-0
-                          file:text-sm file:font-semibold
-                          file:bg-neutral-100 file:text-neutral-700
-                          hover:file:bg-neutral-200"/>
-            <p class="text-xs text-neutral-500 mt-2">Maks. beberapa MB. Format: png, jpg, jpeg, webp</p>
+          <div class="flex items-center">
+            <input type="file" name="foto" accept=".png,.jpg,.jpeg,.webp,image/*"
+                   class="block w-full text-sm text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:bg-red-600 file:text-white hover:file:bg-red-700 cursor-pointer">
           </div>
         </div>
+        <p class="text-xs text-gray-500 mt-1">Maks. ~4MB. Format: png, jpg, jpeg, webp.</p>
       </div>
 
       <!-- Actions -->
