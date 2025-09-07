@@ -137,6 +137,18 @@ def inject_user_context():
         "role": session.get("role", ""),
     }
 
+@app.context_processor
+def inject_user_context():
+    user_id = session.get("user_id")
+    role = session.get("role", "")
+    nama = session.get("nama", "Pengguna")
+
+    # kalau ada avatar user, gunakan; kalau tidak guest.png
+    avatar_url = f"img/avatars/user_{user_id}.webp" if user_id else "img/avatars/guest.png"
+
+    return dict(role=role, nama=nama, avatar_url=avatar_url)
+
+
 
 app.config.update(MAIL_SETTINGS)
 
