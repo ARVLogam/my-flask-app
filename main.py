@@ -287,30 +287,31 @@ def login():
 
     return render_template("login.html")
 
-@app.route("/dashboard")
+@app.route('/dashboard')
 @login_required
 def dashboard():
-    db = Database(DB_CONFIG)
-    data_barang = db.read_all_barang()
-    users = db.read_all_users()
+    try:
+        db = Database(DB_CONFIG)
+        data_barang = db.read_all_barang() or []   # selalu list
+        total_produk = len(data_barang)
+        return render_template(
+            "dashboard.html",
+            barang=data_barang,
+            total_produk=total_produk
+        )
+    except Exception as e:
+        # log rinci ke console
+        import traceback
+        print("=== DASHBOARD ERROR ===")
+        traceback.print_exc()
+        flash("Terjadi kesalahan saat memuat dashboard.", "error")
+        # render halaman kosong tapi tetap hidup, bukan redirect loop
+        return render_template(
+            "dashboard.html",
+            barang=[],
+            total_produk=0
+        ), 200
 
-    total_produk = len(data_barang)
-    produk_terakhir = data_barang[-1] if data_barang else None
-    total_pengguna = len(users)
-    user_terakhir = users[-1] if users else None
-
-    return render_template(
-        "dashboard.html",
-        role=session["role"],
-        nama=session["nama"],
-        avatar_url="img/avatars/guest.png",
-        barang=data_barang,
-        total_produk=total_produk,
-        total_pengguna=total_pengguna,
-        produk_terakhir=produk_terakhir,
-        user_terakhir=user_terakhir,
-        cache_bust=int(time.time())
-    )
 
 @app.route("/forgot-password", methods=["GET", "POST"])
 def forgot_password():
