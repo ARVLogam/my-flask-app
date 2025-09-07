@@ -283,6 +283,7 @@ def dashboard():
         "dashboard.html",
         role=session["role"],
         nama=session["nama"],
+        avatar_url=_avatar_relpath(session.get("user_id")),
         barang=data_barang,
         total_produk=total_produk,
         total_pengguna=total_pengguna,
