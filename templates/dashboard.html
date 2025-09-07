@@ -18,7 +18,6 @@
   </style>
 </head>
 <body class="bg-neutral-50 min-h-screen">
-
   {% include 'navbar.html' %}
 
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
@@ -33,7 +32,6 @@
 
     <div id="gridProduk" class="grid gap-4 sm:gap-5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
       {% for item in barang %}
-        {# item[0]=id, item[1]=nama, item[2]=harga, item[3]=deskripsi #}
         {% set id    = item[0] %}
         {% set nama  = item[1] %}
         {% set harga = item[2] %}
@@ -43,7 +41,7 @@
                  data-name="{{ nama|lower }}" data-cat="semua">
           <div class="relative aspect-[4/3] overflow-hidden bg-neutral-100">
             <img
-              src="{{ url_for('static', filename='img/products/' ~ id ~ '.png') }}"
+              src="{{ url_for('static', filename='img/products/' ~ id ~ '.png') }}?v={{ range(1,1000000)|random }}"
               data-id="{{ id }}"
               data-tried="png"
               alt="{{ nama }}"
@@ -92,22 +90,23 @@
   </footer>
 
   <script>
-    // Fallback berantai: .png -> .jpg -> .webp -> no-image
+    // Fallback berantai + cache-buster supaya tidak pakai 404 yang tercache
     function tryNextExt(img) {
-      const base = "{{ url_for('static', filename='img/products/') }}";
+      const base  = "{{ url_for('static', filename='img/products/') }}";
       const noimg = "{{ url_for('static', filename='img/no-image.png') }}";
-      const id = img.getAttribute('data-id');
+      const id    = img.getAttribute('data-id');
       const tried = img.getAttribute('data-tried') || 'png';
+      const v     = Date.now(); // cache-buster
 
       if (tried === 'png') {
         img.setAttribute('data-tried', 'jpg');
-        img.src = base + id + '.jpg';
+        img.src = `${base}${id}.jpg?v=${v}`;
       } else if (tried === 'jpg') {
         img.setAttribute('data-tried', 'webp');
-        img.src = base + id + '.webp';
+        img.src = `${base}${id}.webp?v=${v}`;
       } else {
         img.onerror = null;
-        img.src = noimg;
+        img.src = noimg + `?v=${v}`;
       }
     }
   </script>
