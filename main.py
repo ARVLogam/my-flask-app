@@ -1,212 +1,36 @@
 # main.py
 from flask import Flask, render_template, redirect, request, session, flash, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.utils import secure_filename
+from werkzeug.exceptions import RequestEntityTooLarge
 from functools import wraps
 from itsdangerous import URLSafeTimedSerializer
 from dotenv import load_dotenv
-import os
-import traceback
-import logging
-import psycopg2
-import threading
-import time
-from flask_mail import Mail, Message
-from types import SimpleNamespace
-from werkzeug.utils import secure_filename
-from werkzeug.exceptions import RequestEntityTooLarge
 from PIL import Image
-import io
+import logging, traceback, threading, time, os, psycopg2
+from types import SimpleNamespace
 
-# app modules
+# -- app modules
 from crud import Database, create_tables
-from config import MAIL_SETTINGS, DB_CONFIG as RAW_DB  # dari config.py
+from config import MAIL_SETTINGS, DB_CONFIG as RAW_DB
 
-# ---------------------------
-# Init dasar
-# ---------------------------
+# =========================
+# App & Config dasar
+# =========================
 load_dotenv()
-
-# ====== Upload Foto Produk (Admin) ======
-from werkzeug.utils import secure_filename
-from pathlib import Path
-import re
-
-# Folder upload
-UPLOAD_FOLDER = Path("static/img/products")
-UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
-
-# Ekstensi yang diijinkan
-ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
-
-def allowed_file(filename: str) -> bool:
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
-
-_slug_re = re.compile(r"[^a-z0-9]+")
-def slugify(text: str) -> str:
-    return _slug_re.sub("-", text.lower()).strip("-")
-
-def save_product_image(file_storage, nama_barang: str) -> str | None:
-    """
-    Simpan foto produk ke static/img/products dengan nama file berbasis slug.
-    Return: relative path (contoh: 'img/products/kabel-tembaga.png') atau None.
-    """
-    if not file_storage or file_storage.filename == "":
-        return None
-    if not allowed_file(file_storage.filename):
-        return None
-
-    ext = file_storage.filename.rsplit(".", 1)[1].lower()
-    slug = slugify(nama_barang)
-    filename = secure_filename(f"{slug}.{ext}")
-    dest = UPLOAD_FOLDER / filename
-    file_storage.save(dest)
-
-    # kembalikan path RELATIF dari /static
-    return f"img/products/{filename}"
-
-
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev")
 
-# --- Konfigurasi upload ---
-ALLOWED_IMAGE_EXT = {"png", "jpg", "jpeg", "webp"}
-UPLOAD_FOLDER = os.path.join(app.static_folder, "img", "products")
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-def _allowed_image(filename: str) -> bool:
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_IMAGE_EXT
-
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-
-# --- Avatar upload (letakkan SETELAH app = Flask(...)) ---
-
-# === KONFIGURASI AVATAR (LETakkan SETELAH app = Flask(...)) ===
-app.config['MAX_CONTENT_LENGTH'] = 4 * 1024 * 1024  # 4 MB
-
-ALLOWED_IMAGE_EXT = {"png", "jpg", "jpeg", "webp"}
-AVATAR_FOLDER = os.path.join(app.static_folder, "img", "avatars")
-os.makedirs(AVATAR_FOLDER, exist_ok=True)
-
-def _avatar_relpath(user_id: int | None) -> str:
-    """Kembalikan path relatif avatar user; jika tidak ada/guest, pakai guest.png"""
-    if not user_id:
-        return "img/avatars/guest.png"
-    candidate = os.path.join(AVATAR_FOLDER, f"user_{user_id}.webp")
-    return f"img/avatars/user_{user_id}.webp" if os.path.exists(candidate) else "img/avatars/guest.png"
-
-def _save_avatar(file_storage, user_id: int):
-    """
-    Simpan avatar ke static/img/avatars/user_<id>.webp.
-    Return:
-      - 'INVALID' jika ekstensi tidak diizinkan
-      - 'ERROR'   jika gagal proses/simpan
-      - relative path 'img/avatars/user_<id>.webp' jika sukses
-      - None      jika tidak ada file
-    """
-    if not file_storage or not getattr(file_storage, "filename", ""):
-        return None
-
-    filename = secure_filename(file_storage.filename)
-    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
-    if ext not in ALLOWED_IMAGE_EXT:
-        return "INVALID"
-
-    try:
-        img = Image.open(file_storage.stream).convert("RGB")
-        dst_abs = os.path.join(AVATAR_FOLDER, f"user_{user_id}.webp")
-        img.save(dst_abs, "WEBP", quality=90)
-        return f"img/avatars/user_{user_id}.webp"
-    except Exception:
-        import traceback; traceback.print_exc()
-        return "ERROR"
-
-@app.context_processor
-def inject_common_vars():
-    # nama & role dari session (punya default)
-    nama = session.get('nama') or 'Pengguna'
-    role = session.get('role') or ''
-    # avatar_url kalau kamu sudah set saat login / editProfile; kalau tidak, kosong
-    avatar_url = session.get('avatar_url')  # boleh None
-    return dict(nama=nama, role=role, avatar_url=avatar_url)
-
-
-# Error jika file terlalu besar
-@app.errorhandler(RequestEntityTooLarge)
-def _too_big(_e):
-    flash("File terlalu besar (maks 4 MB).", "error")
-    return redirect(request.referrer or url_for("editProfile"))
-
-# Inject avatar_url & nama ke SEMUA template (buat navbar aman di semua halaman)
-@app.context_processor
-def inject_user_context():
-    uid = session.get("user_id")
-    return {
-        "avatar_url": _avatar_relpath(uid),
-        "nama": session.get("nama", "Pengguna"),
-        "role": session.get("role", ""),
-    }
-
-@app.context_processor
-def inject_user_context():
-    user_id = session.get("user_id")
-    role = session.get("role", "")
-    nama = session.get("nama", "Pengguna")
-
-    # kalau ada avatar user, gunakan; kalau tidak guest.png
-    avatar_url = f"img/avatars/user_{user_id}.webp" if user_id else "img/avatars/guest.png"
-
-    return dict(role=role, nama=nama, avatar_url=avatar_url)
-
-
-
+# Mail
+from flask_mail import Mail, Message
 app.config.update(MAIL_SETTINGS)
-
-# Untuk debugging cepat (boleh dibiarkan)
-print("MAIL_SERVER:", app.config.get("MAIL_SERVER"))
-print("MAIL_PORT:", app.config.get("MAIL_PORT"))
-print("MAIL_USE_TLS:", app.config.get("MAIL_USE_TLS"))
-print("MAIL_TIMEOUT:", app.config.get("MAIL_TIMEOUT"))
-print("MAIL_USERNAME set?:", bool(app.config.get("MAIL_USERNAME")))
-print("MAIL_DEFAULT_SENDER set?:", bool(app.config.get("MAIL_DEFAULT_SENDER")))
-
 mail = Mail(app)
-# Log ringan (optional)
+
 logging.basicConfig(level=logging.INFO)
 logging.info("App start")
 
-# ---------------------------
-# Konfigurasi Mail dari config.py
-# ---------------------------
-app.config.update(MAIL_SETTINGS)
-# Jangan aktifkan MAIL_SUPPRESS_SEND di produksi
-mail = Mail(app)
-
-# Helper kirim email
-def send_email(to, subject, body):
-    """Kirim email di thread terpisah + timeout supaya request tidak hang."""
-    start_ts = time.time()
-    print(f"[MAIL] Prepare send -> to={to}, subject={subject}")
-
-    def _worker():
-        try:
-            with app.app_context():
-                msg = Message(subject, recipients=[to])
-                msg.body = body
-                mail.send(msg)
-                print(f"[MAIL] Sent OK in {time.time() - start_ts:.2f}s")
-        except Exception as e:
-            # Jangan bikin request hang—cukup log errornya
-            print(f"[MAIL] ERROR: {e}")
-
-    t = threading.Thread(target=_worker, daemon=True)
-    t.start()  # langsung jalan di background
-
-# ---------------------------
-# DB config (normalisasi key)
-# psycopg2 biasa pakai 'dbname', sementara code lama pernah pakai 'database'
-# Kita bikin dict standar 'database' untuk class Database()
-# ---------------------------
+# DB config normalisasi key
 DB_CONFIG = {
     "host": RAW_DB.get("host"),
     "database": RAW_DB.get("dbname") or RAW_DB.get("database"),
@@ -215,35 +39,123 @@ DB_CONFIG = {
     "port": RAW_DB.get("port"),
 }
 
-# ---------------------------
-# Utilities
-# ---------------------------
-def login_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        if "user_id" not in session:
-            return redirect(url_for("login"))
-        return f(*args, **kwargs)
-    return decorated
+# =========================
+# Upload Helpers (Produk + Avatar)
+# =========================
+ALLOWED_IMG = {"png", "jpg", "jpeg", "webp"}
+app.config["MAX_CONTENT_LENGTH"] = 4 * 1024 * 1024  # 4MB
 
-def check_role(required_role):
-    return session.get("role") == required_role
+PRODUCT_FOLDER = os.path.join(app.static_folder, "img", "products")
+AVATAR_FOLDER  = os.path.join(app.static_folder, "img", "avatars")
+os.makedirs(PRODUCT_FOLDER, exist_ok=True)
+os.makedirs(AVATAR_FOLDER,  exist_ok=True)
 
-# Jika ada template yang masih memanggil {{ csrf_token() }} tapi kita tidak pakai Flask-WTF,
-# ini mencegah error Jinja.
+def _save_webp(file_storage, dst_abs: str) -> bool:
+    """Simpan file ke WEBP (kecil & konsisten)."""
+    try:
+        im = Image.open(file_storage.stream).convert("RGB")
+        im.save(dst_abs, "WEBP", quality=90)
+        return True
+    except Exception as e:
+        print("Gagal simpan WEBP:", e)
+        return False
+
+def save_product_image(file_storage, barang_id: int):
+    """
+    Simpan foto produk => static/img/products/prod_<id>.webp
+    Return: "INVALID" | "OK" | None
+    """
+    if not file_storage or not file_storage.filename:
+        return None
+    ext_ok = "." in file_storage.filename and file_storage.filename.rsplit(".", 1)[1].lower() in ALLOWED_IMG
+    if not ext_ok:
+        return "INVALID"
+    dst_abs = os.path.join(PRODUCT_FOLDER, f"prod_{barang_id}.webp")
+    return "OK" if _save_webp(file_storage, dst_abs) else None
+
+def product_img_relpath(barang_id: int) -> str:
+    cand = os.path.join(PRODUCT_FOLDER, f"prod_{barang_id}.webp")
+    return (f"img/products/prod_{barang_id}.webp" if os.path.exists(cand)
+            else "img/no-image.png")
+
+def save_avatar(file_storage, user_id: int):
+    """
+    Simpan avatar => static/img/avatars/user_<id>.webp
+    Return: "INVALID" | "OK" | None
+    """
+    if not file_storage or not file_storage.filename:
+        return None
+    ext_ok = "." in file_storage.filename and file_storage.filename.rsplit(".", 1)[1].lower() in ALLOWED_IMG
+    if not ext_ok:
+        return "INVALID"
+    dst_abs = os.path.join(AVATAR_FOLDER, f"user_{user_id}.webp")
+    return "OK" if _save_webp(file_storage, dst_abs) else None
+
+def avatar_relpath(user_id: int | None) -> str:
+    if not user_id:
+        return "img/avatars/guest.png"
+    cand = os.path.join(AVATAR_FOLDER, f"user_{user_id}.webp")
+    return (f"img/avatars/user_{user_id}.webp" if os.path.exists(cand)
+            else "img/avatars/guest.png")
+
+# Inject variabel umum ke semua template (navbar aman)
+@app.context_processor
+def inject_user_ctx():
+    uid = session.get("user_id")
+    return dict(
+        nama=session.get("nama", "Pengguna"),
+        role=session.get("role", ""),
+        avatar_url=url_for("static", filename=avatar_relpath(uid))
+    )
+
+# File kebesaran
+@app.errorhandler(RequestEntityTooLarge)
+def _too_big(_e):
+    flash("File terlalu besar (maks 4 MB).", "error")
+    return redirect(request.referrer or url_for("dashboard"))
+
+# Jika ada template lama panggil csrf_token()
 @app.context_processor
 def inject_csrf():
     return dict(csrf_token=lambda: "")
 
-# Error handler ringkas (biar stacktrace muncul di log)
+# Error handler global (log ke console)
 @app.errorhandler(Exception)
 def handle_exception(e):
     traceback.print_exc()
     return "Internal Server Error", 500
-    
-# ---------------------------
-# Token reset password
-# ---------------------------
+
+# =========================
+# Auth Utils
+# =========================
+def login_required(f):
+    @wraps(f)
+    def deco(*a, **kw):
+        if "user_id" not in session:
+            return redirect(url_for("login"))
+        return f(*a, **kw)
+    return deco
+
+def check_role(required_role):
+    return session.get("role") == required_role
+
+# =========================
+# Email Utils
+# =========================
+def send_email(to, subject, body):
+    def _worker():
+        try:
+            with app.app_context():
+                msg = Message(subject, recipients=[to])
+                msg.body = body
+                mail.send(msg)
+        except Exception as e:
+            print("[MAIL] ERROR:", e)
+    threading.Thread(target=_worker, daemon=True).start()
+
+# =========================
+# Reset Password Tokens
+# =========================
 RESET_SALT = "reset-password"
 
 def generate_token(email):
@@ -255,125 +167,91 @@ def verify_token(token, max_age=3600):
     try:
         return s.loads(token, salt=RESET_SALT, max_age=max_age)
     except Exception as e:
-        print(f"Token error: {e}")
+        print("Token error:", e)
         return None
 
-# ---------------------------
+# =========================
 # ROUTES
-# ---------------------------
+# =========================
 @app.route("/")
 def home():
-    if "user_id" in session:
-        return redirect(url_for("dashboard"))
-    return redirect(url_for("login"))
+    return redirect(url_for("dashboard") if "user_id" in session else url_for("login"))
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         username = request.form.get("username", "")
         password = request.form.get("password", "")
-
         db = Database(DB_CONFIG)
         user = db.get_user(username)
-
         if user and check_password_hash(user[2], password):
             session["user_id"] = user[0]
-            session["role"] = user[3]
-            session["nama"] = user[4]
+            session["role"]   = user[3]
+            session["nama"]   = user[4]
             flash("Login berhasil!", "success")
             return redirect(url_for("dashboard"))
-        else:
-            flash("Username atau password salah", "error")
-
+        flash("Username atau password salah", "error")
     return render_template("login.html")
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    flash("You have been logged out", "info")
+    return redirect(url_for("login"))
 
 @app.route('/dashboard')
 @login_required
 def dashboard():
     try:
         db = Database(DB_CONFIG)
-        data_barang = db.read_all_barang() or []   # selalu list
+        data_barang = db.read_all_barang() or []
         total_produk = len(data_barang)
         return render_template(
             "dashboard.html",
             barang=data_barang,
             total_produk=total_produk
         )
-    except Exception as e:
-        # log rinci ke console
-        import traceback
-        print("=== DASHBOARD ERROR ===")
-        traceback.print_exc()
+    except Exception:
+        logging.exception("Dashboard load failed")
         flash("Terjadi kesalahan saat memuat dashboard.", "error")
-        # render halaman kosong tapi tetap hidup, bukan redirect loop
-        return render_template(
-            "dashboard.html",
-            barang=[],
-            total_produk=0
-        ), 200
+        return render_template("dashboard.html", barang=[], total_produk=0), 200
 
-
+# ---------- Forgot / Reset ----------
 @app.route("/forgot-password", methods=["GET", "POST"])
 def forgot_password():
     if request.method == "POST":
         email = (request.form.get("email") or "").strip().lower()
-
-        # (opsional) validasi format sederhana biar gak kirim ke string kosong/aneh
         if not email or "@" not in email:
             flash("Masukkan email yang valid.", "error")
             return redirect(url_for("forgot_password"))
-
         try:
             db = Database(DB_CONFIG)
-
-            # Jangan bocorkan apakah email ada/tidak
-            user_exists = False
+            exists = False
             try:
-                user_exists = db.check_email_exists(email)
+                exists = db.check_email_exists(email)
             except Exception as e:
-                # kalau terjadi error saat cek, log saja—tetap kasih pesan generik
                 print("[FORGOT] check_email_exists error:", e)
 
-            if user_exists:
-                # Buat token & link reset
-                token = generate_token(email)  # pastikan pakai SALT di helper
+            if exists:
+                token = generate_token(email)
                 reset_url = url_for("reset_password", token=token, _external=True)
-
-                # Kirim email di background (tidak blok UI)
                 try:
                     send_email(
-                        to=email,
-                        subject="Reset Password",
+                        to=email, subject="Reset Password",
                         body=(
-                            "Halo,\n\n"
-                            "Klik tautan berikut untuk mengatur ulang password (berlaku 1 jam):\n"
-                            f"{reset_url}\n\n"
-                            "Jika tidak meminta reset, abaikan email ini."
-                        ),
+                            "Halo,\n\nKlik tautan ini untuk reset password (berlaku 1 jam):\n"
+                            f"{reset_url}\n\nJika tidak meminta reset, abaikan email ini."
+                        )
                     )
-                    print("[FORGOT] reset email dispatched to:", email)
                 except Exception as e:
-                    # Jangan bikin request gagal hanya karena kirim email error
                     print("[FORGOT] send_email error:", e)
 
-            # Pesan generik selalu sama (keamanan)
             flash("Jika email terdaftar, instruksi reset sudah dikirim.", "success")
             return redirect(url_for("forgot_password"))
-
         except Exception as e:
             print("[FORGOT] unexpected error:", e)
             flash("Terjadi kesalahan. Coba lagi nanti.", "error")
             return redirect(url_for("forgot_password"))
-
-        finally:
-            # Tutup koneksi DB kalau class Database kamu punya .close()
-            try:
-                if "db" in locals() and hasattr(db, "close"):
-                    db.close()
-            except Exception as e:
-                print("[FORGOT] db.close error:", e)
-
-    # GET → tampilkan form
     return render_template("forget_password.html")
 
 @app.route("/reset-password/<token>", methods=["GET", "POST"])
@@ -385,68 +263,57 @@ def reset_password(token):
 
     if request.method == "POST":
         new_password = request.form.get("password", "")
-        confirm = request.form.get("confirm_password", "")
+        confirm      = request.form.get("confirm_password", "")
         if not new_password or new_password != confirm:
             flash("Konfirmasi password tidak cocok.", "error")
             return redirect(request.url)
 
         db = Database(DB_CONFIG)
         hashed = generate_password_hash(new_password)
-        ok = db.update_user_password_by_email(email, hashed)
-        if ok:
+        if db.update_user_password_by_email(email, hashed):
             flash("Password berhasil diubah. Silakan login.", "success")
             return redirect(url_for("login"))
-        else:
-            flash("Gagal menyimpan password baru.", "error")
-            return redirect(request.url)
-
+        flash("Gagal menyimpan password baru.", "error")
     return render_template("reset_password.html")
 
+# ---------- Register ----------
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if "user_id" in session:
         return redirect(url_for("dashboard"))
-
     try:
         if request.method == "POST":
             username = request.form["username"]
             password = request.form["password"]
-            confirm_password = request.form["confirm_password"]
-            nama = request.form["nama"]
-            email = request.form["email"]
-            nohp = request.form["nohp"]
+            confirm  = request.form["confirm_password"]
+            nama     = request.form["nama"]
+            email    = request.form["email"]
+            nohp     = request.form["nohp"]
 
-            if password != confirm_password:
+            if password != confirm:
                 flash("Password dan konfirmasi password tidak sama", "error")
                 return redirect(url_for("register"))
 
             db = Database(DB_CONFIG)
-
             if db.get_user(username):
                 flash("Username sudah digunakan", "error")
                 return redirect(url_for("register"))
-
             if db.check_email_exists(email):
                 flash("Email sudah terdaftar", "error")
                 return redirect(url_for("register"))
 
-            total_users = db.count_users()
-            role = "admin" if total_users == 0 else "user"
-
+            role = "admin" if (db.count_users() == 0) else "user"
             user_id = db.create_user(username, password, role, nama, email, nohp)
             if user_id:
                 flash("Registrasi berhasil! Silakan login.", "success")
                 return redirect(url_for("login", success=True))
-            else:
-                flash("Registrasi gagal", "error")
-
-    except Exception as e:
-        print(f"Error in register: {str(e)}")
+            flash("Registrasi gagal", "error")
+    except Exception:
+        logging.exception("Register error")
         flash("Terjadi kesalahan saat menyimpan data", "error")
-        return render_template("register.html")
-
     return render_template("register.html")
 
+# ---------- Edit Profile (+ Avatar) ----------
 @app.route("/editProfile", methods=["GET", "POST"])
 def editProfile():
     if "user_id" not in session:
@@ -461,22 +328,11 @@ def editProfile():
         if not u:
             flash("Data pengguna tidak ditemukan", "error")
             return redirect(url_for("dashboard"))
+        user = SimpleNamespace(username=u[1], nama=u[4], email=u[5], nohp=u[6])
+        return render_template("editProfile.html", user=user,
+                               avatar_url=url_for("static", filename=avatar_relpath(user_id)))
 
-        # sesuaikan indeks kolom dengan struktur tabelmu
-        user = SimpleNamespace(
-            username=u[1],
-            nama=u[4],
-            email=u[5],
-            nohp=u[6],
-        )
-
-        return render_template(
-            "editProfile.html",
-            user=user,                     # untuk {{ user.username }} dll
-            avatar_url=_avatar_relpath(user_id),  # dipakai juga di navbar
-        )
-
-    # --- POST: simpan perubahan profil + (opsional) avatar ---
+    # POST
     username = (request.form.get("username") or "").strip()
     password = (request.form.get("password") or "").strip() or None
     nama     = (request.form.get("nama") or "").strip()
@@ -487,7 +343,6 @@ def editProfile():
         flash("Semua field kecuali password wajib diisi", "error")
         return redirect(url_for("editProfile"))
 
-    # Unik check (pastikan method ini ada di CRUD)
     if db.check_username_exists(username, user_id):
         flash("Username sudah digunakan pengguna lain", "error")
         return redirect(url_for("editProfile"))
@@ -495,53 +350,27 @@ def editProfile():
         flash("Email sudah digunakan pengguna lain", "error")
         return redirect(url_for("editProfile"))
 
-    # Update data user (password opsional)
-    ok = db.update_user(
-        user_id, username, nama, email, nohp,
-        role=None,
-        password=password  # None = tidak mengubah password
-    )
+    ok = db.update_user(user_id, username, nama, email, nohp, role=None, password=password)
     if not ok:
         flash("Gagal memperbarui profil", "error")
         return redirect(url_for("editProfile"))
 
-    # Simpan avatar bila ada
+    # Avatar (opsional)
     file = request.files.get("avatar")
     if file and file.filename:
-        res = _save_avatar(file, user_id)
+        res = save_avatar(file, user_id)
         if res == "INVALID":
             flash("Format gambar tidak didukung (png/jpg/jpeg/webp).", "error")
-        elif res == "ERROR":
+        elif res is None:
             flash("Gagal menyimpan foto profil.", "error")
         else:
             flash("Foto profil diperbarui.", "success")
 
-    # refresh session display name
     session["nama"] = nama
-
     flash("Profil berhasil diperbarui", "success")
     return redirect(url_for("editProfile"))
 
-
-
-# (opsional) bila ukuran file > MAX_CONTENT_LENGTH
-@app.errorhandler(RequestEntityTooLarge)
-def _too_big(_e):
-    flash("File terlalu besar (maks 4 MB).", "error")
-    return redirect(request.referrer or url_for("editProfile"))
-
-
-
-
-@app.route("/logout")
-def logout():
-    session.clear()
-    flash("You have been logged out", "info")
-    return redirect(url_for("login"))
-
-# ---------------------------
-# CRUD Barang
-# ---------------------------
+# ---------- CRUD Barang ----------
 @app.route('/addBarang', methods=['GET', 'POST'])
 def addBarang():
     if not check_role('admin'):
@@ -550,17 +379,17 @@ def addBarang():
 
     if request.method == 'POST':
         try:
-            nama_barang = request.form.get('nama_barang', '').strip()
-            harga = request.form.get('harga', '').strip()
-            deskripsi = request.form.get('deskripsi', '').strip()
-            foto_file = request.files.get('foto')  # <--- ambil file
+            nama_barang = (request.form.get('nama_barang') or '').strip()
+            harga_raw   = (request.form.get('harga') or '').strip()
+            deskripsi   = (request.form.get('deskripsi') or '').strip()
+            foto_file   = request.files.get('foto')
 
-            if not nama_barang or not harga or not deskripsi:
+            if not nama_barang or not harga_raw or not deskripsi:
                 flash("Semua field harus diisi!", "error")
                 return render_template("addBarang.html")
 
             try:
-                harga = float(harga.replace(',', '.'))
+                harga = float(harga_raw.replace(".", "").replace(",", "."))
             except ValueError:
                 flash("Harga harus berupa angka!", "error")
                 return render_template("addBarang.html")
@@ -570,32 +399,27 @@ def addBarang():
                 flash("Nama dan Harga Barang sudah terdaftar", "error")
                 return render_template("addBarang.html")
 
-            # simpan dulu barang di DB
             barang_id = db.create_barang(nama_barang, harga, deskripsi)
             if not barang_id:
                 flash("Tambah Barang Gagal, silakan ulangi", "error")
                 return render_template("addBarang.html")
 
             # simpan foto (opsional)
-            relpath = save_product_image(foto_file, nama_barang)
-            if relpath:
-                # kalau tabel kamu belum ada kolom foto, lewati bagian ini.
-                # jika SUDAH ada kolom foto, panggil method update foto kamu:
-                try:
-                    db.update_barang_foto(barang_id, relpath)  # <-- buat method ini di crud.py jika ada kolom foto
-                except Exception:
-                    pass  # aman, tetap lanjut walau tanpa kolom foto
+            if foto_file and foto_file.filename:
+                res = save_product_image(foto_file, int(barang_id))
+                if res == "INVALID":
+                    flash("Format gambar tidak didukung (png/jpg/jpeg/webp).", "warning")
+                elif res is None:
+                    flash("Gagal menyimpan gambar.", "warning")
 
             flash("Tambah Barang Berhasil", "success")
-            return redirect(url_for("menuAdmin", roleMenu="kelolaBarang"))
-
-        except Exception as e:
-            print(f"Error in addBarang: {str(e)}")
+            return redirect(url_for("dashboard"))
+        except Exception:
+            logging.exception("addBarang error")
             flash("Terjadi kesalahan saat menyimpan data", "error")
             return render_template("addBarang.html")
 
     return render_template("addBarang.html")
-
 
 @app.route("/editBarang/<id_barang>", methods=["GET", "POST"])
 def editBarang(id_barang):
@@ -603,148 +427,139 @@ def editBarang(id_barang):
         flash("Akses tidak diizinkan", "error")
         return redirect("/")
 
-    try:
-        db = Database(DB_CONFIG)
+    if not id_barang.isdigit():
+        flash("ID barang tidak valid", "error")
+        return redirect(url_for("dashboard"))
 
-        if not id_barang.isdigit():
-            flash("ID barang tidak valid", "error")
+    db = Database(DB_CONFIG)
+
+    if request.method == "GET":
+        barang = db.get_barang_by_id(id_barang)
+        if not barang:
+            flash("Data barang tidak ditemukan", "error")
             return redirect(url_for("dashboard"))
+        return render_template("editBarang.html", barang=barang)
 
-        if request.method == "GET":
-            barang = db.get_barang_by_id(id_barang)
-            if not barang:
-                flash("Data barang tidak ditemukan", "error")
-                return redirect(url_for("dashboard"))
-            # path gambar (konvensi: products/<id>.png)
-            image_url = url_for("static", filename=f"img/products/{id_barang}.png")
-            return render_template("editBarang.html", barang=barang, image_url=image_url)
-
-        # --- POST ---
-        nama_barang = request.form.get("nama_barang", "").strip()
-        harga_raw    = request.form.get("harga", "").strip()
-        deskripsi    = request.form.get("deskripsi", "").strip()
+    # POST
+    try:
+        nama_barang = (request.form.get("nama_barang") or "").strip()
+        harga_raw   = (request.form.get("harga") or "").strip()
+        deskripsi   = (request.form.get("deskripsi") or "").strip()
 
         if not nama_barang or not harga_raw or not deskripsi:
             flash("Semua field harus diisi", "error")
             return redirect(url_for("editBarang", id_barang=id_barang))
 
-        # Normalisasi harga (dukung koma Indonesia)
-        try:
-            harga = float(harga_raw.replace(".", "").replace(",", "."))
-        except ValueError:
-            flash("Harga harus berupa angka yang valid", "error")
-            return redirect(url_for("editBarang", id_barang=id_barang))
+        harga = float(harga_raw.replace(".", "").replace(",", "."))
 
-        # Simpan data barang ke DB dulu
         ok = db.update_barang(id_barang, nama_barang, harga, deskripsi)
         if not ok:
             flash("Gagal memperbarui data barang", "error")
             return redirect(url_for("editBarang", id_barang=id_barang))
 
-        # Tangani upload foto (opsional)
+        # Foto (opsional)
         file = request.files.get("foto")
         if file and file.filename:
-            if not _allowed_image(file.filename):
-                flash("Format gambar tidak didukung. Gunakan png/jpg/jpeg/webp", "error")
+            res = save_product_image(file, int(id_barang))
+            if res == "INVALID":
+                flash("Format gambar tidak didukung (png/jpg/jpeg/webp).", "error")
+                return redirect(url_for("editBarang", id_barang=id_barang))
+            elif res is None:
+                flash("Gagal menyimpan gambar.", "error")
                 return redirect(url_for("editBarang", id_barang=id_barang))
 
-            try:
-                # Amankan nama lalu pakai konvensi ID.png agar stabil
-                dst_path = os.path.join(UPLOAD_FOLDER, f"{id_barang}.png")
-
-                # Baca & normalisasi ke PNG agar konsisten
-                img = Image.open(file.stream)
-                if img.mode in ("RGBA", "P"):
-                    img = img.convert("RGB")
-                img.save(dst_path, format="PNG", optimize=True)
-
-            except Exception as e:
-                print("ERROR save image:", e)
-                flash("Data tersimpan, tapi gagal menyimpan foto.", "warning")
-                return redirect(url_for("menuAdmin", roleMenu="kelolaBarang"))
-
         flash("Barang berhasil diperbarui!", "success")
-        return redirect(url_for("menuAdmin", roleMenu="kelolaBarang"))
-
-    except Exception as e:
-        print(f"Error in editBarang: {str(e)}")
+        return redirect(url_for("dashboard"))
+    except Exception:
+        logging.exception("editBarang error")
         flash("Terjadi kesalahan sistem", "error")
         return redirect(url_for("dashboard"))
-
-
 
 @app.route("/deleteBarang/<id_barang>", methods=["POST"])
 def deleteBarang(id_barang):
     if not check_role("admin"):
         flash("Akses tidak diizinkan", "error")
         return redirect("/")
-
     try:
         db = Database(DB_CONFIG)
         barang = db.get_barang_by_id(id_barang)
         if not barang:
             flash("Barang tidak ditemukan", "error")
-            return redirect(url_for("menuAdmin", roleMenu="kelolaBarang"))
+            return redirect(url_for("dashboard"))
 
-        delete_barang = db.delete_barang(id_barang)
-        if delete_barang:
+        if db.delete_barang(id_barang):
             flash("Data barang berhasil dihapus!", "success")
         else:
             flash("Gagal menghapus data barang", "error")
-
-        return redirect(url_for("menuAdmin", roleMenu="kelolaBarang"))
-
-    except Exception as e:
-        print(f"Error saat menghapus barang: {str(e)}")
+        return redirect(url_for("dashboard"))
+    except Exception:
+        logging.exception("deleteBarang error")
         flash("Terjadi kesalahan sistem saat menghapus barang", "error")
-        return redirect(url_for("menuAdmin", roleMenu="kelolaBarang"))
+        return redirect(url_for("dashboard"))
 
-# ---------------------------
-# CRUD User (ringkas)
-# ---------------------------
+# ---------- Admin Menu: Kelola User ----------
+@app.route("/menuAdmin", methods=["GET"])
+def menuAdmin():
+    if not check_role("admin"):
+        flash("Anda tidak memiliki akses ke halaman ini", "error")
+        return redirect("/")
+
+    try:
+        roleMenu = (request.args.get("roleMenu") or "kelolaUser").strip().lower()
+        db = Database(DB_CONFIG)
+
+        if roleMenu in ("kelolabarang", "barang", "produk"):
+            flash("Kelola barang kini di Dashboard (tombol Edit pada kartu).", "info")
+            return redirect(url_for("dashboard"))
+
+        if roleMenu in ("kelolauser", "user"):
+            users = db.read_all_users() or []
+            return render_template("kelolaUser.html", users=users)
+
+        return redirect(url_for("menuAdmin", roleMenu="kelolaUser"))
+
+    except Exception:
+        logging.exception("menuAdmin error")
+        flash("Terjadi kesalahan. Coba lagi nanti.", "error")
+        return redirect("/")
+
+# ---------- CRUD User ringkas ----------
 @app.route("/addUser", methods=["GET", "POST"])
 def addUser():
     if not check_role("admin"):
         flash("Akses tidak diizinkan", "error")
         return redirect("/")
-
     if request.method == "POST":
         try:
             username = request.form["username"]
             password = request.form["password"]
-            confirm_password = request.form["confirm_password"]
-            nama = request.form["nama"]
-            email = request.form["email"]
-            nohp = request.form["nohp"]
+            confirm  = request.form["confirm_password"]
+            nama     = request.form["nama"]
+            email    = request.form["email"]
+            nohp     = request.form["nohp"]
 
-            if password != confirm_password:
+            if password != confirm:
                 flash("Password dan konfirmasi password tidak sama", "error")
                 return redirect(url_for("addUser"))
 
             db = Database(DB_CONFIG)
-
             if db.get_user(username):
                 flash("Username sudah digunakan", "error")
                 return redirect(url_for("addUser"))
-
             if db.check_email_exists(email):
                 flash("Email sudah terdaftar", "error")
                 return redirect(url_for("addUser"))
 
-            total_users = db.count_users()
-            role = "admin" if total_users == 0 else "user"
-
+            role = "admin" if db.count_users() == 0 else "user"
             user_id = db.create_user(username, password, role, nama, email, nohp)
             if user_id:
                 flash("Registrasi berhasil! Silakan login.", "success")
                 return redirect(url_for("login", success=True))
-            else:
-                flash("Registrasi gagal", "error")
-        except Exception as e:
-            print(f"Error in addUser: {str(e)}")
+            flash("Registrasi gagal", "error")
+        except Exception:
+            logging.exception("addUser error")
             flash("Terjadi kesalahan saat menyimpan data", "error")
             return render_template("addUser.html")
-
     return render_template("addUser.html")
 
 @app.route("/editUser/<int:user_id>", methods=["GET", "POST"])
@@ -752,7 +567,6 @@ def editUser(user_id):
     if not check_role("admin"):
         flash("Akses ditolak", "error")
         return redirect("/")
-
     db = Database(DB_CONFIG)
     user = db.get_user_by_id(user_id)
     if not user:
@@ -764,22 +578,16 @@ def editUser(user_id):
         if role not in ["admin", "user"]:
             flash("Role tidak valid", "error")
             return redirect(url_for("editUser", user_id=user_id))
-
         try:
-            updated_id = db.update_user(
-                user_id, user[1], user[4], user[5], user[6], role, None
-            )
+            updated_id = db.update_user(user_id, user[1], user[4], user[5], user[6], role, None)
             if updated_id:
                 flash("Role pengguna berhasil diubah", "success")
                 return redirect(url_for("menuAdmin", roleMenu="kelolaUser"))
-            else:
-                flash("Gagal mengubah role pengguna", "error")
-                return redirect(url_for("editUser", user_id=user_id))
-        except Exception as e:
-            print(f"Error updating user role: {e}")
+            flash("Gagal mengubah role pengguna", "error")
+        except Exception:
+            logging.exception("editUser role error")
             flash("Terjadi kesalahan saat mengubah role", "error")
-            return redirect(url_for("editUser", user_id=user_id))
-
+        return redirect(url_for("editUser", user_id=user_id))
     return render_template("editUser.html", user=user)
 
 @app.route("/deleteUser", methods=["POST"])
@@ -787,69 +595,30 @@ def deleteUser():
     if not check_role("admin"):
         flash("Akses ditolak", "error")
         return redirect("/")
-
     user_id = request.form.get("user_id")
     if not user_id:
         flash("ID pengguna tidak valid", "error")
         return redirect(url_for("menuAdmin", roleMenu="kelolaUser"))
-
     db = Database(DB_CONFIG)
     if db.delete_user(user_id):
         flash("Pengguna berhasil dihapus", "success")
     else:
         flash("Gagal menghapus pengguna", "error")
-
     return redirect(url_for("menuAdmin", roleMenu="kelolaUser"))
 
-@app.route("/menuAdmin", methods=["GET"])
-def menuAdmin():
-    # Hanya admin
-    if not check_role("admin"):
-        flash("Anda tidak memiliki akses ke halaman ini", "error")
-        return redirect("/")
-
-    try:
-        role = session.get("role")
-        nama = session.get("nama")
-        # default ke kelolaUser
-        roleMenu = (request.args.get("roleMenu") or "kelolaUser").strip().lower()
-
-        db = Database(DB_CONFIG)
-
-        # LEGACY: jika masih ada link lama menuju kelola barang → arahkan ke dashboard
-        if roleMenu in ("kelolabarang", "barang", "produk"):
-            flash("Kelola barang kini dipindahkan ke Dashboard. Gunakan tombol Edit pada kartu produk.", "info")
-            return redirect(url_for("dashboard"))
-
-        # Satu-satunya halaman admin yang aktif: Kelola User
-        if roleMenu in ("kelolauser", "user"):
-            data_users = db.read_all_users()
-            return render_template("kelolaUser.html", role=role, nama=nama, users=data_users)
-
-        # Jika parameter tidak dikenal, fallback ke kelolaUser
-        return redirect(url_for("menuAdmin", roleMenu="kelolaUser"))
-
-    except Exception as e:
-        print("Terjadi error di menuAdmin:", e)
-        flash("Terjadi kesalahan. Coba lagi nanti.", "error")
-        return redirect("/")
-
-# ---------------------------
+# =========================
 # Entrypoint
-# ---------------------------
+# =========================
 if __name__ == "__main__":
-    # Buat tabel kalau belum ada
+    # pastikan tabel ada
     create_tables(DB_CONFIG)
 
-    # (opsional) Cek koneksi DB cepat
+    # cek koneksi singkat
     try:
         print("Mencoba konek ke database...")
         conn = psycopg2.connect(
-            host=DB_CONFIG["host"],
-            dbname=DB_CONFIG["database"],
-            user=DB_CONFIG["user"],
-            password=DB_CONFIG["password"],
-            port=DB_CONFIG["port"],
+            host=DB_CONFIG["host"], dbname=DB_CONFIG["database"],
+            user=DB_CONFIG["user"], password=DB_CONFIG["password"], port=DB_CONFIG["port"]
         )
         with conn.cursor() as cur:
             cur.execute("SELECT NOW();")
