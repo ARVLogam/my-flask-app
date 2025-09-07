@@ -1,116 +1,87 @@
 <!DOCTYPE html>
 <html lang="id">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tambah Barang</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
-      rel="stylesheet"
-    />
-  </head>
-  <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
-    <div class="w-full max-w-md bg-white rounded-lg shadow-md overflow-hidden">
-      <div class="bg-red-600 py-4 px-6">
-        <h1 class="text-2xl font-bold text-white text-center">Tambah Barang</h1>
-      </div>
-      <!-- Tambahan di form tambah/ubah barang -->
-      <div class="space-y-1">
-        <label class="text-sm text-neutral-700">Foto Produk (PNG/JPG/WebP)</label>
-        <input type="file" name="foto" accept=".png,.jpg,.jpeg,.webp"
-               class="block w-full border border-neutral-300 rounded-lg p-2">
-        <p class="text-xs text-neutral-500">Opsional. Maks 5MB.</p>
-      </div>
-
-      <form
-        action="{{ url_for('addBarang') }}"
-        method="post"
-        class="p-6 space-y-4"
-        action=""  
-        enctype="multipart/form-data" 
-        class="space-y-4">
-  <!-- ... fields ... -->
-</form>
->
-        <!-- Nama Barang -->
-        <div>
-          <label
-            for="nama_barang"
-            class="block text-sm font-medium text-gray-700 mb-1"
-            >Nama Barang</label
-          >
-          <div class="relative">
-            <div
-              class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
-            >
-              <i class="fas fa-box text-gray-400"></i>
-            </div>
-            <input
-              type="text"
-              id="nama_barang"
-              name="nama_barang"
-              class="w-full pl-10 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              placeholder="Masukkan nama barang"
-              required
-            />
-          </div>
-        </div>
-
-        <!-- Harga -->
-        <div>
-          <label
-            for="harga"
-            class="block text-sm font-medium text-gray-700 mb-1"
-            >Harga</label
-          >
-          <div class="relative">
-            <div
-              class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
-            >
-              <i class="fas fa-tag text-gray-400"></i>
-            </div>
-            <input
-              type="number"
-              id="harga"
-              name="harga"
-              class="w-full pl-10 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              placeholder="Masukkan harga"
-              required
-            />
-          </div>
-        </div>
-
-        <!-- Deskripsi -->
-        <div>
-          <label
-            for="deskripsi"
-            class="block text-sm font-medium text-gray-700 mb-1"
-            >Deskripsi</label
-          >
-          <textarea
-            id="deskripsi"
-            name="deskripsi"
-            class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-            placeholder="Tambahkan deskripsi barang"
-            required
-          ></textarea>
-        </div>
-
-        <!-- Submit Button -->
-        <button
-          type="submit"
-          class="w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition duration-300 flex items-center justify-center"
-        >
-          <i class="fas fa-plus-circle mr-2"></i> Tambah Barang
-        </button>
-        <a
-          href="javascript:history.back()"
-          class="w-full bg-red-200 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-300 transition duration-300 flex items-center justify-center mt-3"
-        >
-          <i class="fas fa-times mr-2"></i> Batal
-        </a>
-      </form>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tambah Barang</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
+</head>
+<body class="bg-neutral-100 min-h-screen flex items-center justify-center p-4">
+  {% include 'flashProtection.html' %}
+  <div class="w-full max-w-xl bg-white rounded-2xl shadow-lg overflow-hidden">
+    <div class="bg-red-600 py-4 px-6">
+      <h1 class="text-2xl font-bold text-white text-center">Tambah Barang</h1>
     </div>
-  </body>
+
+    <form method="POST" enctype="multipart/form-data" class="p-6 space-y-5">
+      <!-- Nama -->
+      <div>
+        <label class="block text-sm font-medium text-neutral-700 mb-1">Nama Barang</label>
+        <div class="relative">
+          <i class="fa-solid fa-box absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"></i>
+          <input type="text" name="nama_barang" required
+                 class="w-full pl-10 p-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"/>
+        </div>
+      </div>
+
+      <!-- Harga -->
+      <div>
+        <label class="block text-sm font-medium text-neutral-700 mb-1">Harga</label>
+        <div class="relative">
+          <i class="fa-solid fa-tag absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"></i>
+          <input type="text" name="harga" required placeholder="contoh: 150.000"
+                 class="w-full pl-10 p-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"/>
+        </div>
+        <p class="text-xs text-neutral-500 mt-1">Boleh pakai titik/koma. Contoh: 150.000 atau 150,000.00</p>
+      </div>
+
+      <!-- Deskripsi -->
+      <div>
+        <label class="block text-sm font-medium text-neutral-700 mb-1">Deskripsi</label>
+        <div class="relative">
+          <i class="fa-solid fa-align-left absolute left-3 top-3 text-neutral-400"></i>
+          <textarea name="deskripsi" rows="3" required
+                    class="w-full pl-10 p-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"></textarea>
+        </div>
+      </div>
+
+      <!-- Foto -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Foto Produk (opsional)</label>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="rounded-md border p-2 bg-neutral-50">
+            <img id="preview" src="{{ url_for('static', filename='img/no-image.png') }}"
+                 class="w-full h-40 object-contain" alt="preview">
+          </div>
+          <div class="flex items-center">
+            <input type="file" name="foto" accept=".png,.jpg,.jpeg,.webp,image/*"
+                   class="block w-full text-sm text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:bg-red-600 file:text-white hover:file:bg-red-700 cursor-pointer">
+          </div>
+        </div>
+        <p class="text-xs text-gray-500 mt-1">Maks. ~4MB. Format: png, jpg, jpeg, webp.</p>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex gap-3 pt-2">
+        <button type="submit"
+                class="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-lg py-2.5 font-medium">
+          <i class="fa-solid fa-floppy-disk mr-2"></i>Simpan
+        </button>
+        <a href="{{ url_for('dashboard') }}"
+           class="flex-1 text-center bg-neutral-200 hover:bg-neutral-300 text-neutral-800 rounded-lg py-2.5 font-medium">Batal</a>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    // Preview live
+    const fileInput = document.querySelector('input[name="foto"]');
+    const preview   = document.getElementById('preview');
+    fileInput?.addEventListener('change', e => {
+      const f = e.target.files?.[0];
+      if (f) preview.src = URL.createObjectURL(f);
+    });
+  </script>
+</body>
 </html>
