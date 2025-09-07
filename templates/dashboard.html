@@ -6,9 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Etalase Produk</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
   <style>
     * { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
     .card-shadow { box-shadow: 0 10px 25px rgba(0,0,0,.06); }
@@ -18,44 +18,41 @@
   </style>
 </head>
 <body class="bg-neutral-50 min-h-screen">
-
   {% include 'navbar.html' %}
 
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
     {% include 'flashProtection.html' %}
   </div>
 
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
       <h1 class="text-xl sm:text-2xl font-bold text-neutral-900">Etalase Produk</h1>
-      <div class="text-sm text-neutral-600">
-        Total produk: <strong>{{ (total_produk or 0) }}</strong>
-      </div>
+      <div class="text-sm text-neutral-600">Total produk: <strong>{{ total_produk }}</strong></div>
     </div>
 
     <div id="gridProduk" class="grid gap-4 sm:gap-5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-      {% for item in (barang or []) %}
-        {# Asumsi: item[0]=id, item[1]=nama, item[2]=harga, item[3]=deskripsi, item[4]=image_relpath (opsional) #}
-        {% set nama = item[1] %}
+      {% for item in barang %}
+        {# Struktur yang dipakai di CRUD kamu:
+           item[0]=id, item[1]=nama, item[2]=harga, item[3]=deskripsi
+           jika ada kolom waktu update, jadikan item[6] (opsional) #}
+        {% set id    = item[0] %}
+        {% set nama  = item[1] %}
         {% set harga = item[2] %}
         {% set desk  = item[3] %}
-        {% set slug = (nama or '')|lower|replace(' ', '-') %}
-        {# Jika DB punya kolom path gambar relatif (mis. "img/products/xxx.webp"), pakai itu.
-           Kalau tidak ada, coba products/slug.png. #}
-        {% set img_rel_db = (item[4] if item|length>4 else None) %}
-        {% set img_rel = img_rel_db if img_rel_db else ('img/products/' ~ slug ~ '.png') %}
-        {% set img_fallback = 'img/no-image.png' %}
+        {% set cache = (item[6] or '') %}
 
         <article class="card group bg-white rounded-2xl card-shadow border border-neutral-100 flex flex-col overflow-hidden"
-                 data-name="{{ (nama or '')|lower }}" data-cat="semua">
+                 data-name="{{ nama|lower }}" data-cat="semua">
           <div class="relative aspect-[4/3] overflow-hidden bg-neutral-100">
             <img
-              src="{{ url_for('static', filename=img_rel) }}"
-              alt="{{ nama }}"
               class="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
-              onerror="this.onerror=null;this.src='{{ url_for('static', filename=img_fallback) }}';"
+              alt="{{ nama }}"
               loading="lazy"
+              data-id="{{ id }}"
+              src="{{ url_for('static', filename='img/products/' ~ id ~ '.png') }}?v={{ cache }}"
+              onerror="tryNextExt(this)"
             />
+            <div class="absolute left-2 top-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full shadow">Terlaris</div>
           </div>
 
           <div class="p-3 sm:p-4 flex-1 flex flex-col">
@@ -64,15 +61,14 @@
 
             <div class="mt-3 sm:mt-4">
               <div class="text-base sm:text-lg font-bold text-red-600">
-                Rp {{ '{:,.0f}'.format(harga|float(default=0)).replace(',', '.') }}
+                Rp {{ '{:,.0f}'.format(harga).replace(',', '.') }}
               </div>
             </div>
 
             <div class="mt-3 sm:mt-4 grid grid-cols-2 gap-2">
               <a href="#" class="text-center text-sm border border-neutral-300 rounded-lg py-2 hover:bg-neutral-50">Detail</a>
-
-              {% if (role|default('')) == 'admin' %}
-                <a href="{{ url_for('editBarang', id_barang=item[0]) }}"
+              {% if role == 'admin' %}
+                <a href="{{ url_for('editBarang', id_barang=id) }}"
                    class="text-center text-sm bg-red-600 text-white rounded-lg py-2 hover:bg-red-700">Edit</a>
               {% else %}
                 <button class="text-center text-sm bg-red-600 text-white rounded-lg py-2 hover:bg-red-700">Tambah</button>
@@ -83,12 +79,9 @@
       {% endfor %}
     </div>
 
-    {% if (barang or [])|length == 0 %}
+    {% if barang|length == 0 %}
       <div class="text-center py-20 text-neutral-500">
-        Belum ada produk.
-        {% if (role|default('')) == 'admin' %}
-          <a href="{{ url_for('addBarang') }}" class="text-red-600 hover:underline">Tambah sekarang</a>.
-        {% endif %}
+        Belum ada produk. {% if role == 'admin' %}<a href="{{ url_for('addBarang') }}" class="text-red-600 hover:underline">Tambah sekarang</a>.{% endif %}
       </div>
     {% endif %}
   </main>
@@ -98,5 +91,27 @@
       © Sistem Management ARV LOGAM • Dibuat dengan ❤️
     </div>
   </footer>
+
+  <script>
+    // Fallback: coba .png -> .jpg -> .webp -> no-image
+    function tryNextExt(img) {
+      const base = "{{ url_for('static', filename='img/products/') }}";
+      const noimg = "{{ url_for('static', filename='img/no-image.png') }}";
+      const id = img.getAttribute('data-id');
+      const tried = img.getAttribute('data-tried') || 'png';
+      const cache = '{{ ("" ) }}'; // bisa diisi timestamp kalau mau
+
+      if (tried === 'png') {
+        img.setAttribute('data-tried', 'jpg');
+        img.src = `${base}${id}.jpg`;
+      } else if (tried === 'jpg') {
+        img.setAttribute('data-tried', 'webp');
+        img.src = `${base}${id}.webp`;
+      } else {
+        img.onerror = null;
+        img.src = noimg;
+      }
+    }
+  </script>
 </body>
 </html>
