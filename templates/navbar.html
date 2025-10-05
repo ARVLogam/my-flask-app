@@ -51,10 +51,15 @@
     </div>
     {% endif %}
 
+    {% set _role = role|default('user') %}
+    
+    {% if _role == 'user' %}
     <a href="{{ url_for('cart_view') }}" class="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 nav-close">
       <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M7 18a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm10 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM6 2h2l1 3h10a1 1 0 0 1 .95 1.32l-2 6A2 2 0 0 1 16.05 14H9a2 2 0 0 1-1.9-1.37L5.1 4H2V2h3.2A1 1 0 0 1 6 2Z"/></svg>
       <span>Keranjang{% if cart_count %} ({{ cart_count }}){% endif %}</span>
     </a>
+    {% endif %}
+
 
       <!-- MENU USER -->
       <div class="relative" data-user-menu>
