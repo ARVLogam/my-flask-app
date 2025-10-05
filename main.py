@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from PIL import Image
 import logging, traceback, threading, time, os, psycopg2
 from types import SimpleNamespace
+from flask import render_template, render_template_string, request, redirect, url_for, flash, session
 
 # -- app modules
 from crud import Database, create_tables
@@ -621,6 +622,119 @@ def deleteUser():
     else:
         flash("Gagal menghapus pengguna", "error")
     return redirect(url_for("menuAdmin", roleMenu="kelolaUser"))
+
+# ---------- CART ----------
+@app.route("/cart")
+@login_required
+def cart_view():
+    db = Database(DB_CONFIG)
+    items, total = db.get_cart_items(session["user_id"])
+    return render_template("cart.html", items=items, total=total)
+
+@app.route("/cart/add/<int:barang_id>", methods=["POST"])
+@login_required
+def cart_add(barang_id):
+    qty = int((request.form.get("qty") or "1").strip() or "1")
+    if qty <= 0: qty = 1
+    db = Database(DB_CONFIG)
+    ok = db.add_to_cart(session["user_id"], barang_id, qty)
+    flash("Ditambahkan ke keranjang" if ok else "Gagal menambahkan ke keranjang",
+          "success" if ok else "error")
+    return redirect(request.referrer or url_for("dashboard"))
+
+@app.route("/cart/update", methods=["POST"])
+@login_required
+def cart_update():
+    item_id = int(request.form.get("item_id"))
+    qty     = int(request.form.get("qty"))
+    db = Database(DB_CONFIG)
+    ok = db.update_cart_qty(item_id, qty, session["user_id"])
+    flash("Keranjang diperbarui" if ok else "Gagal memperbarui keranjang",
+          "success" if ok else "error")
+    return redirect(url_for("cart_view"))
+
+@app.route("/cart/remove/<int:item_id>", methods=["POST"])
+@login_required
+def cart_remove(item_id):
+    db = Database(DB_CONFIG)
+    ok = db.remove_cart_item(item_id, session["user_id"])
+    flash("Item dihapus" if ok else "Gagal menghapus item",
+          "success" if ok else "error")
+    return redirect(url_for("cart_view"))
+
+# ---------- CHECKOUT ----------
+@app.route("/checkout", methods=["GET", "POST"])
+@login_required
+def checkout():
+    db = Database(DB_CONFIG)
+    if request.method == "GET":
+        items, total = db.get_cart_items(session["user_id"])
+        if not items:
+            flash("Keranjang masih kosong", "warning")
+            return redirect(url_for("dashboard"))
+        return render_template("checkout.html", items=items, total=total)
+
+    payment_method   = (request.form.get("payment_method") or "COD").upper()  # COD | TRANSFER
+    shipping_address = (request.form.get("shipping_address") or "").strip()
+    if not shipping_address:
+        flash("Alamat pengiriman wajib diisi", "error")
+        return redirect(url_for("checkout"))
+
+    order_id = db.create_order_from_cart(session["user_id"], payment_method, shipping_address)
+    if not order_id:
+        flash("Gagal membuat pesanan", "error")
+        return redirect(url_for("checkout"))
+
+    # Tahap awal: COD/TRANSFER manual
+    if payment_method == "COD":
+        db.update_order_status(order_id, "baru", "pending")
+        flash(f"Pesanan #{order_id} dibuat. Metode: COD. Admin akan memproses.", "success")
+    else:
+        flash(f"Pesanan #{order_id} dibuat. Silakan ikuti instruksi transfer pada daftar pesanan.", "success")
+
+    return redirect(url_for("orders_me"))
+
+# ---------- Pesanan Saya (user) ----------
+@app.route("/orders/me")
+@login_required
+def orders_me():
+    db = Database(DB_CONFIG)
+    rows = db.list_user_orders(session["user_id"])
+    return render_template("orders_me.html", orders=rows)
+
+# ---------- Admin: Kelola Pesanan ----------
+@app.route("/admin/orders")
+def admin_orders():
+    if not check_role("admin"):
+        flash("Akses ditolak", "error")
+        return redirect("/")
+    db = Database(DB_CONFIG)
+    status = request.args.get("status")  # opsional
+    rows = db.list_orders(status)
+    return render_template("orders_admin.html", orders=rows)
+
+@app.route("/admin/orders/<int:order_id>", methods=["GET", "POST"])
+def admin_order_detail(order_id):
+    if not check_role("admin"):
+        flash("Akses ditolak", "error")
+        return redirect("/")
+    db = Database(DB_CONFIG)
+    if request.method == "POST":
+        action = request.form.get("action")
+        mapping = {"terima":"diterima","proses":"diproses","selesai":"selesai","batal":"batal"}
+        if action in mapping:
+            ok = db.update_order_status(order_id, mapping[action])
+            flash("Status diperbarui" if ok else "Gagal memperbarui status",
+                  "success" if ok else "error")
+        return redirect(url_for("admin_order_detail", order_id=order_id))
+
+    order, items = db.get_order(order_id)
+    if not order:
+        flash("Pesanan tidak ditemukan", "error")
+        return redirect(url_for("admin_orders"))
+    return render_template("order_detail_admin.html", order=order, items=items)
+
+
 
 # =========================
 # Entrypoint
