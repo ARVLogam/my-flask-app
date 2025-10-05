@@ -308,6 +308,229 @@ class Database:
         finally:
             cur.close(); conn.close()
 
+    # ---------- CART ----------
+    def _get_or_create_cart(self, user_id: int):
+        conn = self._get_conn(); cur = conn.cursor()
+        try:
+            cur.execute("SELECT id FROM carts WHERE user_id=%s", (user_id,))
+            row = cur.fetchone()
+            if row:
+                return row[0]
+            cur.execute("INSERT INTO carts (user_id) VALUES (%s) RETURNING id", (user_id,))
+            cid = cur.fetchone()[0]
+            conn.commit()
+            return cid
+        except Exception as e:
+            print("_get_or_create_cart error:", e); conn.rollback(); return None
+        finally:
+            cur.close(); conn.close()
+
+    def add_to_cart(self, user_id: int, barang_id: int, qty: int = 1):
+        conn = self._get_conn(); cur = conn.cursor()
+        try:
+            # ambil harga saat ini
+            cur.execute("SELECT harga FROM barang WHERE id=%s", (barang_id,))
+            r = cur.fetchone()
+            if not r: return False
+            harga = r[0]
+
+            # pastikan cart ada
+            cur.execute("SELECT id FROM carts WHERE user_id=%s", (user_id,))
+            row = cur.fetchone()
+            cart_id = row[0] if row else None
+            if not cart_id:
+                cur.execute("INSERT INTO carts (user_id) VALUES (%s) RETURNING id", (user_id,))
+                cart_id = cur.fetchone()[0]
+
+            # tambah / akumulasi qty
+            cur.execute("""
+                INSERT INTO cart_items (cart_id, barang_id, qty, price_at_add)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (cart_id, barang_id)
+                DO UPDATE SET qty = cart_items.qty + EXCLUDED.qty
+            """, (cart_id, barang_id, qty, harga))
+            conn.commit(); return True
+        except Exception as e:
+            print("add_to_cart error:", e); conn.rollback(); return False
+        finally:
+            cur.close(); conn.close()
+
+    def get_cart_items(self, user_id: int):
+        conn = self._get_conn(); cur = conn.cursor()
+        try:
+            cur.execute("""
+                SELECT ci.id, ci.barang_id, b.nama_barang, ci.qty, ci.price_at_add,
+                       (ci.qty * ci.price_at_add) AS subtotal
+                FROM carts c
+                JOIN cart_items ci ON ci.cart_id=c.id
+                JOIN barang b ON b.id=ci.barang_id
+                WHERE c.user_id=%s
+                ORDER BY ci.id
+            """, (user_id,))
+            items = cur.fetchall()
+            total = sum([row[5] for row in items]) if items else 0
+            return items, total
+        except Exception as e:
+            print("get_cart_items error:", e); return [], 0
+        finally:
+            cur.close(); conn.close()
+
+    def update_cart_qty(self, item_id: int, qty: int, user_id: int):
+        conn = self._get_conn(); cur = conn.cursor()
+        try:
+            if qty <= 0:
+                cur.execute("""
+                    DELETE FROM cart_items
+                    WHERE id=%s AND cart_id IN (SELECT id FROM carts WHERE user_id=%s)
+                """, (item_id, user_id))
+            else:
+                cur.execute("""
+                    UPDATE cart_items
+                    SET qty=%s
+                    WHERE id=%s AND cart_id IN (SELECT id FROM carts WHERE user_id=%s)
+                """, (qty, item_id, user_id))
+            conn.commit(); return True
+        except Exception as e:
+            print("update_cart_qty error:", e); conn.rollback(); return False
+        finally:
+            cur.close(); conn.close()
+
+    def remove_cart_item(self, item_id: int, user_id: int):
+        conn = self._get_conn(); cur = conn.cursor()
+        try:
+            cur.execute("""
+                DELETE FROM cart_items
+                WHERE id=%s AND cart_id IN (SELECT id FROM carts WHERE user_id=%s)
+            """, (item_id, user_id))
+            conn.commit(); return True
+        except Exception as e:
+            print("remove_cart_item error:", e); conn.rollback(); return False
+        finally:
+            cur.close(); conn.close()
+
+    def clear_cart(self, user_id: int):
+        conn = self._get_conn(); cur = conn.cursor()
+        try:
+            cur.execute("""
+                DELETE FROM cart_items
+                WHERE cart_id IN (SELECT id FROM carts WHERE user_id=%s)
+            """, (user_id,))
+            conn.commit(); return True
+        except Exception as e:
+            print("clear_cart error:", e); conn.rollback(); return False
+        finally:
+            cur.close(); conn.close()
+
+    # ---------- ORDERS ----------
+    def create_order_from_cart(self, user_id: int, payment_method: str, shipping_address: str | None):
+        conn = self._get_conn(); cur = conn.cursor()
+        try:
+            # ambil isi cart
+            cur.execute("""
+                SELECT ci.barang_id, b.nama_barang, ci.qty, ci.price_at_add
+                FROM carts c
+                JOIN cart_items ci ON ci.cart_id=c.id
+                JOIN barang b ON b.id=ci.barang_id
+                WHERE c.user_id=%s
+            """, (user_id,))
+            rows = cur.fetchall()
+            if not rows: return None
+
+            total = sum([r[2]*r[3] for r in rows])
+
+            cur.execute("""
+                INSERT INTO orders (user_id, status, total, payment_method, payment_status, shipping_address)
+                VALUES (%s, 'baru', %s, %s, %s, %s)
+                RETURNING id
+            """, (user_id, total, payment_method, 'pending', shipping_address))
+            order_id = cur.fetchone()[0]
+
+            for barang_id, nama, qty, harga in rows:
+                cur.execute("""
+                    INSERT INTO order_items (order_id, barang_id, nama_snapshot, harga_snapshot, qty)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (order_id, barang_id, nama, harga, qty))
+
+            # kosongkan cart
+            cur.execute("""
+                DELETE FROM cart_items
+                WHERE cart_id IN (SELECT id FROM carts WHERE user_id=%s)
+            """, (user_id,))
+
+            conn.commit()
+            return order_id
+        except Exception as e:
+            print("create_order_from_cart error:", e); conn.rollback(); return None
+        finally:
+            cur.close(); conn.close()
+
+    def list_orders(self, status: str | None = None):
+        conn = self._get_conn(); cur = conn.cursor()
+        try:
+            if status:
+                cur.execute("""
+                    SELECT id, user_id, status, total, payment_method, payment_status, created_at
+                    FROM orders WHERE status=%s ORDER BY id DESC
+                """, (status,))
+            else:
+                cur.execute("""
+                    SELECT id, user_id, status, total, payment_method, payment_status, created_at
+                    FROM orders ORDER BY id DESC
+                """)
+            return cur.fetchall()
+        except Exception as e:
+            print("list_orders error:", e); return []
+        finally:
+            cur.close(); conn.close()
+
+    def get_order(self, order_id: int):
+        conn = self._get_conn(); cur = conn.cursor()
+        try:
+            cur.execute("""
+                SELECT id, user_id, status, total, payment_method, payment_status, shipping_address, created_at
+                FROM orders WHERE id=%s
+            """, (order_id,))
+            order = cur.fetchone()
+            cur.execute("""
+                SELECT barang_id, nama_snapshot, harga_snapshot, qty
+                FROM order_items WHERE order_id=%s
+            """, (order_id,))
+            items = cur.fetchall()
+            return order, items
+        except Exception as e:
+            print("get_order error:", e); return None, []
+        finally:
+            cur.close(); conn.close()
+
+    def update_order_status(self, order_id: int, new_status: str, payment_status: str | None = None):
+        conn = self._get_conn(); cur = conn.cursor()
+        try:
+            sets = ["status=%s", "updated_at=CURRENT_TIMESTAMP"]
+            params = [new_status]
+            if payment_status is not None:
+                sets.append("payment_status=%s"); params.append(payment_status)
+            params.append(order_id)
+            cur.execute(f"UPDATE orders SET {', '.join(sets)} WHERE id=%s", tuple(params))
+            conn.commit(); return True
+        except Exception as e:
+            print("update_order_status error:", e); conn.rollback(); return False
+        finally:
+            cur.close(); conn.close()
+
+    def list_user_orders(self, user_id: int):
+        conn = self._get_conn(); cur = conn.cursor()
+        try:
+            cur.execute("""
+                SELECT id, status, total, payment_method, payment_status, created_at
+                FROM orders WHERE user_id=%s ORDER BY id DESC
+            """, (user_id,))
+            return cur.fetchall()
+        except Exception as e:
+            print("list_user_orders error:", e); return []
+        finally:
+            cur.close(); conn.close()
+
+
 
 # ---------- bootstrap tables ----------
 
