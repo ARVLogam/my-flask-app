@@ -734,6 +734,17 @@ def admin_order_detail(order_id):
         return redirect(url_for("admin_orders"))
     return render_template("order_detail_admin.html", order=order, items=items)
 
+@app.context_processor
+def inject_cart_count():
+    cart_count = 0
+    try:
+        uid = session.get("user_id")
+        if uid:
+            db = Database(DB_CONFIG)
+            cart_count = db.get_cart_count(uid)
+    except Exception as e:
+        print("inject_cart_count error:", e)
+    return {"cart_count": cart_count}
 
 
 # =========================
