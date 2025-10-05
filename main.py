@@ -10,6 +10,7 @@ from PIL import Image
 import logging, traceback, threading, time, os, psycopg2
 from types import SimpleNamespace
 from flask import render_template, render_template_string, request, redirect, url_for, flash, session
+from flask import render_template, request, redirect, url_for, flash, session
 
 # -- app modules
 from crud import Database, create_tables
@@ -733,6 +734,48 @@ def admin_order_detail(order_id):
         flash("Pesanan tidak ditemukan", "error")
         return redirect(url_for("admin_orders"))
     return render_template("order_detail_admin.html", order=order, items=items)
+# ---------- Pesanan Saya (User) ----------
+@app.route("/orders/me")
+@login_required
+def orders_me():
+    db = Database(DB_CONFIG)
+    rows = db.list_user_orders(session["user_id"])
+    return render_template("orders_me.html", orders=rows)
+
+# ---------- Admin: Daftar Pesanan ----------
+@app.route("/admin/orders")
+def admin_orders():
+    # kalau kamu sudah punya check_role('admin'), boleh ganti blok ini pakai fungsi itu
+    if session.get("role") != "admin":
+        flash("Akses ditolak", "error")
+        return redirect("/")
+    db = Database(DB_CONFIG)
+    status = request.args.get("status")  # opsional filter status
+    rows = db.list_orders(status)
+    return render_template("orders_admin.html", orders=rows)
+
+# ---------- Admin: Detail & Ubah Status Pesanan ----------
+@app.route("/admin/orders/<int:order_id>", methods=["GET", "POST"])
+def admin_order_detail(order_id):
+    if session.get("role") != "admin":
+        flash("Akses ditolak", "error")
+        return redirect("/")
+    db = Database(DB_CONFIG)
+    if request.method == "POST":
+        action = request.form.get("action")
+        mapping = {"terima":"diterima","proses":"diproses","selesai":"selesai","batal":"batal"}
+        if action in mapping:
+            ok = db.update_order_status(order_id, mapping[action])
+            flash("Status diperbarui" if ok else "Gagal memperbarui status",
+                  "success" if ok else "error")
+        return redirect(url_for("admin_order_detail", order_id=order_id))
+
+    order, items = db.get_order(order_id)
+    if not order:
+        flash("Pesanan tidak ditemukan", "error")
+        return redirect(url_for("admin_orders"))
+    return render_template("order_detail_admin.html", order=order, items=items)
+
 
 @app.context_processor
 def inject_cart_count():
