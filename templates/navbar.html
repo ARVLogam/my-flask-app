@@ -1,115 +1,105 @@
-<!-- templates/navbar.html (FINAL – tanpa search, link aman) -->
-<nav class="fixed inset-x-0 top-0 z-50 bg-white/80 backdrop-blur border-b border-neutral-200">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+<!-- templates/navbar.html (FINAL) -->
+<nav class="fixed inset-x-0 top-0 z-50 bg-white/90 backdrop-blur border-b border-neutral-200">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16">
+    <div class="flex h-full items-center justify-between">
 
-    <!-- Kiri: Logo / Brand -> Dashboard -->
-    <a href="{{ url_for('dashboard') }}" class="flex items-center gap-2">
-      <svg class="h-6 w-6 text-red-600" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-        <path d="M3 13h2v-2H3v2zm4 0h14v-2H7v2zM3 6h18v2H3V6zm0 10h18v2H3v-2z"/>
-      </svg>
-      <span class="font-semibold text-neutral-900">ARV LOGAM</span>
-    </a>
+      <!-- Brand / Home -->
+      <a href="{{ url_for('dashboard') }}" class="flex items-center gap-2">
+        <svg class="h-6 w-6 text-red-600" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M3 12h18v2H3v-2Zm0-6h18v2H3V6Zm0 12h18v2H3v-2Z"/>
+        </svg>
+        <span class="font-semibold tracking-wide text-neutral-900">ARV LOGAM</span>
+      </a>
 
-    <div class="flex items-center gap-3">
+      <!-- Desktop menu -->
+      <div class="hidden md:flex items-center gap-6">
+        {% set _role = role|default('user') %}
 
-      {# ===== MENU ADMIN (hanya tampil untuk admin) ===== #}
-      {% if role == 'admin' %}
-      <div class="relative" data-admin-menu>
-        <button type="button" id="btnAdmin"
-                class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-neutral-300 bg-white hover:bg-neutral-100">
-          <svg class="h-5 w-5 text-neutral-700" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M12 1l3 5 5 .75-3.6 3.5.9 5.25L12 13l-5.3 2.5.9-5.25L4 6.75 9 6l3-5z"/>
-          </svg>
-          <span>Admin</span>
-        </button>
-
-        <div id="menuAdmin"
-             class="hidden absolute right-0 mt-2 w-56 rounded-2xl border border-neutral-200 bg-white shadow-xl overflow-hidden z-50">
-          <!-- Tambah Barang (route ADA) -->
-          <a href="{{ url_for('addBarang') }}"
-             class="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 nav-close">
-            <svg class="h-5 w-5 text-emerald-600" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M11 11V6h2v5h5v2h-5v5h-2v-5H6v-2h5z"/>
-            </svg>
-            <span>Tambah Barang</span>
+        {% if _role == 'admin' %}
+          <a href="{{ url_for('dashboard') }}" class="text-sm text-neutral-700 hover:text-red-600">Dashboard</a>
+          <a href="{{ url_for('addBarang') }}" class="text-sm text-neutral-700 hover:text-red-600">Tambah Barang</a>
+          <a href="{{ url_for('menuAdmin', roleMenu='kelolaUser') }}" class="text-sm text-neutral-700 hover:text-red-600">Kelola User</a>
+          <a href="{{ url_for('admin_orders') }}" class="text-sm text-neutral-700 hover:text-red-600">Kelola Pesanan</a>
+        {% else %}
+          <a href="{{ url_for('dashboard') }}" class="text-sm text-neutral-700 hover:text-red-600">Dashboard</a>
+          <a href="{{ url_for('cart_view') }}" class="text-sm text-neutral-700 hover:text-red-600">
+            Keranjang{% if cart_count %} ({{ cart_count }}){% endif %}
           </a>
+          <a href="{{ url_for('orders_me') }}" class="text-sm text-neutral-700 hover:text-red-600">Pesanan Saya</a>
+        {% endif %}
 
-          <!-- Kelola User (menu admin umum; route menuAdmin dipakai di template lama dan ada di app Anda) -->
-          <a href="{{ url_for('menuAdmin', roleMenu='kelolaUser') }}"
-             class="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 nav-close">
-            <svg class="h-5 w-5 text-violet-600" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
-            </svg>
-            <span>Kelola User</span>
-          </a>
+        <!-- Profil dropdown -->
+        <div class="relative" id="profileDropdown">
+          <button type="button" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-neutral-300 hover:bg-neutral-50">
+            {% set _avatar = avatar_url if avatar_url else url_for('static', filename='img/avatars/guest.png') %}
+            <img src="{{ _avatar }}" alt="avatar" class="h-7 w-7 rounded-full object-cover border">
+            <span class="text-sm text-neutral-700 hidden lg:inline">Halo, {{ nama|default('Pengguna') }}</span>
+            <svg class="h-4 w-4 text-neutral-500" viewBox="0 0 20 20" fill="currentColor"><path d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.94l3.71-3.71a.75.75 0 1 1 1.06 1.06l-4.24 4.24a.75.75 0 0 1-1.06 0L5.21 8.29a.75.75 0 0 1 .02-1.08z"/></svg>
+          </button>
+          <div class="absolute right-0 mt-2 w-56 rounded-xl border border-neutral-200 bg-white shadow-xl overflow-hidden hidden">
+            <a href="{{ url_for('editProfile') }}" class="block px-4 py-3 text-sm hover:bg-neutral-50">Profil</a>
+            <a href="{{ url_for('logout') }}" class="block px-4 py-3 text-sm text-red-600 hover:bg-neutral-50">Keluar</a>
+          </div>
         </div>
       </div>
+
+      <!-- Mobile: hamburger -->
+      <button class="md:hidden inline-flex items-center justify-center h-10 w-10 rounded-lg border border-neutral-300 hover:bg-neutral-50"
+              aria-label="Menu" id="btnMobile">
+        <svg class="h-5 w-5 text-neutral-700" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Mobile menu panel -->
+  <div id="mobilePanel" class="md:hidden hidden border-t border-neutral-200 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col gap-1">
+      {% if _role == 'admin' %}
+        <a href="{{ url_for('dashboard') }}" class="px-2 py-2 rounded-lg hover:bg-neutral-50">Dashboard</a>
+        <a href="{{ url_for('addBarang') }}" class="px-2 py-2 rounded-lg hover:bg-neutral-50">Tambah Barang</a>
+        <a href="{{ url_for('menuAdmin', roleMenu='kelolaUser') }}" class="px-2 py-2 rounded-lg hover:bg-neutral-50">Kelola User</a>
+        <a href="{{ url_for('admin_orders') }}" class="px-2 py-2 rounded-lg hover:bg-neutral-50">Kelola Pesanan</a>
+      {% else %}
+        <a href="{{ url_for('dashboard') }}" class="px-2 py-2 rounded-lg hover:bg-neutral-50">Dashboard</a>
+        <a href="{{ url_for('cart_view') }}" class="px-2 py-2 rounded-lg hover:bg-neutral-50">
+          Keranjang{% if cart_count %} ({{ cart_count }}){% endif %}
+        </a>
+        <a href="{{ url_for('orders_me') }}" class="px-2 py-2 rounded-lg hover:bg-neutral-50">Pesanan Saya</a>
       {% endif %}
-
-      {# ===== MENU USER / PROFIL (selalu ada) ===== #}
-      <div class="relative" data-user-menu>
-        <button type="button" id="btnUser"
-                class="inline-flex items-center gap-3 px-4 py-2 rounded-2xl border border-neutral-300 bg-white hover:bg-neutral-100">
-          <span class="hidden sm:block text-sm text-neutral-700">Halo, {{ nama|default('Pengguna') }}</span>
-
-          {# avatar_url disediakan dari context_processor di main.py #}
-          {% set _avatar = avatar_url if avatar_url else url_for('static', filename='img/avatars/guest.png') %}
-          <img src="{{ _avatar }}" alt="avatar" class="h-7 w-7 rounded-full object-cover border">
-        </button>
-
-        <div id="menuUser"
-             class="hidden absolute right-0 mt-2 w-56 rounded-2xl border border-neutral-200 bg-white shadow-xl overflow-hidden z-50">
-          <a href="{{ url_for('editProfile') }}" class="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 nav-close">
-            <svg class="h-5 w-5 text-blue-600" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4S8 5.79 8 8s1.79 4 4 4zm-6 8v-1c0-2.21 3.58-4 8-4s8 1-3.58 4H6z"/>
-            </svg>
-            <span>Profil</span>
-          </a>
-
-          <a href="{{ url_for('logout') }}" class="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 nav-close">
-            <svg class="h-5 w-5 text-red-600" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M16 13v-2H7V8l-5 4 5 4v-3zM20 3h-8v2h8v14h-8v2h8a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"/>
-            </svg>
-            <span>Keluar</span>
-          </a>
-        </div>
-      </div>
+      <div class="h-px bg-neutral-200 my-2"></div>
+      <a href="{{ url_for('editProfile') }}" class="px-2 py-2 rounded-lg hover:bg-neutral-50">Profil</a>
+      <a href="{{ url_for('logout') }}" class="px-2 py-2 rounded-lg hover:bg-neutral-50 text-red-600">Keluar</a>
     </div>
   </div>
 </nav>
 
+<!-- spacer agar konten tidak ketutup navbar fixed -->
+<div class="h-16"></div>
+
 <script>
-  // Dropdown Admin
+  // Dropdown profil (desktop)
   (function () {
-    const btn = document.getElementById('btnAdmin');
-    const menu = document.getElementById('menuAdmin');
-    btn && btn.addEventListener('click', () => {
-      menu.classList.toggle('hidden');
-    });
+    const root = document.getElementById('profileDropdown');
+    if (!root) return;
+    const btn = root.querySelector('button');
+    const panel = root.querySelector('div.absolute');
+    btn.addEventListener('click', () => panel.classList.toggle('hidden'));
     document.addEventListener('click', (e) => {
-      if (!btn) return;
-      if (!btn.contains(e.target) && !menu.contains(e.target)) menu.classList.add('hidden');
+      if (!root.contains(e.target)) panel.classList.add('hidden');
     });
   })();
 
-  // Dropdown User
+  // Mobile menu
   (function () {
-    const btn = document.getElementById('btnUser');
-    const menu = document.getElementById('menuUser');
-    btn && btn.addEventListener('click', () => {
-      menu.classList.toggle('hidden');
-    });
+    const btn = document.getElementById('btnMobile');
+    const panel = document.getElementById('mobilePanel');
+    if (!btn || !panel) return;
+    btn.addEventListener('click', () => panel.classList.toggle('hidden'));
     document.addEventListener('click', (e) => {
-      if (!btn) return;
-      if (!btn.contains(e.target) && !menu.contains(e.target)) menu.classList.add('hidden');
-    });
-
-    // Tutup saat klik item
-    document.querySelectorAll('.nav-close').forEach(a => {
-      a.addEventListener('click', () => menu.classList.add('hidden'));
+      const within = btn.contains(e.target) || panel.contains(e.target);
+      if (!within) panel.classList.add('hidden');
     });
   })();
 </script>
-
-<!-- spacer agar konten tidak ketutup navbar fixed -->
-<div class="h-16"></div>
