@@ -343,6 +343,59 @@ def create_tables(db_config):
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+                -- Keranjang (1 user -> 1 cart aktif)
+        CREATE TABLE IF NOT EXISTS carts (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE (user_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS cart_items (
+            id SERIAL PRIMARY KEY,
+            cart_id INTEGER NOT NULL REFERENCES carts(id) ON DELETE CASCADE,
+            barang_id INTEGER NOT NULL REFERENCES barang(id) ON DELETE CASCADE,
+            qty INTEGER NOT NULL CHECK (qty > 0),
+            price_at_add NUMERIC NOT NULL,  -- simpan harga saat ditambahkan
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE (cart_id, barang_id)
+        );
+
+        -- Pesanan
+        CREATE TABLE IF NOT EXISTS orders (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            status TEXT NOT NULL DEFAULT 'baru',      -- baru/diterima/diproses/selesai/batal
+            total NUMERIC NOT NULL DEFAULT 0,
+            payment_method TEXT,                      -- COD/TRANSFER/…
+            payment_status TEXT,                      -- pending/paid/failed/refunded
+            shipping_address TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS order_items (
+            id SERIAL PRIMARY KEY,
+            order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+            barang_id INTEGER REFERENCES barang(id) ON DELETE SET NULL,
+            nama_snapshot TEXT NOT NULL,
+            harga_snapshot NUMERIC NOT NULL,
+            qty INTEGER NOT NULL CHECK (qty > 0)
+        );
+
+        -- Pembayaran (opsional, untuk transfer/gateway nanti)
+        CREATE TABLE IF NOT EXISTS payments (
+            id SERIAL PRIMARY KEY,
+            order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+            method TEXT,               -- TRANSFER/COD/…
+            amount NUMERIC NOT NULL,
+            provider TEXT,             -- BANK/Midtrans/Xendit nanti
+            va_number TEXT,
+            status TEXT,               -- pending/paid/failed
+            paid_at TIMESTAMP,
+            raw JSONB,                 -- payload gateway bila ada
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
         conn.commit()
     except Exception as e:
         print("create_tables error:", e)
