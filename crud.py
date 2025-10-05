@@ -529,6 +529,21 @@ class Database:
             print("list_user_orders error:", e); return []
         finally:
             cur.close(); conn.close()
+def get_cart_count(self, user_id: int) -> int:
+    conn = self._get_conn(); cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT COALESCE(SUM(ci.qty), 0)
+            FROM carts c
+            LEFT JOIN cart_items ci ON ci.cart_id = c.id
+            WHERE c.user_id = %s
+        """, (user_id,))
+        row = cur.fetchone()
+        return int(row[0] or 0)
+    except Exception as e:
+        print("get_cart_count error:", e); return 0
+    finally:
+        cur.close(); conn.close()
 
 
 
