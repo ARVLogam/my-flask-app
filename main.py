@@ -739,12 +739,13 @@ def inject_cart_count():
     cart_count = 0
     try:
         uid = session.get("user_id")
-        if uid:
+        role = session.get("role")  # pastikan role disimpan saat login
+        if uid and role == "user":
             db = Database(DB_CONFIG)
             cart_count = db.get_cart_count(uid)
     except Exception as e:
         print("inject_cart_count error:", e)
-    return {"cart_count": cart_count}
+    return {"cart_count": cart_count, "role": session.get("role")}
 
 
 # =========================
