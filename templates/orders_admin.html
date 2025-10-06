@@ -1,4 +1,4 @@
-<!-- templates/order_admin.html -->
+{% set brand = {'primary':'#c08906','primaryDark':'#9a6f05'} %}
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -6,67 +6,81 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Kelola Pesanan</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
+  <style>
+    :root{
+      --brand: {{ brand.primary }};
+      --brandDark: {{ brand.primaryDark }};
+    }
+    .btn-brand{background:var(--brand);color:#fff}
+    .btn-brand:hover{background:var(--brandDark)}
+    .pill{padding:.15rem .5rem;border-radius:9999px;font-size:.75rem}
+  </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="bg-neutral-50 min-h-screen">
   {% include 'navbar.html' %}
 
   <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
     {% include 'flashProtection.html' %}
 
-    <!-- Header dengan tombol kembali -->
-    <div class="flex items-center justify-between mb-4">
-      <h1 class="text-2xl font-bold text-gray-800">Kelola Pesanan</h1>
-      <button onclick="history.back()"
-              class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 text-sm">
-        <i class="fas fa-arrow-left"></i> Kembali
+    <div class="flex items-center justify-between mb-5">
+      <h1 class="text-2xl font-bold text-neutral-900">Kelola Pesanan</h1>
+      <button onclick="history.back()" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-300 hover:bg-neutral-100 text-sm">
+        ← Kembali
       </button>
     </div>
 
-    <!-- Filter -->
     <div class="mb-4 text-sm">
       Filter:
       {% for f in ['semua','baru','diterima','diproses','selesai','batal'] %}
         <a href="{{ url_for('admin_orders', status=f) }}"
-           class="mr-2 {{ 'font-semibold text-red-600' if status==f else 'text-gray-600 hover:underline' }}">
+           class="mr-3 {{ 'font-semibold text-[color:var(--brand)]' if status==f else 'text-neutral-600 hover:underline' }}">
           {{ f|capitalize }}
         </a>
       {% endfor %}
     </div>
 
-    <!-- Tabel pesanan -->
-    <div class="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
+    <div class="bg-white rounded-2xl shadow border border-neutral-200 overflow-hidden">
       <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-100">
+        <table class="min-w-full divide-y divide-neutral-200">
+          <thead class="bg-neutral-100">
             <tr>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">#</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Customer</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Total</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Bayar</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Aksi</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">#</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Customer</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Status</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Total</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Pembayaran</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Aksi</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-200">
+          <tbody class="divide-y divide-neutral-200">
             {% for o in orders %}
-            <tr class="hover:bg-gray-50">
+            <tr class="hover:bg-neutral-50">
               <td class="px-4 py-3 text-sm">#{{ o.id }}</td>
               <td class="px-4 py-3 text-sm">{{ o.customer }}</td>
-              <td class="px-4 py-3 text-sm capitalize">{{ o.status }}</td>
-              <td class="px-4 py-3 text-sm">Rp {{ '{:,.0f}'.format(o.total).replace(',', '.') }}</td>
+              <td class="px-4 py-3 text-sm capitalize">
+                <span class="pill {{ 'bg-emerald-100 text-emerald-700' if o.status=='selesai' else
+                                      'bg-amber-100 text-amber-700' if o.status in ['baru','diterima','diproses'] else
+                                      'bg-rose-100 text-rose-700' }}">
+                  {{ o.status }}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-sm">Rp {{ '{:,.0f}'.format(o.total or 0).replace(',', '.') }}</td>
               <td class="px-4 py-3 text-sm">
-                {{ o.payment_method|upper }}
-                <span class="text-gray-500">({{ o.payment_status }})</span>
+                {{ (o.payment_method or '-').upper() }}
+                <span class="text-neutral-500">({{ o.payment_status or '-' }})</span>
               </td>
               <td class="px-4 py-3 text-sm">
                 <a href="{{ url_for('admin_order_detail', order_id=o.id) }}"
-                   class="text-blue-600 hover:underline">Detail</a>
+                   class="btn-brand inline-flex items-center gap-2 px-3 py-1.5 rounded-lg">
+                  Detail
+                </a>
               </td>
             </tr>
             {% else %}
             <tr>
-              <td colspan="6" class="px-4 py-6 text-center text-gray-500">Belum ada pesanan.</td>
+              <td colspan="6" class="px-4 py-6 text-center text-neutral-500">
+                Belum ada pesanan.
+              </td>
             </tr>
             {% endfor %}
           </tbody>
