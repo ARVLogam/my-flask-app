@@ -847,6 +847,14 @@ def inject_cart_count():
         print("inject_cart_count error:", e)
     return {"cart_count": cart_count, "role": session.get("role")}
 
+def inject_noimg():
+    NOIMG = ('data:image/svg+xml;utf8,'
+             '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240">'
+             '<rect width="100%25" height="100%25" fill="%23f1f5f9"/>'
+             '<g fill="%2394a3b8"><rect x="40" y="60" width="240" height="120" rx="12" ry="12" fill="%23e2e8f0"/>'
+             '<path d="M80 150l40-40 30 30 40-50 30 40" fill="none" stroke="%2394a3b8" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></g>'
+             '</svg>')
+    return {"NOIMG": NOIMG}
 
 # =========================
 # Entrypoint
