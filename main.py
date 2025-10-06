@@ -942,51 +942,103 @@ def _fetch_one_sql(sql, params=None):
 # =========================
 # ADMIN: Detail Pesanan
 # =========================
-@app.route("/admin/orders/<int:order_id>", methods=["GET"])
+@app.route("/admin/orders/<int:order_id>", methods=["GET", "POST"])
 def admin_order_detail(order_id):
-    if not session.get("is_admin"):
-        flash("Hanya admin yang bisa mengakses halaman ini", "danger")
-        return redirect(url_for("index"))
+    # Cek hak akses
+    if not check_role("admin"):
+        flash("Akses ditolak", "error")
+        return redirect(url_for("dashboard"))
 
-    db = get_db()
+    # Helper kecil biar aman untuk DictRow / Tuple
+    def _first_row(sql, params=None):
+        rows = _fetch_all_sql(sql, params or []) or []
+        return rows[0] if rows else None
 
-    # Ambil data utama order
+    def _get(row, key, idx):
+        if isinstance(row, dict):
+            return row.get(key)
+        # fallback tuple/list
+        try:
+            return row[idx]
+        except Exception:
+            return None
+
+    # UPDATE STATUS (optional)
+    if request.method == "POST":
+        action = (request.form.get("action") or "").lower()
+        mapping = {"terima": "diterima", "proses": "diproses", "selesai": "selesai", "batal": "batal"}
+        if action in mapping:
+            # kalau Anda punya method helper update_order_status, boleh pakai;
+            # kalau tidak, jalankan SQL langsung.
+            try:
+                if hasattr(Database(DB_CONFIG), "update_order_status"):
+                    ok = Database(DB_CONFIG).update_order_status(order_id, mapping[action])
+                else:
+                    ok = _exec_sql("UPDATE orders SET status=%s WHERE id=%s", [mapping[action], order_id]) > 0
+                flash("Status diperbarui" if ok else "Gagal memperbarui status",
+                      "success" if ok else "error")
+            except Exception as e:
+                current_app.logger.exception(e)
+                flash("Terjadi kesalahan saat memperbarui status", "error")
+        else:
+            flash("Aksi tidak dikenali", "warning")
+        return redirect(url_for("admin_order_detail", order_id=order_id))
+
+    # ---- Ambil HEADER ORDER (pakai nama kolom yang sudah ada di list admin) ----
     sql_head = """
-        SELECT 
+        SELECT
             o.id,
-            u.username AS customer,
-            o.total_harga,
-            o.status,
+            COALESCE(u.nama, u.username)   AS customer,
+            COALESCE(o.status, 'baru')     AS status,
+            COALESCE(o.total, 0)           AS total,
+            COALESCE(o.payment_method, '-') AS payment_method,
+            COALESCE(o.payment_status, '-') AS payment_status,
             o.created_at
         FROM orders o
         LEFT JOIN users u ON u.id = o.user_id
         WHERE o.id = %s
     """
-    row = _fetch_one_sql(sql_head, [order_id])
+    row = _first_row(sql_head, [order_id])
     if not row:
-        flash("Order tidak ditemukan", "danger")
+        flash("Pesanan tidak ditemukan", "error")
         return redirect(url_for("admin_orders"))
 
     order = {
-        "id": row["id"],
-        "customer": row["customer"],
-        "total_harga": row["total_harga"],
-        "status": row["status"],
-        "created_at": row["created_at"]
+        "id":             _get(row, "id", 0),
+        "customer":       _get(row, "customer", 1) or "-",
+        "status":         _get(row, "status", 2) or "baru",
+        "total":          int(_get(row, "total", 3) or 0),
+        "payment_method": _get(row, "payment_method", 4) or "-",
+        "payment_status": _get(row, "payment_status", 5) or "-",
+        "created_at":     _get(row, "created_at", 6),
     }
 
-    # Ambil detail item order
+    # ---- Ambil ITEM ORDER ----
+    # Penting: kita TIDAK join ke tabel produk untuk menghindari error kolom (b.nama) yang sempat muncul.
+    # “Produk” akan ditampilkan sebagai 1,2,3,... (pakai loop.index di Jinja, tapi kita juga siapkan nama berangka).
     sql_items = """
-        SELECT 
-            p.nama AS produk,
-            od.jumlah AS qty,
-            od.harga AS harga_satuan,
-            (od.jumlah * od.harga) AS subtotal
-        FROM order_details od
-        LEFT JOIN barang p ON p.id = od.barang_id
-        WHERE od.order_id = %s
+        SELECT
+            oi.id,
+            COALESCE(oi.qty,   0) AS qty,
+            COALESCE(oi.harga, 0) AS harga
+        FROM order_items oi
+        WHERE oi.order_id = %s
+        ORDER BY oi.id
     """
-    items = _fetch_all_sql(sql_items, [order_id]) or []
+    raw_items = _fetch_all_sql(sql_items, [order_id]) or []
+
+    items = []
+    for i, r in enumerate(raw_items, start=1):
+        qty   = int(_get(r, "qty",   1) or 0)
+        harga = int(_get(r, "harga", 2) or 0)
+        items.append({
+            "id":    _get(r, "id", 0),
+            # “produk” nomor urut agar cocok dengan permintaan Anda (1,2,3, ...)
+            "nama":  str(i),
+            "qty":   qty,
+            "harga": harga,
+            "subtotal": qty * harga
+        })
 
     return render_template("order_detail_admin.html", order=order, items=items)
 
