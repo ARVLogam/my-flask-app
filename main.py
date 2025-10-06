@@ -925,6 +925,24 @@ def admin_orders():
 # =========================
 from decimal import Decimal
 
+def _run_select_all(db, sql, params=None):
+    params = params or []
+    if hasattr(db, "select"):
+        return db.select(sql, params)
+    if hasattr(db, "fetch_all"):
+        return db.fetch_all(sql, params)
+    if hasattr(db, "select_all"):
+        return db.select_all(sql, params)
+    return []
+
+def _run_select_one(db, sql, params=None):
+    params = params or []
+    if hasattr(db, "select_one"):
+        return db.select_one(sql, params)
+    rows = _run_select_all(db, sql, params)
+    return rows[0] if rows else None
+
+
 @app.route("/admin/orders/<int:order_id>", methods=["GET", "POST"])
 def admin_order_detail(order_id):
     if not check_role("admin"):
