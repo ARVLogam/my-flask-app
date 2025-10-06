@@ -876,10 +876,9 @@ def admin_orders():
         return redirect(url_for("dashboard"))
 
     status = (request.args.get("status") or "semua").lower()
-    where, params = "", []
+    where, params = ("", [])
     if status != "semua":
-        where = "WHERE o.status = %s"
-        params = [status]
+        where, params = ("WHERE o.status = %s", [status])
 
     sql = f"""
       SELECT
@@ -898,7 +897,6 @@ def admin_orders():
 
     db = Database(DB_CONFIG)
 
-    # ambil semua rows dengan kompatibel untuk berbagai wrapper Database
     def _run_all(sql, params=None):
         params = params or []
         for name in ("select", "fetch_all", "select_all"):
@@ -906,14 +904,12 @@ def admin_orders():
                 return getattr(db, name)(sql, params) or []
         return []
 
-    rows = _run_all(sql, params)
-
-    # normalisasi row -> dict
     def _get(r, key, idx):
         if isinstance(r, dict): return r.get(key)
         try: return r[idx]
         except Exception: return None
 
+    rows = _run_all(sql, params)
     orders = [{
         "id":              _get(r, "id",              0),
         "customer":        _get(r, "customer",        1),
@@ -924,8 +920,8 @@ def admin_orders():
         "created_at":      _get(r, "created_at",      6),
     } for r in rows]
 
-    # ⬇︎ render langsung file di folder templates
-    return render_template("order_admin.html", orders=orders, status=status, role="admin")
+    # PERHATIKAN: pakai "orders_admin.html" sesuai nama filenya
+    return render_template("orders_admin.html", orders=orders, status=status, role="admin")
 
 
 # =========================
@@ -950,14 +946,6 @@ def admin_order_detail(order_id):
             flash("Aksi tidak dikenali", "warning")
         return redirect(url_for("admin_order_detail", order_id=order_id))
 
-    # helper select
-    def _run_one(sql, params=None):
-        params = params or []
-        if hasattr(db, "select_one"):
-            return db.select_one(sql, params)
-        rows = _run_all(sql, params)
-        return rows[0] if rows else None
-
     def _run_all(sql, params=None):
         params = params or []
         for name in ("select", "fetch_all", "select_all"):
@@ -965,12 +953,16 @@ def admin_order_detail(order_id):
                 return getattr(db, name)(sql, params) or []
         return []
 
+    def _run_one(sql, params=None):
+        rows = _run_all(sql, params)
+        return rows[0] if rows else None
+
     def _get(r, key, idx):
         if isinstance(r, dict): return r.get(key)
         try: return r[idx]
         except Exception: return None
 
-    # header
+    # Header pesanan
     sql_head = """
       SELECT
         o.id,
@@ -999,10 +991,14 @@ def admin_order_detail(order_id):
         "created_at":      _get(h, "created_at",      6),
     }
 
-    # items (coba beberapa nama tabel umum)
+    # Items (coba beberapa skema tabel umum)
     for sql_items in (
-        "SELECT oi.id, oi.qty, oi.harga, COALESCE(b.nama,'(Produk)') AS nama FROM order_items oi LEFT JOIN barang b ON b.id=oi.barang_id WHERE oi.order_id=%s ORDER BY oi.id",
-        "SELECT d.id, d.qty, d.harga, COALESCE(b.nama,'(Produk)') AS nama FROM order_details d LEFT JOIN barang b ON b.id=d.barang_id WHERE d.order_id=%s ORDER BY d.id",
+        "SELECT oi.id, oi.qty, oi.harga, COALESCE(b.nama,'(Produk)') AS nama "
+        "FROM order_items oi LEFT JOIN barang b ON b.id=oi.barang_id "
+        "WHERE oi.order_id=%s ORDER BY oi.id",
+        "SELECT d.id, d.qty, d.harga, COALESCE(b.nama,'(Produk)') AS nama "
+        "FROM order_details d LEFT JOIN barang b ON b.id=d.barang_id "
+        "WHERE d.order_id=%s ORDER BY d.id",
     ):
         raw = _run_all(sql_items, [order_id])
         if raw:
@@ -1017,8 +1013,9 @@ def admin_order_detail(order_id):
         "nama":  _get(r, "nama",  3),
     } for r in raw]
 
-    # ⬇︎ render langsung file di folder templates
+    # Detail tetap pakai order_detail_admin.html (tanpa 's')
     return render_template("order_detail_admin.html", order=order, items=items, role="admin")
+
 
 
 
