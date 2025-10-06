@@ -998,7 +998,8 @@ def admin_order_detail(order_id):
 
     # --- ITEMS PESANAN ---
     # Coba beberapa kemungkinan nama tabel/kolom yang umum
-    candidates = [
+    # --- ITEMS PESANAN (mencoba banyak kemungkinan skema) ---
+    candidates_sql = [
         # order_items + barang.nama
         """
         SELECT oi.id, oi.qty, oi.harga, COALESCE(b.nama,'(Produk)') AS nama
@@ -1015,6 +1016,24 @@ def admin_order_detail(order_id):
         WHERE oi.order_id = %s
         ORDER BY oi.id
         """,
+        # order_items: quantity + price + product_id
+        """
+        SELECT oi.id, oi.quantity AS qty, oi.price AS harga,
+               COALESCE(b.nama, b.nama_barang, oi.nama_produk, '(Produk)') AS nama
+        FROM order_items oi
+        LEFT JOIN barang b ON b.id = oi.product_id
+        WHERE oi.order_id = %s
+        ORDER BY oi.id
+        """,
+        # orders_items (pakai 's')
+        """
+        SELECT oi.id, oi.qty, oi.harga,
+               COALESCE(b.nama, b.nama_barang, oi.nama, oi.nama_produk, '(Produk)') AS nama
+        FROM orders_items oi
+        LEFT JOIN barang b ON b.id = COALESCE(oi.barang_id, oi.product_id)
+        WHERE oi.order_id = %s
+        ORDER BY oi.id
+        """,
         # order_details + barang.nama
         """
         SELECT d.id, d.qty, d.harga, COALESCE(b.nama,'(Produk)') AS nama
@@ -1023,7 +1042,16 @@ def admin_order_detail(order_id):
         WHERE d.order_id = %s
         ORDER BY d.id
         """,
-        # order_detail (singular) + barang.nama
+        # order_details: quantity + price + product_id
+        """
+        SELECT d.id, d.quantity AS qty, d.price AS harga,
+               COALESCE(b.nama, b.nama_barang, d.nama_produk, d.nama, '(Produk)') AS nama
+        FROM order_details d
+        LEFT JOIN barang b ON b.id = d.product_id
+        WHERE d.order_id = %s
+        ORDER BY d.id
+        """,
+        # order_detail (singular)
         """
         SELECT d.id, d.qty, d.harga, COALESCE(b.nama,'(Produk)') AS nama
         FROM order_detail d
@@ -1031,25 +1059,80 @@ def admin_order_detail(order_id):
         WHERE d.order_id = %s
         ORDER BY d.id
         """,
+        # order_detail: quantity + price + product_id
+        """
+        SELECT d.id, d.quantity AS qty, d.price AS harga,
+               COALESCE(b.nama, b.nama_barang, d.nama_produk, d.nama, '(Produk)') AS nama
+        FROM order_detail d
+        LEFT JOIN barang b ON b.id = d.product_id
+        WHERE d.order_id = %s
+        ORDER BY d.id
+        """,
+        # versi tanpa join barang sama sekali (nama di tabel item)
+        """
+        SELECT oi.id, COALESCE(oi.qty, oi.quantity, oi.jumlah) AS qty,
+               COALESCE(oi.harga, oi.price, oi.harga_satuan)    AS harga,
+               COALESCE(oi.nama, oi.nama_produk, '(Produk)')    AS nama
+        FROM order_items oi
+        WHERE oi.order_id = %s
+        ORDER BY oi.id
+        """,
+        """
+        SELECT d.id, COALESCE(d.qty, d.quantity, d.jumlah) AS qty,
+               COALESCE(d.harga, d.price, d.harga_satuan)  AS harga,
+               COALESCE(d.nama, d.nama_produk, '(Produk)') AS nama
+        FROM order_details d
+        WHERE d.order_id = %s
+        ORDER BY d.id
+        """,
     ]
 
     items_raw = []
-    for sql in candidates:
+    used_idx = None
+    for i, sql in enumerate(candidates_sql, start=1):
         try:
-            rows = _fetch_all_sql(sql, [order_id]) or []
-            if rows:
-                items_raw = rows
+            rows_try = _fetch_all_sql(sql, [order_id]) or []
+            # kalau sukses eksekusi dan ada data, pakai ini
+            if rows_try:
+                items_raw = rows_try
+                used_idx = i
                 break
-        except Exception:
-            # kalau query ini gagal (kolom/tabel tak ada), coba kandidat berikutnya
+        except Exception as e:
+            # Lewati saja—kandidat ini tidak cocok dengan skema
             continue
 
+    if used_idx:
+        print(f"[orders-detail] memakai SQL kandidat #{used_idx} untuk order_id={order_id}")
+
+    def val(r, key, idx):
+        if isinstance(r, dict):
+            return r.get(key)
+        try:
+            return r[idx]
+        except Exception:
+            return None
+
+    def to_int(x):
+        from decimal import Decimal
+        if x is None:
+            return 0
+        if isinstance(x, Decimal):
+            return int(x)
+        try:
+            return int(x)
+        except Exception:
+            try:
+                return int(float(x))
+            except Exception:
+                return 0
+
     items = [{
-        "id":    v(r, "id",    0),
-        "qty":   to_int(v(r, "qty",   1)),
-        "harga": to_int(v(r, "harga", 2)),
-        "nama":  v(r, "nama",  3) or "(Produk)",
+        "id":    val(r, "id",    0),
+        "qty":   to_int(val(r, "qty",   1)),
+        "harga": to_int(val(r, "harga", 2)),
+        "nama":  val(r, "nama",  3) or "(Produk)",
     } for r in items_raw]
+
 
     return render_template("order_detail_admin.html", order=order, items=items, role="admin")
 
