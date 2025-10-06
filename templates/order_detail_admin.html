@@ -62,19 +62,25 @@
         <tbody class="divide-y divide-neutral-200">
           {% for it in items %}
           <tr>
-            <td class="px-4 py-3 text-sm">{{ it.nama }}</td>
+            <!-- Kolom "PRODUK" sekarang menampilkan nomor urut -->
+            <td class="px-4 py-3 text-sm">{{ it.no }}</td>
             <td class="px-4 py-3 text-sm">{{ it.qty }}</td>
-            <td class="px-4 py-3 text-sm">Rp {{ '{:,.0f}'.format(it.harga).replace(',', '.') }}</td>
             <td class="px-4 py-3 text-sm">
-              Rp {{ '{:,.0f}'.format(it.qty * it.harga).replace(',', '.') }}
+              Rp {{ '{:,.0f}'.format(it.harga).replace(',', '.') }}
+            </td>
+            <td class="px-4 py-3 text-sm">
+              Rp {{ '{:,.0f}'.format(it.subtotal).replace(',', '.') }}
             </td>
           </tr>
           {% else %}
           <tr>
-            <td colspan="4" class="px-4 py-6 text-center text-neutral-500">Belum ada item pada pesanan ini.</td>
+            <td colspan="4" class="px-4 py-6 text-center text-neutral-500">
+              Belum ada item pada pesanan ini.
+            </td>
           </tr>
           {% endfor %}
         </tbody>
+
       </table>
     </section>
 
