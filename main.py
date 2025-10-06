@@ -704,15 +704,41 @@ def orders_me():
     return render_template("orders_me.html", orders=rows)
 
 # ---------- Admin: Kelola Pesanan ----------
+# ==== Admin: daftar pesanan ====
 @app.route("/admin/orders")
+@require_login(role="admin")
 def admin_orders():
-    if not check_role("admin"):
-        flash("Akses ditolak", "error")
-        return redirect("/")
-    db = Database(DB_CONFIG)
-    status = request.args.get("status")  # opsional
-    rows = db.list_orders(status)
-    return render_template("orders_admin.html", orders=rows)
+    status = request.args.get("status", "semua")  # 'baru','diterima','diproses','selesai','batal' atau 'semua'
+
+    sql = """
+    SELECT
+        o.id,
+        COALESCE(u.nama, u.username) AS customer,   -- << nama atau username
+        o.status,
+        o.total,
+        o.payment_method,
+        o.payment_status,
+        o.created_at
+    FROM orders o
+    LEFT JOIN users u ON u.id = o.user_id
+    {where}
+    ORDER BY o.id DESC
+    """
+    where = ""
+    params = []
+    if status and status.lower() != "semua":
+        where = "WHERE o.status = %s"
+        params = [status.lower()]
+
+    rows = db.query(sql.format(where=where), params)  # sesuaikan helper DB-mu (fetchall)
+
+    # contoh rows -> list of dicts/tuples; pastikan mapping ke template
+    return render_template(
+        "admin_orders.html",
+        orders=rows,
+        status=status
+    )
+
 
 @app.route("/admin/orders/<int:order_id>", methods=["GET", "POST"])
 def admin_order_detail(order_id):
