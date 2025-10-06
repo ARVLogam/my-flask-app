@@ -1,7 +1,6 @@
-{# letakkan di paling atas navbar.html, sebelum <nav> juga boleh #}
+
 {% set DEFAULT_AVATAR = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><defs/><circle cx="32" cy="32" r="32" fill="%23e5e7eb"/><circle cx="32" cy="26" r="12" fill="%23cbd5e1"/><path d="M12 54c4-10 36-10 40 0" fill="%23cbd5e1"/></svg>' %}
 
-{# ... di bagian tombol/ikon profil: ganti img-nya jadi: #}
 <img
   src="{{ avatar_url or DEFAULT_AVATAR }}"
   alt="Profil"
@@ -67,7 +66,7 @@
       <!-- ===== MOBILE (< md) ===== -->
       <div class="md:hidden flex items-center gap-2">
         {% set _role_m = role|default('user') %}
-        {% set _avatar_m = avatar_url if avatar_url else url_for('static', filename='img/no-image.png') %}
+        {% set NOIMG = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240"><rect width="100%25" height="100%25" fill="%23f1f5f9"/><g fill="%2394a3b8"><rect x="40" y="60" width="240" height="120" rx="12" ry="12" fill="%23e2e8f0"/><path d="M80 150l40-40 30 30 40-50 30 40" fill="none" stroke="%2394a3b8" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></g></svg>' %}
 
         {% if _role_m == 'admin' %}
           <!-- KIRI: tombol Admin (gear) -->
@@ -99,7 +98,7 @@
         <!-- KANAN: Avatar (profil & keluar) -->
         <div class="relative" id="profileMobile">
           <button class="h-9 w-9 rounded-full border border-neutral-300 overflow-hidden" aria-label="Profil">
-            <img src="{{ _avatar_m }}" alt="avatar" class="h-full w-full object-cover" onerror="this.src='{{ url_for('static', filename='img/no-image.png') }}'">
+            <img onerror="this.onerror=null;this.src='{{ NOIMG }}';">
           </button>
           <div class="absolute right-0 mt-2 w-56 rounded-xl border border-neutral-200 bg-white shadow-xl hidden">
             <a href="{{ url_for('editProfile') }}" class="block px-4 py-2 hover:bg-neutral-50"><i class="fa-solid fa-id-card mr-2"></i>Profil</a>
