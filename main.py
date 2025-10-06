@@ -992,10 +992,10 @@ def checkout():
         if not items:
             flash("Keranjang masih kosong", "warning")
             return redirect(url_for("dashboard"))
-        # kalau kamu punya fungsi dapatkan QRIS statis, boleh kirim di sini:
-        qris_url = None  # ganti ke get_qris_static_url() kalau sudah ada
+    
+        qris_url = get_qris_static_url()  # <— JANGAN None
         return render_template("checkout.html", items=items, total=total, qris_url=qris_url)
-
+    
     # ---------- POST ----------
     # TRANSFER atau QRIS; jika masih ada opsi "COD", kita map ke "QRIS"
     payment_method = (request.form.get("payment_method") or "QRIS").upper()
