@@ -913,118 +913,25 @@ def admin_orders():
 def admin_order_detail(order_id):
     if not check_role("admin"):
         flash("Akses ditolak", "error")
-        return redirect(url_for("dashboard"))
+        return redirect("/")
 
-    # update status jika POST
+    db = Database(DB_CONFIG)
+
     if request.method == "POST":
-        action = (request.form.get("action") or "").lower()
+        action = request.form.get("action")
         mapping = {"terima":"diterima","proses":"diproses","selesai":"selesai","batal":"batal"}
         if action in mapping:
-            try:
-                db = Database(DB_CONFIG)
-                if hasattr(db, "update_order_status"):
-                    ok = db.update_order_status(order_id, mapping[action])
-                else:
-                    # fallback SQL langsung
-                    import psycopg2
-                    conn = psycopg2.connect(**DB_CONFIG)
-                    cur = conn.cursor()
-                    cur.execute("UPDATE orders SET status=%s WHERE id=%s", (mapping[action], order_id))
-                    ok = (cur.rowcount > 0)
-                    conn.commit()
-                    cur.close(); conn.close()
-                flash("Status diperbarui" if ok else "Gagal memperbarui status",
-                      "success" if ok else "error")
-            except Exception as e:
-                flash(f"Gagal memperbarui status: {e}", "error")
+            ok = db.update_order_status(order_id, mapping[action])
+            flash("Status diperbarui" if ok else "Gagal memperbarui status",
+                  "success" if ok else "error")
         return redirect(url_for("admin_order_detail", order_id=order_id))
 
-    # ambil order + item
-    sql_o = """
-      SELECT o.*, COALESCE(u.nama, u.username) AS customer
-      FROM orders o LEFT JOIN users u ON u.id=o.user_id
-      WHERE o.id=%s
-    """
-    sql_i = """
-      SELECT oi.*, b.nama AS produk_nama
-      FROM order_items oi LEFT JOIN barang b ON b.id=oi.barang_id
-      WHERE oi.order_id=%s
-      ORDER BY oi.id ASC
-    """
-    order_rows = _fetch_all_sql(sql_o, [order_id])
-    item_rows  = _fetch_all_sql(sql_i, [order_id])
-    if not order_rows:
+    order, items = db.get_order(order_id)   # pastikan fungsi ini ada
+    if not order:
         flash("Pesanan tidak ditemukan", "error")
         return redirect(url_for("admin_orders"))
 
-    order = order_rows[0]
-    items = item_rows
-
-    # coba render template file normal
-    try:
-        return render_template("order_detail_admin.html", order=order, items=items)
-    except TemplateNotFound:
-        from flask import render_template_string
-        return render_template_string("""
-<!DOCTYPE html>
-<html lang="id">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Detail Pesanan (Fallback)</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-50 min-h-screen">
-  <main class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-    <div class="flex items-center justify-between mb-4">
-      <h1 class="text-2xl font-bold text-gray-800">Detail Pesanan #{{ order.id }}</h1>
-      <a href="{{ url_for('admin_orders') }}" class="px-3 py-2 text-sm rounded border border-gray-300 hover:bg-gray-100">← Kembali</a>
-    </div>
-
-    <div class="bg-white rounded-xl shadow border border-gray-200 p-4 mb-6">
-      <div class="grid sm:grid-cols-2 gap-4 text-sm">
-        <div><span class="text-gray-500">Customer:</span> <span class="font-medium">{{ order.customer }}</span></div>
-        <div><span class="text-gray-500">Status:</span> <span class="capitalize font-medium">{{ order.status }}</span></div>
-        <div><span class="text-gray-500">Total:</span> <span class="font-medium">Rp {{ '{:,.0f}'.format((order.total or 0)|int).replace(',', '.') }}</span></div>
-        <div><span class="text-gray-500">Pembayaran:</span> <span class="font-medium">{{ (order.payment_method or '-')|upper }} ({{ order.payment_status or 'pending' }})</span></div>
-      </div>
-    </div>
-
-    <form method="post" class="flex gap-2 mb-6">
-      <button name="action" value="terima"  class="px-3 py-2 rounded bg-amber-600 text-white hover:bg-amber-700">Terima</button>
-      <button name="action" value="proses"  class="px-3 py-2 rounded bg-sky-600 text-white hover:bg-sky-700">Proses</button>
-      <button name="action" value="selesai" class="px-3 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700">Selesai</button>
-      <button name="action" value="batal"   class="px-3 py-2 rounded bg-rose-600 text-white hover:bg-rose-700">Batal</button>
-    </form>
-
-    <div class="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
-      <table class="min-w-full divide-y divide-gray-200 text-sm">
-        <thead class="bg-gray-100">
-          <tr>
-            <th class="px-4 py-3 text-left font-semibold text-gray-600">Produk</th>
-            <th class="px-4 py-3 text-left font-semibold text-gray-600">Qty</th>
-            <th class="px-4 py-3 text-left font-semibold text-gray-600">Harga</th>
-            <th class="px-4 py-3 text-left font-semibold text-gray-600">Subtotal</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-200">
-          {% for it in items %}
-          <tr>
-            <td class="px-4 py-3">{{ it.produk_nama }}</td>
-            <td class="px-4 py-3">{{ it.qty }}</td>
-            <td class="px-4 py-3">Rp {{ '{:,.0f}'.format((it.harga or 0)|int).replace(',', '.') }}</td>
-            <td class="px-4 py-3">Rp {{ '{:,.0f}'.format(((it.harga or 0) * (it.qty or 0))|int).replace(',', '.') }}</td>
-          </tr>
-          {% else %}
-          <tr><td colspan="4" class="px-4 py-6 text-center text-gray-500">Tidak ada item.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </main>
-</body>
-</html>
-        """, order=order, items=items)
+    return render_template("order_detail_admin.html", order=order, items=items)
 
 
 
