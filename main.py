@@ -942,7 +942,7 @@ def admin_order_detail(order_id):
 
     db = Database(DB_CONFIG)
 
-    # Update status bila POST
+    # Update status
     if request.method == "POST":
         action  = (request.form.get("action") or "").lower()
         mapping = {"terima": "diterima", "proses": "diproses",
@@ -951,70 +951,61 @@ def admin_order_detail(order_id):
             ok = db.update_order_status(order_id, mapping[action])
             flash("Status diperbarui" if ok else "Gagal memperbarui status",
                   "success" if ok else "error")
-        else:
-            flash("Aksi tidak dikenali", "warning")
         return redirect(url_for("admin_order_detail", order_id=order_id))
 
-    # Header pesanan
+    # Ambil header pesanan
     sql_head = """
         SELECT
           o.id,
           COALESCE(u.nama, u.username) AS customer,
-          COALESCE(o.status,'baru')          AS status,
-          COALESCE(o.total,0)                AS total,
-          COALESCE(o.payment_method,'-')     AS payment_method,
-          COALESCE(o.payment_status,'pending') AS payment_status,
+          o.status,
+          COALESCE(o.total,0) AS total,
+          COALESCE(o.payment_method,'-') AS payment_method,
+          COALESCE(o.payment_status,'-') AS payment_status,
           o.created_at
         FROM orders o
         LEFT JOIN users u ON u.id = o.user_id
         WHERE o.id = %s
     """
-    hdr = _run_select_one(db, sql_head, [order_id])
-    if not hdr:
+    row = _fetch_one_sql(sql_head, [order_id])
+    if not row:
         flash("Pesanan tidak ditemukan", "error")
         return redirect(url_for("admin_orders"))
 
-    # dukung row dict/tuple
-    g = (lambda k, i: (hdr.get(k) if isinstance(hdr, dict) else hdr[i]))
     order = {
-        "id":             g("id", 0),
-        "customer":       g("customer", 1),
-        "status":         g("status", 2) or "-",
-        "total":          int(g("total", 3) or 0),
-        "payment_method": g("payment_method", 4) or "-",
-        "payment_status": g("payment_status", 5) or "-",
-        "created_at":     g("created_at", 6),
+        "id": row[0],
+        "customer": row[1],
+        "status": row[2] or "-",
+        "total": int(row[3] or 0),
+        "payment_method": row[4] or "-",
+        "payment_status": row[5] or "-",
+        "created_at": row[6],
     }
 
-    # Items: pakai b.nama_barang (bukan b.nama), plus nomor urut & subtotal
+    # Ambil item pesanan
     sql_items = """
-        SELECT
-          COALESCE(b.nama_barang,'(Produk)') AS nama,
-          COALESCE(oi.qty,0)                 AS qty,
-          COALESCE(oi.harga,0)               AS harga
+        SELECT oi.id, oi.qty, oi.harga, COALESCE(b.nama,'(Produk)') AS nama
         FROM order_items oi
         LEFT JOIN barang b ON b.id = oi.barang_id
         WHERE oi.order_id = %s
         ORDER BY oi.id
     """
-    rows = _run_select_all(db, sql_items, [order_id]) or []
+    rows = _fetch_all_sql(sql_items, [order_id]) or []
     items = []
     for idx, r in enumerate(rows, start=1):
-        if isinstance(r, dict):
-            nama  = r.get("nama")
-            qty   = int(r.get("qty") or 0)
-            harga = int(r.get("harga") or 0)
-        else:
-            nama, qty, harga = r[0], int(r[1] or 0), int(r[2] or 0)
+        qty = int(r[1] or 0)
+        harga = int(r[2] or 0)
         items.append({
-            "no": idx,                 # 1,2,3,...
-            "nama": nama,              # nama produk (kalau mau ditampilkan)
-            "qty": qty,                # jumlah
-            "harga": harga,            # harga satuan
-            "subtotal": qty * harga,   # qty x harga
+            "no": idx,
+            "id": r[0],
+            "nama": r[3],
+            "qty": qty,
+            "harga": harga,
+            "subtotal": qty * harga
         })
 
     return render_template("order_detail_admin.html", order=order, items=items)
+
 
 
 
