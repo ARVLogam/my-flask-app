@@ -762,24 +762,33 @@ def admin_orders():
     """
 
     db = Database(DB_CONFIG)
-    rows = db.fetch_all(sql, params)
+    conn = db._get_conn()
+    cur = conn.cursor()
 
-    # Normalisasi hasil query ke list of dict
-    orders = []
-    for r in rows:
-        if isinstance(r, dict):
-            orders.append(r)
-        else:
+    try:
+        cur.execute(sql, params)
+        rows = cur.fetchall()  # <-- ambil data sebagai list of tuples
+
+        # Normalisasi ke list of dict agar aman di template (pakai o.id, o.customer, dst.)
+        orders = []
+        for r in rows:
             orders.append({
-                "id": r[0],
-                "customer": r[1],
-                "status": r[2],
-                "total": r[3],
+                "id":             r[0],
+                "customer":       r[1],
+                "status":         r[2],
+                "total":          r[3],
                 "payment_method": r[4],
                 "payment_status": r[5],
-                "created_at": r[6],
+                "created_at":     r[6],
             })
 
+    finally:
+        cur.close()
+        conn.close()
+
+    # Pastikan path template sesuai lokasi file kamu:
+    # - Jika file ada di templates/order_admin.html -> pakai seperti di bawah.
+    # - Jika kamu simpan di templates/admin/order_admin.html -> ganti jadi "admin/order_admin.html".
     return render_template("order_admin.html", orders=orders, status=status)
 
 
