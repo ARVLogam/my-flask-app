@@ -1,5 +1,3 @@
-ORDER_DETAIL_ADMIN_HTML = r"""
-{% set brand = {'primary':'#c08906','primaryDark':'#9a6f05'} %}
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -7,70 +5,98 @@ ORDER_DETAIL_ADMIN_HTML = r"""
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Detail Pesanan #{{ order.id }}</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    :root{ --brand: {{ brand.primary }}; --brandDark: {{ brand.primaryDark }};}
-    .btn-brand{background:var(--brand);color:#fff}
-    .btn-brand:hover{background:var(--brandDark)}
-    .pill{padding:.15rem .5rem;border-radius:9999px;font-size:.75rem}
-  </style>
 </head>
 <body class="bg-neutral-50 min-h-screen">
   {% include 'navbar.html' %}
-  <main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     {% include 'flashProtection.html' %}
 
-    <div class="flex items-center justify-between mb-5">
+    <div class="flex items-center justify-between mb-6">
       <h1 class="text-2xl font-bold text-neutral-900">Detail Pesanan #{{ order.id }}</h1>
-      <a href="{{ url_for('admin_orders') }}" class="px-3 py-2 rounded-lg border border-neutral-300 hover:bg-neutral-100 text-sm">← Kembali</a>
+      <a href="{{ url_for('admin_orders') }}"
+         class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-300 hover:bg-neutral-100 text-sm">
+        ← Kembali
+      </a>
     </div>
 
-    <section class="bg-white rounded-2xl shadow border border-neutral-200 p-5 mb-6">
-      <div class="grid sm:grid-cols-2 gap-4 text-sm">
-        <div><div class="text-neutral-500">Customer</div><div class="font-medium">{{ order.customer }}</div></div>
-        <div><div class="text-neutral-500">Status</div>
-             <div><span class="pill {{ 'bg-emerald-100 text-emerald-700' if order.status=='selesai' else
-                                        'bg-amber-100 text-amber-700' if order.status in ['baru','diterima','diproses'] else
-                                        'bg-rose-100 text-rose-700' }}">{{ order.status }}</span></div></div>
-        <div><div class="text-neutral-500">Total</div><div class="font-medium">Rp {{ '{:,.0f}'.format(order.total or 0).replace(',', '.') }}</div></div>
-        <div><div class="text-neutral-500">Pembayaran</div>
-             <div class="font-medium">{{ (order.payment_method or '-').upper() }} <span class="text-neutral-500">({{ order.payment_status or '-' }})</span></div></div>
+    <!-- Header -->
+    <section class="bg-white rounded-2xl shadow-sm border border-neutral-200 p-6 mb-6">
+      <div class="grid sm:grid-cols-2 gap-6">
+        <div>
+          <div class="text-sm text-neutral-500">Customer</div>
+          <div class="font-semibold text-neutral-900">{{ order.customer }}</div>
+
+          <div class="mt-4 text-sm text-neutral-500">Total</div>
+          <div class="text-lg font-bold text-amber-700">
+            Rp {{ '{:,.0f}'.format(order.total).replace(',', '.') }}
+          </div>
+        </div>
+
+        <div>
+          <div class="text-sm text-neutral-500">Status</div>
+          <div class="flex items-center gap-2">
+            <span class="inline-block h-2.5 w-2.5 rounded-full bg-amber-500"></span>
+            <span class="capitalize">{{ order.status }}</span>
+          </div>
+
+          <div class="mt-4 text-sm text-neutral-500">Pembayaran</div>
+          <div>
+            {{ order.payment_method|upper }} <span class="text-neutral-500">({{ order.payment_status }})</span>
+          </div>
+        </div>
       </div>
     </section>
 
-    <section class="bg-white rounded-2xl shadow border border-neutral-200 overflow-hidden mb-6">
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-neutral-200">
-          <thead class="bg-neutral-100">
-            <tr>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Produk</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Qty</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Harga</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Subtotal</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-neutral-200">
-            {% for it in items %}
-            <tr class="hover:bg-neutral-50">
-              <td class="px-4 py-3 text-sm">{{ it.nama }}</td>
-              <td class="px-4 py-3 text-sm">{{ it.qty }}</td>
-              <td class="px-4 py-3 text-sm">Rp {{ '{:,.0f}'.format(it.price or 0).replace(',', '.') }}</td>
-              <td class="px-4 py-3 text-sm">Rp {{ '{:,.0f}'.format((it.price or 0) * (it.qty or 0)).replace(',', '.') }}</td>
-            </tr>
-            {% else %}
-            <tr><td colspan="4" class="px-4 py-6 text-center text-neutral-500">Tidak ada item.</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+    <!-- Items -->
+    <section class="bg-white rounded-2xl shadow-sm border border-neutral-200 overflow-hidden">
+      <table class="min-w-full divide-y divide-neutral-200">
+        <thead class="bg-neutral-50">
+          <tr>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Produk</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Qty</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Harga</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-neutral-200">
+          {% for it in items %}
+          <tr>
+            <td class="px-4 py-3 text-sm">{{ it.nama }}</td>
+            <td class="px-4 py-3 text-sm">{{ it.qty }}</td>
+            <td class="px-4 py-3 text-sm">Rp {{ '{:,.0f}'.format(it.harga).replace(',', '.') }}</td>
+            <td class="px-4 py-3 text-sm">
+              Rp {{ '{:,.0f}'.format(it.qty * it.harga).replace(',', '.') }}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="4" class="px-4 py-6 text-center text-neutral-500">Belum ada item pada pesanan ini.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </section>
 
-    <form method="post" class="flex flex-wrap gap-3">
-      <button name="action" value="terima"  class="btn-brand px-4 py-2 rounded-lg">Tandai DITERIMA</button>
-      <button name="action" value="proses"  class="btn-brand px-4 py-2 rounded-lg">Tandai DIPROSES</button>
-      <button name="action" value="selesai" class="btn-brand px-4 py-2 rounded-lg">Tandai SELESAI</button>
-      <button name="action" value="batal"   class="px-4 py-2 rounded-lg border border-rose-300 text-rose-700 hover:bg-rose-50">Batalkan</button>
+    <!-- Actions -->
+    <form method="post" class="mt-6 flex flex-wrap gap-3">
+      <button name="action" value="terima"
+              class="px-4 py-2 rounded-xl bg-amber-700 hover:bg-amber-800 text-white">
+        Tandai DITERIMA
+      </button>
+      <button name="action" value="proses"
+              class="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white">
+        Tandai DIPROSES
+      </button>
+      <button name="action" value="selesai"
+              class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white">
+        Tandai SELESAI
+      </button>
+      <button name="action" value="batal"
+              class="px-4 py-2 rounded-xl border border-rose-300 text-rose-600 hover:bg-rose-50">
+        Batalkan
+      </button>
     </form>
   </main>
 </body>
 </html>
-"""
