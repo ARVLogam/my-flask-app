@@ -764,24 +764,42 @@ def admin_orders():
 
 @app.route("/admin/orders/<int:order_id>", methods=["GET", "POST"])
 def admin_order_detail(order_id):
+    # Cek role admin
     if not check_role("admin"):
         flash("Akses ditolak", "error")
-        return redirect("/")
+        return redirect(url_for("dashboard"))
+
     db = Database(DB_CONFIG)
+
+    # Jika admin ubah status pesanan
     if request.method == "POST":
         action = request.form.get("action")
-        mapping = {"terima":"diterima","proses":"diproses","selesai":"selesai","batal":"batal"}
+        mapping = {
+            "terima": "diterima",
+            "proses": "diproses",
+            "selesai": "selesai",
+            "batal": "batal"
+        }
         if action in mapping:
             ok = db.update_order_status(order_id, mapping[action])
-            flash("Status diperbarui" if ok else "Gagal memperbarui status",
-                  "success" if ok else "error")
+            flash(
+                "Status diperbarui" if ok else "Gagal memperbarui status",
+                "success" if ok else "error"
+            )
         return redirect(url_for("admin_order_detail", order_id=order_id))
 
+    # Ambil data order dan itemnya
     order, items = db.get_order(order_id)
     if not order:
         flash("Pesanan tidak ditemukan", "error")
         return redirect(url_for("admin_orders"))
-    return render_template("order_detail_admin.html", order=order, items=items)
+
+    # Render template dengan tambahan data nama customer
+    return render_template(
+        "order_detail_admin.html",
+        order=order,
+        items=items
+    )
 
 
 @app.context_processor
