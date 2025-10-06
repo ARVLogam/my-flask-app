@@ -212,6 +212,59 @@ load_dotenv()
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev")
 
+
+# ==== Payment proofs upload config ====
+import os, time
+from werkzeug.utils import secure_filename
+
+PROOFS_SUBDIR = os.path.join("uploads", "proofs")
+PROOFS_FOLDER = os.path.join(app.static_folder, PROOFS_SUBDIR)
+os.makedirs(PROOFS_FOLDER, exist_ok=True)
+
+ALLOWED_PROOF_EXT = {"png", "jpg", "jpeg", "webp", "pdf"}
+
+def _is_allowed_proof(filename: str) -> bool:
+    if not filename or "." not in filename:
+        return False
+    return filename.rsplit(".", 1)[1].lower() in ALLOWED_PROOF_EXT
+
+def _save_one_proof(order_id: int, file_storage, kind: str):
+    """
+    Simpan 1 file bukti, kembalikan URL static yang bisa langsung dipakai di HTML.
+    """
+    if not file_storage or not file_storage.filename:
+        return None
+
+    if not _is_allowed_proof(file_storage.filename):
+        return None
+
+    # ex: 3_1717599302_TRANSFER_bukti.jpg
+    ts = int(time.time())
+    base = secure_filename(file_storage.filename)
+    filename = f"{order_id}_{ts}_{kind}_{base}"
+    dest_path = os.path.join(PROOFS_FOLDER, filename)
+    file_storage.save(dest_path)
+
+    # URL statis -> /static/uploads/proofs/<filename>
+    return f"/static/{PROOFS_SUBDIR}/{filename}"
+
+def save_payment_proofs(order_id: int, files, db):
+    """
+    Terima `request.files`, simpan 'transfer_proof' & 'qris_proof' kalau ada,
+    lalu catat ke tabel payment_proofs via CRUD.
+    """
+    for field, kind in (("transfer_proof", "TRANSFER"), ("qris_proof", "QRIS")):
+        file_obj = files.get(field)
+        url = _save_one_proof(order_id, file_obj, kind)
+        if url:
+            try:
+                # simpan record ke DB
+                if hasattr(db, "add_payment_proof"):
+                    db.add_payment_proof(order_id, kind, url)
+            except Exception as e:
+                print("Gagal insert payment_proofs:", e)
+
+
 # ==== Pembayaran/Upload ====
 PAYMENT_SETTINGS_FILE = os.path.join(app.root_path, "payment_settings.json")
 PAYMENT_UPLOAD_DIR    = os.path.join(app.root_path, "static", "uploads", "payments")
@@ -940,11 +993,12 @@ def checkout():
         if not items:
             flash("Keranjang masih kosong", "warning")
             return redirect(url_for("dashboard"))
-        # kirim QRIS statis kalau tersedia
-        return render_template("checkout.html", items=items, total=total, qris_url=get_qris_static_url())
+        # kalau kamu punya fungsi dapatkan QRIS statis, boleh kirim di sini:
+        qris_url = None  # ganti ke get_qris_static_url() kalau sudah ada
+        return render_template("checkout.html", items=items, total=total, qris_url=qris_url)
 
     # ---------- POST ----------
-    # TRANSFER atau QRIS; jika ada "COD", kita map ke QRIS (pakai QR statis)
+    # TRANSFER atau QRIS; jika masih ada opsi "COD", kita map ke "QRIS"
     payment_method = (request.form.get("payment_method") or "QRIS").upper()
     if payment_method == "COD":
         payment_method = "QRIS"
@@ -960,13 +1014,13 @@ def checkout():
         flash("Gagal membuat pesanan", "error")
         return redirect(url_for("checkout"))
 
-    # Simpan bukti (opsional)
+    # Simpan bukti (opsional) -> field form: transfer_proof, qris_proof
     try:
-        save_payment_proofs(order_id, request.files)
+        save_payment_proofs(order_id, request.files, db)
     except Exception as e:
         print("Gagal simpan bukti pembayaran:", e)
 
-    # Status awal
+    # Set status awal
     try:
         db.update_order_status(order_id, "baru", "pending")
     except TypeError:
