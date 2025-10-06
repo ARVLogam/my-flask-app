@@ -4,19 +4,42 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Masuk | Aplikasi</title>
+
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Palet warna disesuaikan dengan logo (emas & hitam) -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand:      '#C7901B',  /* emas utama */
+            brandDark:  '#A87310',  /* emas gelap */
+            brandLite:  '#F6D27A',  /* emas terang */
+            ink:        '#0B0B0B',  /* hitam */
+            paper:      '#F8F7F4'   /* putih hangat */
+          },
+          boxShadow: {
+            soft: '0 10px 25px rgba(0,0,0,.08)'
+          },
+          borderRadius: { xl2: '1rem' }
+        }
+      }
+    }
+  </script>
+
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
 </head>
-<body class="min-h-screen bg-white flex items-center justify-center px-4 py-10">
+
+<body class="min-h-screen bg-paper flex items-center justify-center px-4 py-10">
   <!-- Flash -->
   <div class="fixed top-4 inset-x-0 z-50 px-4">
     {% include 'flashProtection.html' %}
   </div>
 
   <!-- Card -->
-  <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
-    <!-- Logo transparan (besar) -->
-    <div class="w-full flex items-center justify-center mb-4">
+  <div class="w-full max-w-md bg-white rounded-2xl shadow-soft p-8 border border-brandLite/40">
+    <!-- Logo -->
+    <div class="w-full flex items-center justify-center mb-5">
       <img
         src="{{ url_for('static', filename='img/logo.PNG') }}"
         alt="Logo"
@@ -25,46 +48,47 @@
       />
     </div>
 
-    <h2 class="text-2xl font-extrabold text-center text-red-700 mb-6">Masuk ke Akun</h2>
+    <h2 class="text-2xl font-extrabold text-center text-ink mb-2">Masuk ke Akun</h2>
+    <p class="text-center text-sm text-ink/60 mb-6">Selamat datang kembali</p>
 
     <form action="{{ url_for('login') }}" method="POST" class="space-y-5" id="loginForm">
       <!-- Username -->
       <div>
-        <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+        <label for="username" class="block text-sm font-medium text-ink mb-1">Username</label>
         <div class="relative">
-          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-ink/40">
             <i class="fa-regular fa-user"></i>
           </span>
           <input
             type="text" name="username" id="username" required
             placeholder="nama_pengguna"
-            class="w-full pl-10 pr-3 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500"
+            class="w-full pl-10 pr-3 py-2.5 rounded-lg border border-ink/15 focus:outline-none focus:ring-2 focus:ring-brand"
           />
         </div>
       </div>
 
       <!-- Password -->
       <div>
-        <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+        <label for="password" class="block text-sm font-medium text-ink mb-1">Password</label>
         <div class="relative">
-          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-ink/40">
             <i class="fa-solid fa-lock"></i>
           </span>
           <input
             type="password" name="password" id="password" required
             placeholder="••••••••"
-            class="w-full pl-10 pr-10 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500"
+            class="w-full pl-10 pr-10 py-2.5 rounded-lg border border-ink/15 focus:outline-none focus:ring-2 focus:ring-brand"
           />
           <button type="button" id="togglePassBtn"
-            class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+            class="absolute right-2 top-1/2 -translate-y-1/2 text-ink/40 hover:text-ink/60">
             <i class="fa-regular fa-eye" id="togglePassIcon"></i>
           </button>
         </div>
         <div class="flex justify-between items-center mt-2">
-          <label class="flex items-center gap-2 text-sm text-gray-600">
-            <input type="checkbox" class="rounded border-gray-300 text-red-600 focus:ring-red-500"/> Ingat saya
+          <label class="flex items-center gap-2 text-sm text-ink/70">
+            <input type="checkbox" class="rounded border-ink/20 text-brand focus:ring-brand"/> Ingat saya
           </label>
-          <a href="{{ url_for('forgot_password') }}" class="text-sm text-red-600 hover:text-red-700 font-medium">
+          <a href="{{ url_for('forgot') }}" class="text-sm text-brand hover:text-brandDark font-medium">
             Lupa password?
           </a>
         </div>
@@ -73,21 +97,21 @@
       <!-- Tombol -->
       <button
         type="submit"
-        class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 rounded-lg shadow-md transition">
+        class="w-full bg-brand hover:bg-brandDark text-ink font-semibold py-2.5 rounded-lg shadow-soft transition">
         Masuk
       </button>
 
       <!-- Divider -->
       <div class="flex items-center gap-3">
-        <div class="h-px bg-gray-200 flex-1"></div>
-        <span class="text-xs text-gray-500">atau</span>
-        <div class="h-px bg-gray-200 flex-1"></div>
+        <div class="h-px bg-ink/10 flex-1"></div>
+        <span class="text-xs text-ink/50">atau</span>
+        <div class="h-px bg-ink/10 flex-1"></div>
       </div>
 
       <!-- Register -->
-      <p class="text-center text-sm text-gray-600">
+      <p class="text-center text-sm text-ink/70">
         Belum punya akun?
-        <a href="{{ url_for('register') }}" class="text-red-600 hover:text-red-700 font-semibold">Daftar</a>
+        <a href="{{ url_for('register') }}" class="text-brand hover:text-brandDark font-semibold">Daftar</a>
       </p>
     </form>
   </div>
