@@ -925,29 +925,6 @@ def admin_orders():
 # =========================
 from decimal import Decimal
 
-def _run_select_all(db, sql, params=None):
-    params = params or []
-    if hasattr(db, "select"):
-        return db.select(sql, params)
-    if hasattr(db, "fetch_all"):
-        return db.fetch_all(sql, params)
-    if hasattr(db, "select_all"):
-        return db.select_all(sql, params)
-    return []
-
-
-def _run_select_one(db, sql, params=None):
-    params = params or []
-    if hasattr(db, "select_one"):
-        return db.select_one(sql, params)
-    rows = _run_select_all(db, sql, params)
-    return rows[0] if rows else None
-
-
-
-# =========================
-# ADMIN: Detail Pesanan
-# =========================
 @app.route("/admin/orders/<int:order_id>", methods=["GET", "POST"])
 def admin_order_detail(order_id):
     if not check_role("admin"):
@@ -956,91 +933,166 @@ def admin_order_detail(order_id):
 
     db = Database(DB_CONFIG)
 
-    # Update status (POST)
+    # ---- util kecil aman dict/tuple ----
+    def getv(r, key, idx=None, default=None):
+        if r is None:
+            return default
+        if isinstance(r, dict):
+            return r.get(key, default)
+        if idx is not None:
+            try:
+                return r[idx]
+            except Exception:
+                return default
+        return default
+
+    # ---- UPDATE STATUS (POST) ----
     if request.method == "POST":
         action = (request.form.get("action") or "").lower()
         mapping = {"terima": "diterima", "proses": "diproses", "selesai": "selesai", "batal": "batal"}
         new_status = mapping.get(action)
-        if new_status and hasattr(db, "update_order_status"):
-            ok = db.update_order_status(order_id, new_status)
-            flash("Status diperbarui" if ok else "Gagal memperbarui status",
-                  "success" if ok else "error")
-        else:
+        if not new_status:
             flash("Aksi tidak dikenali", "warning")
+            return redirect(url_for("admin_order_detail", order_id=order_id))
+
+        ok = False
+        # Prefer method bawaan DB bila ada
+        if hasattr(db, "update_order_status"):
+            try:
+                ok = bool(db.update_order_status(order_id, new_status))
+            except Exception:
+                ok = False
+        else:
+            # Fallback SQL manual
+            try:
+                sql_upd = "UPDATE orders SET status = %s WHERE id = %s"
+                if hasattr(db, "execute"):
+                    db.execute(sql_upd, [new_status, order_id])
+                    ok = True
+                elif hasattr(db, "query"):
+                    db.query(sql_upd, [new_status, order_id])
+                    ok = True
+            except Exception:
+                ok = False
+
+        flash("Status diperbarui" if ok else "Gagal memperbarui status",
+              "success" if ok else "error")
         return redirect(url_for("admin_order_detail", order_id=order_id))
 
-    # --- Helper kecil untuk ambil nilai dari row dict/tuple ---
-    def getv(r, key_or_idx):
-        if isinstance(r, dict):
-            return r.get(key_or_idx)
-        # mapping index kalau row = tuple/list
-        idxmap = {"id": 0, "customer": 1, "status": 2, "total": 3,
-                  "payment_method": 4, "payment_status": 5, "created_at": 6,
-                  "it_id": 0, "it_qty": 1, "it_harga": 2, "it_nama": 3}
-        i = idxmap.get(key_or_idx, key_or_idx)
-        try:
-            return r[i]
-        except Exception:
-            return None
+    # ---- AMBIL DATA ORDER + ITEM ----
+    order_row = None
+    item_rows = []
 
-    # Header pesanan
-    sql_head = """
-        SELECT
-          o.id AS id,
-          COALESCE(u.nama, u.username, '-') AS customer,
-          COALESCE(o.status,'baru') AS status,
-          COALESCE(o.total,0) AS total,
-          COALESCE(o.payment_method,'-') AS payment_method,
-          COALESCE(o.payment_status,'pending') AS payment_status,
-          o.created_at
-        FROM orders o
-        LEFT JOIN users u ON u.id = o.user_id
-        WHERE o.id = %s
-    """
-    row = _run_select_one(db, sql_head, [order_id])
-    if not row:
+    # 1) Coba pakai helper bawaan database kalau ada
+    if hasattr(db, "get_order"):
+        try:
+            result = db.get_order(order_id)
+            # Banyak implementasi mengembalikan (order, items)
+            if isinstance(result, (list, tuple)) and len(result) >= 2:
+                order_row, item_rows = result[0], result[1]
+        except Exception:
+            order_row, item_rows = None, []
+
+    # 2) Fallback ke SQL manual bila di atas gagal / None
+    if order_row is None:
+        sql_head = """
+            SELECT
+              o.id                               AS id,
+              COALESCE(u.nama, u.username, '-')  AS customer,
+              COALESCE(o.status,'baru')          AS status,
+              COALESCE(o.total,0)                AS total,
+              COALESCE(o.payment_method,'-')     AS payment_method,
+              COALESCE(o.payment_status,'pending') AS payment_status,
+              o.created_at
+            FROM orders o
+            LEFT JOIN users u ON u.id = o.user_id
+            WHERE o.id = %s
+        """
+        try:
+            if hasattr(db, "select_one"):
+                order_row = db.select_one(sql_head, [order_id])
+            elif hasattr(db, "fetch_all"):
+                rows = db.fetch_all(sql_head, [order_id]) or []
+                order_row = rows[0] if rows else None
+            elif hasattr(db, "select"):
+                rows = db.select(sql_head, [order_id]) or []
+                order_row = rows[0] if rows else None
+            else:
+                order_row = None
+        except Exception:
+            order_row = None
+
+        sql_items = """
+            SELECT
+              oi.id                    AS it_id,
+              COALESCE(oi.qty,0)       AS it_qty,
+              COALESCE(oi.harga,0)     AS it_harga,
+              COALESCE(b.nama,'(Produk)') AS it_nama
+            FROM order_items oi
+            LEFT JOIN barang b ON b.id = oi.barang_id
+            WHERE oi.order_id = %s
+            ORDER BY oi.id
+        """
+        try:
+            if hasattr(db, "select"):
+                item_rows = db.select(sql_items, [order_id]) or []
+            elif hasattr(db, "fetch_all"):
+                item_rows = db.fetch_all(sql_items, [order_id]) or []
+            else:
+                item_rows = []
+        except Exception:
+            item_rows = []
+
+    # Kalau tetap tidak ada header -> redirect
+    if not order_row:
         flash("Pesanan tidak ditemukan", "error")
         return redirect(url_for("admin_orders"))
 
+    # ---- Normalisasi order header ----
+    total_val = getv(order_row, "total", 3, 0)
+    if isinstance(total_val, Decimal):
+        total_val = int(total_val)
+    else:
+        try:
+            total_val = int(total_val or 0)
+        except Exception:
+            total_val = 0
+
     order = {
-        "id":            getv(row, "id"),
-        "customer":      getv(row, "customer"),
-        "status":        getv(row, "status") or "-",
-        "total":         int(getv(row, "total") or 0),
-        "payment_method":getv(row, "payment_method") or "-",
-        "payment_status":getv(row, "payment_status") or "-",
-        "created_at":    getv(row, "created_at"),
+        "id":             getv(order_row, "id", 0),
+        "customer":       getv(order_row, "customer", 1, "-"),
+        "status":         (getv(order_row, "status", 2, "baru") or "baru"),
+        "total":          total_val,
+        "payment_method": getv(order_row, "payment_method", 4, "-") or "-",
+        "payment_status": getv(order_row, "payment_status", 5, "pending") or "pending",
+        "created_at":     getv(order_row, "created_at", 6),
     }
 
-    # Item pesanan
-    sql_items = """
-        SELECT
-          oi.id        AS it_id,
-          COALESCE(oi.qty,0)   AS it_qty,
-          COALESCE(oi.harga,0) AS it_harga,
-          COALESCE(b.nama,'(Produk)') AS it_nama
-        FROM order_items oi
-        LEFT JOIN barang b ON b.id = oi.barang_id
-        WHERE oi.order_id = %s
-        ORDER BY oi.id
-    """
-    rows = _run_select_all(db, sql_items, [order_id]) or []
-
+    # ---- Normalisasi item list ----
     items = []
-    for r in rows:
-        qty   = int(getv(r, "it_qty") or 0)
-        harga = int(getv(r, "it_harga") or 0)
+    for r in (item_rows or []):
+        qty = getv(r, "it_qty", 1, 0)
+        harga = getv(r, "it_harga", 2, 0)
+        try:
+            qty = int(qty or 0)
+        except Exception:
+            qty = 0
+        try:
+            if isinstance(harga, Decimal):
+                harga = int(harga)
+            else:
+                harga = int(harga or 0)
+        except Exception:
+            harga = 0
+
         items.append({
-            "id":    getv(r, "it_id"),
+            "id":    getv(r, "it_id", 0),
             "qty":   qty,
             "harga": harga,
-            "nama":  getv(r, "it_nama"),
+            "nama":  getv(r, "it_nama", 3, "(Produk)"),
         })
 
     return render_template("order_detail_admin.html", order=order, items=items, role="admin")
-
-
-
 
 
 
