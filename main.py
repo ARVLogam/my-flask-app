@@ -62,6 +62,18 @@ load_dotenv()
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev")
 
+import os, logging
+logging.basicConfig(level=logging.INFO)
+logging.info(f"Jinja search path: {getattr(app.jinja_loader, 'searchpath', None)}")
+tpl_dir = os.path.join(os.path.dirname(__file__), "templates")
+logging.info(f"Templates dir exists? {os.path.isdir(tpl_dir)}")
+try:
+    logging.info(f"Templates list: {os.listdir(tpl_dir)}")
+except Exception as e:
+    logging.info(f"Gagal list templates: {e}")
+
+
+
 # ==== Guard / Auth decorators ====
 from functools import wraps
 from flask import session, redirect, url_for, flash, request
