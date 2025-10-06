@@ -927,214 +927,218 @@ from decimal import Decimal
 
 @app.route("/admin/orders/<int:order_id>", methods=["GET", "POST"])
 def admin_order_detail(order_id):
+    # --- Guard ---
     if not check_role("admin"):
         flash("Akses ditolak", "error")
         return redirect(url_for("dashboard"))
 
-    # --- POST: update status ---
+    db = Database(DB_CONFIG)
+
+    # --- Helper kecil untuk normalisasi row (dict/tuple) ---
+    def g(row, key_or_idx, idx_fallback=None):
+        if isinstance(row, dict):
+            return row.get(key_or_idx)
+        if isinstance(row, (list, tuple)):
+            return row[key_or_idx if isinstance(key_or_idx, int) else idx_fallback]
+        return None
+
+    def fetch_one(sql, params=None):
+        rows = _fetch_all_sql(sql, params or [])
+        return rows[0] if rows else None
+
+    # -----------------------------
+    # 1) Update status (POST)
+    # -----------------------------
     if request.method == "POST":
-        action  = (request.form.get("action") or "").lower()
+        action = (request.form.get("action") or "").lower()
         mapping = {"terima": "diterima", "proses": "diproses",
                    "selesai": "selesai", "batal": "batal"}
-        if action in mapping:
-            ok = Database(DB_CONFIG).update_order_status(order_id, mapping[action])
+        new_status = mapping.get(action)
+        if new_status:
+            ok = False
+            # gunakan method bawaan kalau ada
+            if hasattr(db, "update_order_status"):
+                ok = db.update_order_status(order_id, new_status)
+            else:
+                # fallback update langsung
+                try:
+                    _ = _fetch_all_sql(
+                        "UPDATE orders SET status=%s WHERE id=%s RETURNING id",
+                        [new_status, order_id]
+                    )
+                    ok = True
+                except Exception:
+                    ok = False
             flash("Status diperbarui" if ok else "Gagal memperbarui status",
                   "success" if ok else "error")
         else:
             flash("Aksi tidak dikenali", "warning")
         return redirect(url_for("admin_order_detail", order_id=order_id))
 
-    # util: ambil kolom baik dict/tuple + normalisasi angka
-    def v(r, key, idx):
-        if isinstance(r, dict):
-            return r.get(key)
-        try:
-            return r[idx]
-        except Exception:
-            return None
-
-    def to_int(x):
-        if x is None:
-            return 0
-        if isinstance(x, Decimal):
-            return int(x)
-        try:
-            return int(x)
-        except Exception:
-            try:
-                return int(float(x))
-            except Exception:
-                return 0
-
-    # --- HEADER PESANAN ---
+    # -----------------------------
+    # 2) Header pesanan
+    # -----------------------------
     sql_head = """
-      SELECT
-        o.id,
-        COALESCE(u.nama, u.username) AS customer,
-        o.status,
-        COALESCE(o.total,0) AS total,
-        COALESCE(o.payment_method,'-')  AS payment_method,
-        COALESCE(o.payment_status,'-')  AS payment_status,
-        o.created_at
-      FROM orders o
-      LEFT JOIN users u ON u.id = o.user_id
-      WHERE o.id = %s
+        SELECT
+          o.id,
+          COALESCE(u.nama, u.username) AS customer,
+          COALESCE(o.status,'baru') AS status,
+          COALESCE(o.total,0)        AS total,
+          COALESCE(o.payment_method,'-')  AS payment_method,
+          COALESCE(o.payment_status,'pending') AS payment_status,
+          o.created_at
+        FROM orders o
+        LEFT JOIN users u ON u.id = o.user_id
+        WHERE o.id = %s
     """
-    head = _fetch_all_sql(sql_head, [order_id]) or []
-    if not head:
+    row = fetch_one(sql_head, [order_id])
+    if not row:
         flash("Pesanan tidak ditemukan", "error")
         return redirect(url_for("admin_orders"))
 
-    h = head[0]
+    from decimal import Decimal
+    def to_int(x):
+        if x is None: return 0
+        if isinstance(x, Decimal): return int(x)
+        try: return int(x)
+        except: 
+            try: return int(float(x))
+            except: return 0
+
     order = {
-        "id":              v(h, "id", 0),
-        "customer":        v(h, "customer", 1),
-        "status":         (v(h, "status", 2) or "-"),
-        "total":          to_int(v(h, "total", 3)),
-        "payment_method": (v(h, "payment_method", 4) or "-"),
-        "payment_status": (v(h, "payment_status", 5) or "-"),
-        "created_at":      v(h, "created_at", 6),
+        "id":             g(row, "id", 0),
+        "customer":       g(row, "customer", 1),
+        "status":         g(row, "status", 2) or "baru",
+        "total":          to_int(g(row, "total", 3)),
+        "payment_method": g(row, "payment_method", 4) or "-",
+        "payment_status": g(row, "payment_status", 5) or "pending",
+        "created_at":     g(row, "created_at", 6),
     }
 
-    # --- ITEMS PESANAN ---
-    # Coba beberapa kemungkinan nama tabel/kolom yang umum
-    # --- ITEMS PESANAN (mencoba banyak kemungkinan skema) ---
-    candidates_sql = [
-        # order_items + barang.nama
-        """
-        SELECT oi.id, oi.qty, oi.harga, COALESCE(b.nama,'(Produk)') AS nama
-        FROM order_items oi
-        LEFT JOIN barang b ON b.id = oi.barang_id
-        WHERE oi.order_id = %s
-        ORDER BY oi.id
-        """,
-        # order_items + barang.nama_barang
-        """
-        SELECT oi.id, oi.qty, oi.harga, COALESCE(b.nama_barang,'(Produk)') AS nama
-        FROM order_items oi
-        LEFT JOIN barang b ON b.id = oi.barang_id
-        WHERE oi.order_id = %s
-        ORDER BY oi.id
-        """,
-        # order_items: quantity + price + product_id
-        """
-        SELECT oi.id, oi.quantity AS qty, oi.price AS harga,
-               COALESCE(b.nama, b.nama_barang, oi.nama_produk, '(Produk)') AS nama
-        FROM order_items oi
-        LEFT JOIN barang b ON b.id = oi.product_id
-        WHERE oi.order_id = %s
-        ORDER BY oi.id
-        """,
-        # orders_items (pakai 's')
-        """
-        SELECT oi.id, oi.qty, oi.harga,
-               COALESCE(b.nama, b.nama_barang, oi.nama, oi.nama_produk, '(Produk)') AS nama
-        FROM orders_items oi
-        LEFT JOIN barang b ON b.id = COALESCE(oi.barang_id, oi.product_id)
-        WHERE oi.order_id = %s
-        ORDER BY oi.id
-        """,
-        # order_details + barang.nama
-        """
-        SELECT d.id, d.qty, d.harga, COALESCE(b.nama,'(Produk)') AS nama
-        FROM order_details d
-        LEFT JOIN barang b ON b.id = d.barang_id
-        WHERE d.order_id = %s
-        ORDER BY d.id
-        """,
-        # order_details: quantity + price + product_id
-        """
-        SELECT d.id, d.quantity AS qty, d.price AS harga,
-               COALESCE(b.nama, b.nama_barang, d.nama_produk, d.nama, '(Produk)') AS nama
-        FROM order_details d
-        LEFT JOIN barang b ON b.id = d.product_id
-        WHERE d.order_id = %s
-        ORDER BY d.id
-        """,
-        # order_detail (singular)
-        """
-        SELECT d.id, d.qty, d.harga, COALESCE(b.nama,'(Produk)') AS nama
-        FROM order_detail d
-        LEFT JOIN barang b ON b.id = d.barang_id
-        WHERE d.order_id = %s
-        ORDER BY d.id
-        """,
-        # order_detail: quantity + price + product_id
-        """
-        SELECT d.id, d.quantity AS qty, d.price AS harga,
-               COALESCE(b.nama, b.nama_barang, d.nama_produk, d.nama, '(Produk)') AS nama
-        FROM order_detail d
-        LEFT JOIN barang b ON b.id = d.product_id
-        WHERE d.order_id = %s
-        ORDER BY d.id
-        """,
-        # versi tanpa join barang sama sekali (nama di tabel item)
-        """
-        SELECT oi.id, COALESCE(oi.qty, oi.quantity, oi.jumlah) AS qty,
-               COALESCE(oi.harga, oi.price, oi.harga_satuan)    AS harga,
-               COALESCE(oi.nama, oi.nama_produk, '(Produk)')    AS nama
-        FROM order_items oi
-        WHERE oi.order_id = %s
-        ORDER BY oi.id
-        """,
-        """
-        SELECT d.id, COALESCE(d.qty, d.quantity, d.jumlah) AS qty,
-               COALESCE(d.harga, d.price, d.harga_satuan)  AS harga,
-               COALESCE(d.nama, d.nama_produk, '(Produk)') AS nama
-        FROM order_details d
-        WHERE d.order_id = %s
-        ORDER BY d.id
-        """,
-    ]
+    # -----------------------------------------
+    # 3) Auto-discovery tabel & kolom item
+    # -----------------------------------------
+    def find_item_table_and_cols():
+        # cari tabel yang punya kolom 'order_id'
+        rows = _fetch_all_sql("""
+            SELECT table_name, column_name
+            FROM information_schema.columns
+            WHERE table_schema='public' AND column_name ILIKE 'order_id'
+        """) or []
 
-    items_raw = []
-    used_idx = None
-    for i, sql in enumerate(candidates_sql, start=1):
-        try:
-            rows_try = _fetch_all_sql(sql, [order_id]) or []
-            # kalau sukses eksekusi dan ada data, pakai ini
-            if rows_try:
-                items_raw = rows_try
-                used_idx = i
-                break
-        except Exception as e:
-            # Lewati saja—kandidat ini tidak cocok dengan skema
-            continue
+        tables = {}
+        for r in rows:
+            t = g(r, "table_name", 0)
+            c = g(r, "column_name", 1)
+            tables.setdefault(t, set()).add(c)
 
-    if used_idx:
-        print(f"[orders-detail] memakai SQL kandidat #{used_idx} untuk order_id={order_id}")
-
-    def val(r, key, idx):
-        if isinstance(r, dict):
-            return r.get(key)
-        try:
-            return r[idx]
-        except Exception:
+        if not tables:
             return None
 
-    def to_int(x):
-        from decimal import Decimal
-        if x is None:
-            return 0
-        if isinstance(x, Decimal):
-            return int(x)
-        try:
-            return int(x)
-        except Exception:
-            try:
-                return int(float(x))
-            except Exception:
-                return 0
+        # ambil semua kolom untuk tabel kandidat
+        all_cols = _fetch_all_sql("""
+            SELECT table_name, column_name
+            FROM information_schema.columns
+            WHERE table_schema='public'
+        """) or []
+        for r in all_cols:
+            t = g(r, "table_name", 0)
+            c = g(r, "column_name", 1)
+            if t in tables:
+                tables[t].add(c)
 
-    items = [{
-        "id":    val(r, "id",    0),
-        "qty":   to_int(val(r, "qty",   1)),
-        "harga": to_int(val(r, "harga", 2)),
-        "nama":  val(r, "nama",  3) or "(Produk)",
-    } for r in items_raw]
+        qty_keys   = {"qty", "quantity", "jumlah"}
+        harga_keys = {"harga", "price", "harga_satuan"}
+        nama_keys  = {"nama", "nama_barang", "nama_produk", "product_name", "title"}
 
+        scored = []
+        for t, cols in tables.items():
+            if t in {"orders", "users", "barang"}:
+                continue
+            has_qty   = bool(qty_keys & cols)
+            has_harga = bool(harga_keys & cols)
+            has_nama  = bool(nama_keys & cols)
+            if "order_id" in cols and has_qty and has_harga:
+                score = 3 if has_nama else 2
+                scored.append((score, t, cols, has_nama))
 
-    return render_template("order_detail_admin.html", order=order, items=items, role="admin")
+        if not scored:
+            return None
+
+        scored.sort(reverse=True)  # skor terbesar dulu
+        _, table, cols, has_nama = scored[0]
+
+        def pick(keys):
+            for k in keys:
+                if k in cols:
+                    return k
+            return None
+
+        return {
+            "table": table,
+            "col_qty":   pick(qty_keys)   or "qty",
+            "col_harga": pick(harga_keys) or "harga",
+            "col_nama":  pick(nama_keys),  # bisa None
+            "col_barang_id": ("barang_id" if "barang_id" in cols else
+                              "product_id" if "product_id" in cols else None)
+        }
+
+    meta = find_item_table_and_cols()
+    items = []
+    if meta:
+        table      = meta["table"]
+        col_qty    = meta["col_qty"]
+        col_harga  = meta["col_harga"]
+        col_nama   = meta["col_nama"]
+        col_bid    = meta["col_barang_id"]
+
+        if col_nama:
+            # nama produk ada di tabel item
+            sql_it = f"""
+                SELECT id, {col_qty} AS qty, {col_harga} AS harga, {col_nama} AS nama
+                FROM {table}
+                WHERE order_id = %s
+                ORDER BY id
+            """
+            rows = _fetch_all_sql(sql_it, [order_id]) or []
+        else:
+            # coba join ke barang untuk ambil nama
+            if col_bid:
+                sql_it = f"""
+                    SELECT i.id, i.{col_qty} AS qty, i.{col_harga} AS harga,
+                           COALESCE(b.nama, b.nama_barang, '(Produk)') AS nama
+                    FROM {table} i
+                    LEFT JOIN barang b ON b.id = i.{col_bid}
+                    WHERE i.order_id = %s
+                    ORDER BY i.id
+                """
+                rows = _fetch_all_sql(sql_it, [order_id]) or []
+            else:
+                # fallback tanpa nama (nanti isi '(Produk)')
+                sql_it = f"""
+                    SELECT id, {col_qty} AS qty, {col_harga} AS harga
+                    FROM {table}
+                    WHERE order_id = %s
+                    ORDER BY id
+                """
+                rows = _fetch_all_sql(sql_it, [order_id]) or []
+                rows = [
+                    {"id": g(r, "id", 0), "qty": g(r, "qty", 1), "harga": g(r, "harga", 2), "nama": "(Produk)"}
+                    for r in rows
+                ]
+
+        # normalisasi rows -> dict buat template
+        items = [{
+            "id":    g(r, "id",    0),
+            "qty":   to_int(g(r, "qty",   1)),
+            "harga": to_int(g(r, "harga", 2)),
+            "nama":  (g(r, "nama",  3) or "(Produk)")
+        } for r in (rows or [])]
+
+    # log ringan untuk debug cepat
+    print(f"[admin_order_detail] order_id={order_id} item_table={meta['table'] if meta else None} items={len(items)}")
+
+    return render_template("order_detail_admin.html", order=order, items=items)
 
 
 
