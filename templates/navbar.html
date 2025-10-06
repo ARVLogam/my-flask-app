@@ -1,3 +1,14 @@
+{# letakkan di paling atas navbar.html, sebelum <nav> juga boleh #}
+{% set DEFAULT_AVATAR = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><defs/><circle cx="32" cy="32" r="32" fill="%23e5e7eb"/><circle cx="32" cy="26" r="12" fill="%23cbd5e1"/><path d="M12 54c4-10 36-10 40 0" fill="%23cbd5e1"/></svg>' %}
+
+{# ... di bagian tombol/ikon profil: ganti img-nya jadi: #}
+<img
+  src="{{ avatar_url or DEFAULT_AVATAR }}"
+  alt="Profil"
+  class="h-8 w-8 rounded-full object-cover border border-neutral-300"
+  onerror="this.onerror=null;this.src='{{ DEFAULT_AVATAR }}';"
+/>
+
 <!-- templates/navbar.html -->
 <nav class="fixed inset-x-0 top-0 z-50 bg-white/90 backdrop-blur border-b border-neutral-200">
   <!-- (Opsional) CDN ikon; aman dipakai lokal di layout navbar saja -->
