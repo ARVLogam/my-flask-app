@@ -1,43 +1,93 @@
-<!-- templates/order_detail_admin.html -->
+{% set brand = {'primary':'#c08906','primaryDark':'#9a6f05'} %}
 <!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Detail Pesanan</title>
+  <title>Detail Pesanan #{{ order.id }}</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root{ --brand: {{ brand.primary }}; --brandDark: {{ brand.primaryDark }};}
+    .btn-brand{background:var(--brand);color:#fff}
+    .btn-brand:hover{background:var(--brandDark)}
+    .pill{padding:.15rem .5rem;border-radius:9999px;font-size:.75rem}
+  </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="bg-neutral-50 min-h-screen">
   {% include 'navbar.html' %}
 
-  <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
     {% include 'flashProtection.html' %}
 
-    <!-- Header + tombol kembali -->
-    <div class="flex items-center justify-between mb-4">
-      <h1 class="text-2xl font-bold text-gray-800">Detail Pesanan #{{ order.id }}</h1>
-      <button onclick="history.back()"
-              class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 text-sm">
-        <i class="fas fa-arrow-left"></i> Kembali
-      </button>
+    <div class="flex items-center justify-between mb-5">
+      <h1 class="text-2xl font-bold text-neutral-900">Detail Pesanan #{{ order.id }}</h1>
+      <a href="{{ url_for('admin_orders') }}" class="px-3 py-2 rounded-lg border border-neutral-300 hover:bg-neutral-100 text-sm">← Kembali</a>
     </div>
 
-    <div class="bg-white rounded-xl shadow border border-gray-200 p-6 space-y-4">
-      <p><strong>Customer:</strong> {{ order.customer }}</p>
-      <p><strong>Status:</strong> {{ order.status }}</p>
-      <p><strong>Total:</strong> Rp {{ '{:,.0f}'.format(order.total).replace(',', '.') }}</p>
-      <p><strong>Pembayaran:</strong> {{ order.payment_method|upper }} ({{ order.payment_status }})</p>
-      <p><strong>Dibuat:</strong> {{ order.created_at }}</p>
+    <section class="bg-white rounded-2xl shadow border border-neutral-200 p-5 mb-6">
+      <div class="grid sm:grid-cols-2 gap-4 text-sm">
+        <div>
+          <div class="text-neutral-500">Customer</div>
+          <div class="font-medium">{{ order.customer }}</div>
+        </div>
+        <div>
+          <div class="text-neutral-500">Status</div>
+          <div>
+            <span class="pill {{ 'bg-emerald-100 text-emerald-700' if order.status=='selesai' else
+                                  'bg-amber-100 text-amber-700' if order.status in ['baru','diterima','diproses'] else
+                                  'bg-rose-100 text-rose-700' }}">
+              {{ order.status }}
+            </span>
+          </div>
+        </div>
+        <div>
+          <div class="text-neutral-500">Total</div>
+          <div class="font-medium">Rp {{ '{:,.0f}'.format(order.total or 0).replace(',', '.') }}</div>
+        </div>
+        <div>
+          <div class="text-neutral-500">Pembayaran</div>
+          <div class="font-medium">
+            {{ (order.payment_method or '-').upper() }} <span class="text-neutral-500">({{ order.payment_status or '-' }})</span>
+          </div>
+        </div>
+      </div>
+    </section>
 
-      <hr class="my-4"/>
+    <section class="bg-white rounded-2xl shadow border border-neutral-200 overflow-hidden mb-6">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-neutral-200">
+          <thead class="bg-neutral-100">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Produk</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Qty</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Harga</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-neutral-200">
+            {% for it in items %}
+            <tr class="hover:bg-neutral-50">
+              <td class="px-4 py-3 text-sm">{{ it.nama }}</td>
+              <td class="px-4 py-3 text-sm">{{ it.qty }}</td>
+              <td class="px-4 py-3 text-sm">Rp {{ '{:,.0f}'.format(it.price or 0).replace(',', '.') }}</td>
+              <td class="px-4 py-3 text-sm">Rp {{ '{:,.0f}'.format((it.price or 0) * (it.qty or 0)).replace(',', '.') }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="4" class="px-4 py-6 text-center text-neutral-500">Tidak ada item.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
 
-      <h2 class="text-lg font-semibold">Item Pesanan</h2>
-      <ul class="list-disc pl-5 space-y-1">
-        {% for item in items %}
-          <li>{{ item.nama }} × {{ item.qty }} — Rp {{ '{:,.0f}'.format(item.subtotal).replace(',', '.') }}</li>
-        {% endfor %}
-      </ul>
-    </div>
+    <form method="post" class="flex flex-wrap gap-3">
+      <button name="action" value="terima"  class="btn-brand px-4 py-2 rounded-lg">Tandai DITERIMA</button>
+      <button name="action" value="proses"  class="btn-brand px-4 py-2 rounded-lg">Tandai DIPROSES</button>
+      <button name="action" value="selesai" class="btn-brand px-4 py-2 rounded-lg">Tandai SELESAI</button>
+      <button name="action" value="batal"   class="px-4 py-2 rounded-lg border border-rose-300 text-rose-700 hover:bg-rose-50">Batalkan</button>
+    </form>
   </main>
 </body>
 </html>
