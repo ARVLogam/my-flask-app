@@ -5,83 +5,108 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Edit Profil Pengguna</title>
+
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Palet warna brand -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand:     '#d4a017',  // emas
+            brandDark: '#8b5e00',  // coklat tua
+            brandLite: '#f6d27a',  // emas muda
+            ink:       '#111827',
+            paper:     '#F8F7F4'
+          },
+          boxShadow: { soft: '0 10px 25px rgba(0,0,0,.08)' }
+        }
+      }
+    }
+  </script>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+
+<body class="bg-paper min-h-screen flex items-center justify-center p-4">
   {% include 'flashProtection.html' %}
 
-  <div class="w-full max-w-lg bg-white rounded-lg shadow-md overflow-hidden">
+  <div class="w-full max-w-lg bg-white rounded-2xl shadow-soft overflow-hidden border border-brand/20">
     <!-- Header -->
-    <div class="bg-red-600 py-4 px-6">
-      <h1 class="text-2xl font-bold text-white text-center">Edit Profil Pengguna</h1>
+    <div class="bg-brand py-4 px-6">
+      <h1 class="text-2xl font-bold text-ink text-center">Edit Profil Pengguna</h1>
     </div>
 
     <!-- IMPORTANT: enctype untuk upload -->
-    <form method="POST" enctype="multipart/form-data" class="p-6 space-y-5">
+    <form method="POST" action="{{ url_for('editProfile') }}" enctype="multipart/form-data" class="p-6 space-y-5">
+
       <!-- Avatar -->
       <div class="flex items-start gap-4">
+        {% set _avatar = avatar_url or url_for('static', filename='img/avatars/guest.png') %}
         <img
           id="avatarPreview"
-          src="{{ avatar_url or url_for('static', filename='img/avatars/guest.png') }}"
+          src="{{ _avatar }}"
           alt="Avatar"
-          class="h-20 w-20 rounded-full object-cover border"
+          class="h-20 w-20 rounded-full object-cover border border-ink/15"
           onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/avatars/guest.png') }}';"
         />
         <div class="flex-1">
-          <label for="avatarInput" class="block text-sm font-medium text-gray-700 mb-1">Foto Profil</label>
+          <label for="avatarInput" class="block text-sm font-medium text-ink mb-1">Foto Profil</label>
           <input
             type="file"
             name="avatar"
             id="avatarInput"
             accept=".png,.jpg,.jpeg,.webp,image/*"
-            class="block w-full text-sm text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:bg-red-600 file:text-white hover:file:bg-red-700 cursor-pointer"
+            class="block w-full text-sm text-ink file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:bg-brand file:text-ink hover:file:bg-brandDark hover:file:text-white cursor-pointer"
           />
-          <p class="text-xs text-gray-500 mt-1">Opsional. Format: png, jpg, jpeg, webp.</p>
+          <p class="text-xs text-ink/60 mt-1">Opsional. Format: png, jpg, jpeg, webp.</p>
         </div>
       </div>
 
       <!-- Username -->
       <div>
-        <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+        <label for="username" class="block text-sm font-medium text-ink mb-1">Username</label>
         <div class="relative">
-          <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+          <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-ink/40">
             <i class="fa-solid fa-user"></i>
           </span>
           <input
             type="text" id="username" name="username"
-            class="w-full pl-10 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+            class="w-full pl-10 p-2.5 border border-ink/15 rounded-md focus:outline-none focus:ring-2 focus:ring-brand"
             value="{{ user.username }}"
             required
           />
         </div>
       </div>
 
-      <!-- Password -->
+      <!-- Password (opsional) -->
       <div>
-        <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+        <label for="password" class="block text-sm font-medium text-ink mb-1">Password (opsional)</label>
         <div class="relative">
-          <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+          <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-ink/40">
             <i class="fa-solid fa-lock"></i>
           </span>
           <input
-            type="password" id="password" name="password" placeholder="Masukkan password"
-            class="w-full pl-10 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+            type="password" id="password" name="password" placeholder="Kosongkan jika tidak diubah"
+            class="w-full pl-10 pr-10 p-2.5 border border-ink/15 rounded-md focus:outline-none focus:ring-2 focus:ring-brand"
           />
+          <button type="button" id="togglePassBtn"
+                  class="absolute right-2 top-1/2 -translate-y-1/2 text-ink/40 hover:text-ink/60">
+            <i class="fa-regular fa-eye" id="togglePassIcon"></i>
+          </button>
         </div>
-        <p class="text-xs text-gray-500 mt-1">Kosongkan jika tidak ingin mengubah password</p>
+        <p class="text-xs text-ink/60 mt-1">Kosongkan jika tidak ingin mengubah password.</p>
       </div>
 
       <!-- Nama -->
       <div>
-        <label for="nama" class="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>
+        <label for="nama" class="block text-sm font-medium text-ink mb-1">Nama Lengkap</label>
         <div class="relative">
-          <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+          <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-ink/40">
             <i class="fa-regular fa-id-card"></i>
           </span>
           <input
             type="text" id="nama" name="nama"
-            class="w-full pl-10 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+            class="w-full pl-10 p-2.5 border border-ink/15 rounded-md focus:outline-none focus:ring-2 focus:ring-brand"
             value="{{ user.nama }}"
             required
           />
@@ -90,14 +115,14 @@
 
       <!-- Email -->
       <div>
-        <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+        <label for="email" class="block text-sm font-medium text-ink mb-1">Email</label>
         <div class="relative">
-          <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+          <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-ink/40">
             <i class="fa-regular fa-envelope"></i>
           </span>
           <input
             type="email" id="email" name="email"
-            class="w-full pl-10 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+            class="w-full pl-10 p-2.5 border border-ink/15 rounded-md focus:outline-none focus:ring-2 focus:ring-brand"
             value="{{ user.email }}"
             required
           />
@@ -106,14 +131,14 @@
 
       <!-- No HP -->
       <div>
-        <label for="nohp" class="block text-sm font-medium text-gray-700 mb-1">Nomor HP</label>
+        <label for="nohp" class="block text-sm font-medium text-ink mb-1">Nomor HP</label>
         <div class="relative">
-          <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+          <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-ink/40">
             <i class="fa-solid fa-phone"></i>
           </span>
           <input
             type="text" id="nohp" name="nohp"
-            class="w-full pl-10 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+            class="w-full pl-10 p-2.5 border border-ink/15 rounded-md focus:outline-none focus:ring-2 focus:ring-brand"
             value="{{ user.nohp }}"
             required
           />
@@ -121,14 +146,16 @@
       </div>
 
       <!-- Actions -->
-      <button type="submit"
-              class="w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition flex items-center justify-center">
-        <i class="fa-solid fa-floppy-disk mr-2"></i> Simpan Perubahan
-      </button>
-      <a href="{{ url_for('dashboard') }}"
-         class="block text-center w-full bg-gray-200 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-300 transition">
-        Batal
-      </a>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+        <button type="submit"
+                class="w-full bg-brand hover:bg-brandDark text-ink hover:text-white py-2.5 px-4 rounded-md transition flex items-center justify-center">
+          <i class="fa-solid fa-floppy-disk mr-2"></i> Simpan Perubahan
+        </button>
+        <a href="{{ url_for('dashboard') }}"
+           class="w-full text-center bg-neutral-200 text-neutral-800 py-2.5 px-4 rounded-md hover:bg-neutral-300 transition">
+          Batal
+        </a>
+      </div>
     </form>
   </div>
 
@@ -142,6 +169,17 @@
       const reader = new FileReader();
       reader.onload = (ev) => { img.src = ev.target.result; };
       reader.readAsDataURL(file);
+    });
+
+    // Toggle password
+    const passInput = document.getElementById('password');
+    const toggleBtn = document.getElementById('togglePassBtn');
+    const toggleIcon = document.getElementById('togglePassIcon');
+    toggleBtn?.addEventListener('click', () => {
+      const hidden = passInput.type === 'password';
+      passInput.type = hidden ? 'text' : 'password';
+      toggleIcon.classList.toggle('fa-eye');
+      toggleIcon.classList.toggle('fa-eye-slash');
     });
   </script>
 </body>
