@@ -83,6 +83,39 @@
     </section>
 
 
+      <!-- Bukti pembayaran -->
+      <section class="bg-white rounded-2xl shadow-sm border border-neutral-200 p-6 mt-6">
+        <h2 class="text-lg font-semibold mb-4">Bukti Pembayaran</h2>
+      
+        {% if proofs %}
+          <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for p in proofs %}
+            <div class="border rounded-lg p-3">
+              <div class="text-sm mb-2">
+                <span class="inline-block px-2 py-0.5 rounded bg-neutral-100 border">
+                  {{ p.kind }}
+                </span>
+                <span class="ml-2 text-neutral-500">{{ p.created_at }}</span>
+              </div>
+      
+              {% if p.file_url.endswith('.pdf') %}
+                <a href="{{ p.file_url }}" target="_blank" class="text-blue-600 hover:underline">
+                  Lihat PDF
+                </a>
+              {% else %}
+                <a href="{{ p.file_url }}" target="_blank">
+                  <img src="{{ p.file_url }}" class="w-full h-40 object-contain border rounded" alt="bukti">
+                </a>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-neutral-500">Belum ada bukti pembayaran.</div>
+        {% endif %}
+      </section>
+
+
     <!-- Actions -->
     <form method="post" class="mt-6 flex flex-wrap gap-3">
       <button name="action" value="terima"
