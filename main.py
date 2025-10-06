@@ -16,6 +16,47 @@ from jinja2 import TemplateNotFound
 from crud import Database, create_tables
 from config import MAIL_SETTINGS, DB_CONFIG as RAW_DB
 
+
+# --- Helper universal untuk SELECT ALL yang aman dipakai template (return: list[dict]) ---
+def _fetch_all_sql(sql, params=None):
+    params = params or []
+    # 1) Coba lewat helper Database milikmu (apapun nama metodenya)
+    try:
+        db = Database(DB_CONFIG)
+        for name in ("fetch_all", "select_all", "query_all", "all"):
+            if hasattr(db, name):
+                rows = getattr(db, name)(sql, params) or []
+                # normalisasi: pastikan jadi dict
+                if rows and not isinstance(rows[0], dict):
+                    # anggap row = tuple; konversi manual butuh kolom -> pakai cursor fallback saja
+                    raise RuntimeError("Rows are tuples, switch to psycopg2 RealDictCursor")
+                return rows
+        # Beberapa helper punya execute(..., fetch="all")
+        if hasattr(db, "execute"):
+            rows = db.execute(sql, params, fetch="all") or []
+            if rows and not isinstance(rows[0], dict):
+                raise RuntimeError("Rows are tuples, switch to psycopg2 RealDictCursor")
+            return rows
+    except Exception as e:
+        print("DB helper path failed, fallback to psycopg2:", e)
+
+    # 2) Fallback langsung ke psycopg2 (return dict)
+    import psycopg2
+    import psycopg2.extras
+    conn = psycopg2.connect(**DB_CONFIG)  # DB_CONFIG kamu sudah dipakai di tempat lain, jadi aman
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(sql, params)
+        rows = cur.fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        try:
+            cur.close()
+        except Exception:
+            pass
+        conn.close()
+
+
 # =========================
 # App & Config dasar
 # =========================
@@ -758,7 +799,6 @@ def orders_me():
 
 @app.route("/admin/orders")
 def admin_orders():
-    # Hanya admin
     if not check_role("admin"):
         flash("Akses ditolak", "error")
         return redirect(url_for("dashboard"))
@@ -784,37 +824,23 @@ def admin_orders():
       ORDER BY o.id DESC
     """
 
-    db = Database(DB_CONFIG)
+    rows = _fetch_all_sql(sql, params)
 
-    # Ambil raw rows (bisa tuple atau dict tergantung helper-mu)
-    rows = db.select_all(sql, params) or []
-
-    # Normalisasi ke dict agar aman di template
+    # Normalisasi ke dict (aman meski sudah dict)
     orders = []
     for r in rows:
-        if isinstance(r, dict):
-            orders.append({
-                "id": r.get("id"),
-                "customer": r.get("customer"),
-                "status": r.get("status") or "baru",
-                "total": r.get("total") or 0,
-                "payment_method": r.get("payment_method") or "-",
-                "payment_status": r.get("payment_status") or "pending",
-                "created_at": r.get("created_at"),
-            })
-        else:
-            # urutan kolom sesuai SELECT di atas
-            orders.append({
-                "id": r[0],
-                "customer": r[1],
-                "status": r[2] or "baru",
-                "total": r[3] or 0,
-                "payment_method": r[4] or "-",
-                "payment_status": r[5] or "pending",
-                "created_at": r[6],
-            })
+        orders.append({
+            "id": r.get("id"),
+            "customer": r.get("customer"),
+            "status": (r.get("status") or "baru"),
+            "total": r.get("total") or 0,
+            "payment_method": r.get("payment_method") or "-",
+            "payment_status": r.get("payment_status") or "pending",
+            "created_at": r.get("created_at"),
+        })
 
     return render_template("order_admin.html", orders=orders, status=status)
+
 
 
 
