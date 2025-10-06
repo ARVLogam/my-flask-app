@@ -48,7 +48,7 @@
                 <td class="px-4 py-3 text-sm">Rp {{ '{:,.0f}'.format((o.total or 0)|int).replace(',', '.') }}</td>
                 <td class="px-4 py-3 text-sm">{{ (o.payment_method or '-')|upper }} <span class="text-gray-500">({{ o.payment_status or 'pending' }})</span></td>
                 <td class="px-4 py-3 text-sm">
-                  <a href="{{ url_for('admin_order_detail', order_id=o.id) }}" class="text-blue-600 hover:underline">Detail</a>
+                 <a href="{{ url_for('admin_order_detail', order_id=o.id) }}">Detail</a>
                 </td>
               </tr>
               {% endfor %}
