@@ -11,7 +11,7 @@ import logging, traceback, threading, time, os, psycopg2
 from types import SimpleNamespace
 from flask import render_template, render_template_string, request, redirect, url_for, flash, session
 from flask import render_template, request, redirect, url_for, flash, session
-
+from jinja2 import TemplateNotFound
 # -- app modules
 from crud import Database, create_tables
 from config import MAIL_SETTINGS, DB_CONFIG as RAW_DB
@@ -734,8 +734,10 @@ def orders_me():
 
 # ---------- Admin: Kelola Pesanan ----------
 # ==== Admin: daftar pesanan ====
+
 @app.route("/admin/orders")
 def admin_orders():
+    # Hanya admin
     if not check_role("admin"):
         flash("Akses ditolak", "error")
         return redirect(url_for("dashboard"))
@@ -761,35 +763,54 @@ def admin_orders():
       ORDER BY o.id DESC
     """
 
-    db = Database(DB_CONFIG)
+    # --- eksekusi query pakai helper Database kamu ---
+    db = Database(RAW_DB) if 'RAW_DB' in globals() else Database(DB_CONFIG)
     conn = db._get_conn()
     cur = conn.cursor()
-
     try:
         cur.execute(sql, params)
-        rows = cur.fetchall()  # <-- ambil data sebagai list of tuples
-
-        # Normalisasi ke list of dict agar aman di template (pakai o.id, o.customer, dst.)
-        orders = []
-        for r in rows:
-            orders.append({
-                "id":             r[0],
-                "customer":       r[1],
-                "status":         r[2],
-                "total":          r[3],
-                "payment_method": r[4],
-                "payment_status": r[5],
-                "created_at":     r[6],
-            })
-
+        rows = cur.fetchall()
+        orders = [{
+            "id": r[0],
+            "customer": r[1],
+            "status": r[2],
+            "total": r[3],
+            "payment_method": r[4],
+            "payment_status": r[5],
+            "created_at": r[6],
+        } for r in rows]
     finally:
         cur.close()
         conn.close()
 
-    # Pastikan path template sesuai lokasi file kamu:
-    # - Jika file ada di templates/order_admin.html -> pakai seperti di bawah.
-    # - Jika kamu simpan di templates/admin/order_admin.html -> ganti jadi "admin/order_admin.html".
-    return render_template("order_admin.html", orders=orders, status=status)
+    # Coba 2 path template (kalau kamu taruh di subfolder "admin/")
+    for tpl in ("order_admin.html", "admin/order_admin.html"):
+        try:
+            return render_template(tpl, orders=orders, status=status)
+        except TemplateNotFound:
+            continue
+
+    # Fallback darurat kalau file belum terbaca oleh Jinja
+    return render_template_string("""
+    <!doctype html><meta charset="utf-8">
+    <h1>Kelola Pesanan (Fallback)</h1>
+    <p>Template <code>order_admin.html</code> belum ditemukan. Pastikan ada di folder <code>templates/</code>.</p>
+    <table border="1" cellpadding="6" cellspacing="0">
+      <tr><th>#</th><th>Customer</th><th>Status</th><th>Total</th><th>Bayar</th></tr>
+      {% for o in orders %}
+      <tr>
+        <td>#{{ o.id }}</td>
+        <td>{{ o.customer }}</td>
+        <td>{{ o.status }}</td>
+        <td>Rp {{ '{:,.0f}'.format(o.total).replace(',', '.') if o.total else '0' }}</td>
+        <td>{{ o.payment_method|upper }} ({{ o.payment_status }})</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5"><em>Belum ada pesanan</em></td></tr>
+      {% endfor %}
+    </table>
+    """, orders=orders), 200
+
 
 
 
