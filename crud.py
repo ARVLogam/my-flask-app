@@ -51,6 +51,27 @@ class Database:
         finally:
             cur.close(); conn.close()
 
+    def add_payment_proof(self, order_id, kind, file_url):
+        with self.conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO payment_proofs (order_id, kind, file_url)
+                VALUES (%s, %s, %s)
+                RETURNING id
+            """, (order_id, kind, file_url))
+            self.conn.commit()
+            return cur.fetchone()[0]
+
+    def list_payment_proofs_by_order(self, order_id):
+        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT id, order_id, kind, file_url, created_at
+                FROM payment_proofs
+                WHERE order_id = %s
+                ORDER BY created_at DESC
+            """, (order_id,))
+            return cur.fetchall()
+
+    
     def create_user(self, username, password, role, nama, email, nohp):
         conn = self._get_conn()
         cur = conn.cursor()
@@ -546,26 +567,6 @@ def get_cart_count(self, user_id: int) -> int:
         print("get_cart_count error:", e); return 0
     finally:
         cur.close(); conn.close()
-
-def add_payment_proof(self, order_id, kind, file_url):
-        with self.conn.cursor() as cur:
-            cur.execute("""
-                INSERT INTO payment_proofs (order_id, kind, file_url)
-                VALUES (%s, %s, %s)
-                RETURNING id
-            """, (order_id, kind, file_url))
-            self.conn.commit()
-            return cur.fetchone()[0]
-
-    def list_payment_proofs_by_order(self, order_id):
-        with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute("""
-                SELECT id, order_id, kind, file_url, created_at
-                FROM payment_proofs
-                WHERE order_id = %s
-                ORDER BY created_at DESC
-            """, (order_id,))
-            return cur.fetchall()
 
 # ---------- bootstrap tables ----------
 
