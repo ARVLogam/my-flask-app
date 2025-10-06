@@ -876,9 +876,9 @@ def admin_orders():
         return redirect(url_for("dashboard"))
 
     status = (request.args.get("status") or "semua").lower()
-    where, params = ("", [])
+    where, params = "", []
     if status != "semua":
-        where, params = ("WHERE o.status = %s", [status])
+        where, params = "WHERE o.status = %s", [status]
 
     sql = f"""
       SELECT
@@ -886,7 +886,7 @@ def admin_orders():
         COALESCE(u.nama, u.username) AS customer,
         o.status,
         COALESCE(o.total, 0) AS total,
-        COALESCE(o.payment_method, '-') AS payment_method,
+        COALESCE(o.payment_method, '-')  AS payment_method,
         COALESCE(o.payment_status, 'pending') AS payment_status,
         o.created_at
       FROM orders o
@@ -895,32 +895,28 @@ def admin_orders():
       ORDER BY o.id DESC
     """
 
-    db = Database(DB_CONFIG)
+    rows = _fetch_all_sql(sql, params) or []
 
-    def _run_all(sql, params=None):
-        params = params or []
-        for name in ("select", "fetch_all", "select_all"):
-            if hasattr(db, name):
-                return getattr(db, name)(sql, params) or []
-        return []
+    # bantu akses baik dict maupun tuple
+    def v(r, key, idx):
+        if isinstance(r, dict):
+            return r.get(key)
+        try:
+            return r[idx]
+        except Exception:
+            return None
 
-    def _get(r, key, idx):
-        if isinstance(r, dict): return r.get(key)
-        try: return r[idx]
-        except Exception: return None
-
-    rows = _run_all(sql, params)
     orders = [{
-        "id":              _get(r, "id",              0),
-        "customer":        _get(r, "customer",        1),
-        "status":         (_get(r, "status",          2) or "baru"),
-        "total":          int(_get(r, "total",        3) or 0),
-        "payment_method": (_get(r, "payment_method",  4) or "-"),
-        "payment_status": (_get(r, "payment_status",  5) or "pending"),
-        "created_at":      _get(r, "created_at",      6),
+        "id":              v(r, "id", 0),
+        "customer":        v(r, "customer", 1),
+        "status":         (v(r, "status", 2) or "baru"),
+        "total":          int(v(r, "total", 3) or 0),
+        "payment_method": (v(r, "payment_method", 4) or "-"),
+        "payment_status": (v(r, "payment_status", 5) or "pending"),
+        "created_at":      v(r, "created_at", 6),
     } for r in rows]
 
-    # PERHATIKAN: pakai "orders_admin.html" sesuai nama filenya
+    # pakai nama file sesuai yang kamu kirim (orders_admin.html)
     return render_template("orders_admin.html", orders=orders, status=status, role="admin")
 
 
@@ -933,36 +929,28 @@ def admin_order_detail(order_id):
         flash("Akses ditolak", "error")
         return redirect(url_for("dashboard"))
 
-    db = Database(DB_CONFIG)
-
+    # update status
     if request.method == "POST":
-        action = (request.form.get("action") or "").lower()
+        action  = (request.form.get("action") or "").lower()
         mapping = {"terima": "diterima", "proses": "diproses", "selesai": "selesai", "batal": "batal"}
-        if action in mapping and hasattr(db, "update_order_status"):
-            ok = db.update_order_status(order_id, mapping[action])
+        if action in mapping:
+            ok = Database(DB_CONFIG).update_order_status(order_id, mapping[action])
             flash("Status diperbarui" if ok else "Gagal memperbarui status",
                   "success" if ok else "error")
         else:
             flash("Aksi tidak dikenali", "warning")
         return redirect(url_for("admin_order_detail", order_id=order_id))
 
-    def _run_all(sql, params=None):
-        params = params or []
-        for name in ("select", "fetch_all", "select_all"):
-            if hasattr(db, name):
-                return getattr(db, name)(sql, params) or []
-        return []
+    # helper akses dict/tuple
+    def v(r, key, idx):
+        if isinstance(r, dict):
+            return r.get(key)
+        try:
+            return r[idx]
+        except Exception:
+            return None
 
-    def _run_one(sql, params=None):
-        rows = _run_all(sql, params)
-        return rows[0] if rows else None
-
-    def _get(r, key, idx):
-        if isinstance(r, dict): return r.get(key)
-        try: return r[idx]
-        except Exception: return None
-
-    # Header pesanan
+    # header pesanan
     sql_head = """
       SELECT
         o.id,
@@ -976,45 +964,51 @@ def admin_order_detail(order_id):
       LEFT JOIN users u ON u.id = o.user_id
       WHERE o.id = %s
     """
-    h = _run_one(sql_head, [order_id])
-    if not h:
+    head = _fetch_all_sql(sql_head, [order_id]) or []
+    if not head:
         flash("Pesanan tidak ditemukan", "error")
         return redirect(url_for("admin_orders"))
 
+    h = head[0]
     order = {
-        "id":              _get(h, "id",              0),
-        "customer":        _get(h, "customer",        1),
-        "status":         (_get(h, "status",          2) or "-"),
-        "total":          int(_get(h, "total",        3) or 0),
-        "payment_method": (_get(h, "payment_method",  4) or "-"),
-        "payment_status": (_get(h, "payment_status",  5) or "-"),
-        "created_at":      _get(h, "created_at",      6),
+        "id":              v(h, "id", 0),
+        "customer":        v(h, "customer", 1),
+        "status":         (v(h, "status", 2) or "-"),
+        "total":          int(v(h, "total", 3) or 0),
+        "payment_method": (v(h, "payment_method", 4) or "-"),
+        "payment_status": (v(h, "payment_status", 5) or "-"),
+        "created_at":      v(h, "created_at", 6),
     }
 
-    # Items (coba beberapa skema tabel umum)
-    for sql_items in (
-        "SELECT oi.id, oi.qty, oi.harga, COALESCE(b.nama,'(Produk)') AS nama "
-        "FROM order_items oi LEFT JOIN barang b ON b.id=oi.barang_id "
-        "WHERE oi.order_id=%s ORDER BY oi.id",
-        "SELECT d.id, d.qty, d.harga, COALESCE(b.nama,'(Produk)') AS nama "
-        "FROM order_details d LEFT JOIN barang b ON b.id=d.barang_id "
-        "WHERE d.order_id=%s ORDER BY d.id",
-    ):
-        raw = _run_all(sql_items, [order_id])
-        if raw:
-            break
-    else:
-        raw = []
+    # item pesanan (coba 2 nama tabel yang umum)
+    sql_items1 = """
+      SELECT oi.id, oi.qty, oi.harga, COALESCE(b.nama,'(Produk)') AS nama
+      FROM order_items oi
+      LEFT JOIN barang b ON b.id = oi.barang_id
+      WHERE oi.order_id = %s
+      ORDER BY oi.id
+    """
+    items_raw = _fetch_all_sql(sql_items1, [order_id]) or []
+
+    if not items_raw:
+        sql_items2 = """
+          SELECT d.id, d.qty, d.harga, COALESCE(b.nama,'(Produk)') AS nama
+          FROM order_details d
+          LEFT JOIN barang b ON b.id = d.barang_id
+          WHERE d.order_id = %s
+          ORDER BY d.id
+        """
+        items_raw = _fetch_all_sql(sql_items2, [order_id]) or []
 
     items = [{
-        "id":    _get(r, "id",    0),
-        "qty":   int(_get(r, "qty",   1) or 0),
-        "harga": int(_get(r, "harga", 2) or 0),
-        "nama":  _get(r, "nama",  3),
-    } for r in raw]
+        "id":    v(r, "id",    0),
+        "qty":   int(v(r, "qty",   1) or 0),
+        "harga": int(v(r, "harga", 2) or 0),
+        "nama":  v(r, "nama",  3),
+    } for r in items_raw]
 
-    # Detail tetap pakai order_detail_admin.html (tanpa 's')
     return render_template("order_detail_admin.html", order=order, items=items, role="admin")
+
 
 
 
