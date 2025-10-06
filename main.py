@@ -934,7 +934,7 @@ def _run_select_one(db, sql, params=None):
     rows = _run_select_all(db, sql, params)
     return rows[0] if rows else None
 
-@app.route("/admin/orders/<int:order_id>", methods=["GET", "POST"])
+@app.route("/admin/orders/<order_id>", methods=["GET", "POST"])
 def admin_order_detail(order_id):
     if not check_role("admin"):
         flash("Akses ditolak", "error")
