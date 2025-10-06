@@ -127,6 +127,30 @@ def _execute_sql(sql, params=None):
             pass
 
 
+# Tambahkan dalam class Database di crud.py
+def add_payment_proof(self, order_id, kind, file_url):
+    """Simpan bukti pembayaran untuk order tertentu"""
+    with self.conn.cursor() as cur:
+        cur.execute("""
+            INSERT INTO payment_proofs (order_id, kind, file_url)
+            VALUES (%s, %s, %s)
+            RETURNING id
+        """, (order_id, kind, file_url))
+        self.conn.commit()
+        return cur.fetchone()[0]
+
+def list_payment_proofs_by_order(self, order_id):
+    """Ambil semua bukti pembayaran untuk order tertentu"""
+    with self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        cur.execute("""
+            SELECT id, order_id, kind, file_url, created_at
+            FROM payment_proofs
+            WHERE order_id = %s
+            ORDER BY created_at DESC
+        """, (order_id,))
+        return cur.fetchall()
+
+
 def save_payment_proofs(order_id: int, files) -> list[str]:
     """
     Simpan file yang dikirim di field 'bukti_transfer' dan/atau 'bukti_qris'.
