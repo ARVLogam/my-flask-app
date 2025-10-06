@@ -945,6 +945,9 @@ def _run_select_one(db, sql, params=None):
 
 
 
+# =========================
+# ADMIN: Detail Pesanan
+# =========================
 @app.route("/admin/orders/<int:order_id>", methods=["GET", "POST"])
 def admin_order_detail(order_id):
     if not check_role("admin"):
@@ -953,63 +956,89 @@ def admin_order_detail(order_id):
 
     db = Database(DB_CONFIG)
 
-    # Update status (jika ada POST)
+    # Update status (POST)
     if request.method == "POST":
         action = (request.form.get("action") or "").lower()
-        mapping = {"terima": "diterima", "proses": "diproses",
-                   "selesai": "selesai", "batal": "batal"}
-        if action in mapping and hasattr(db, "update_order_status"):
-            ok = db.update_order_status(order_id, mapping[action])
+        mapping = {"terima": "diterima", "proses": "diproses", "selesai": "selesai", "batal": "batal"}
+        new_status = mapping.get(action)
+        if new_status and hasattr(db, "update_order_status"):
+            ok = db.update_order_status(order_id, new_status)
             flash("Status diperbarui" if ok else "Gagal memperbarui status",
                   "success" if ok else "error")
+        else:
+            flash("Aksi tidak dikenali", "warning")
         return redirect(url_for("admin_order_detail", order_id=order_id))
 
+    # --- Helper kecil untuk ambil nilai dari row dict/tuple ---
+    def getv(r, key_or_idx):
+        if isinstance(r, dict):
+            return r.get(key_or_idx)
+        # mapping index kalau row = tuple/list
+        idxmap = {"id": 0, "customer": 1, "status": 2, "total": 3,
+                  "payment_method": 4, "payment_status": 5, "created_at": 6,
+                  "it_id": 0, "it_qty": 1, "it_harga": 2, "it_nama": 3}
+        i = idxmap.get(key_or_idx, key_or_idx)
+        try:
+            return r[i]
+        except Exception:
+            return None
+
     # Header pesanan
-SELECT
-  o.id AS id,
-  COALESCE(u.nama, u.username, '-') AS customer,
-  o.status,
-  COALESCE(o.total,0) AS total,
-  COALESCE(o.payment_method,'-') AS payment_method,
-  COALESCE(o.payment_status,'-') AS payment_status,
-  o.created_at
-FROM orders o
-LEFT JOIN users u ON u.id = o.user_id
-WHERE o.id = %s
-
+    sql_head = """
+        SELECT
+          o.id AS id,
+          COALESCE(u.nama, u.username, '-') AS customer,
+          COALESCE(o.status,'baru') AS status,
+          COALESCE(o.total,0) AS total,
+          COALESCE(o.payment_method,'-') AS payment_method,
+          COALESCE(o.payment_status,'pending') AS payment_status,
+          o.created_at
+        FROM orders o
+        LEFT JOIN users u ON u.id = o.user_id
+        WHERE o.id = %s
+    """
     row = _run_select_one(db, sql_head, [order_id])
-if not row:
-    flash("Pesanan tidak ditemukan", "error")
-    return redirect(url_for("admin_orders"))
+    if not row:
+        flash("Pesanan tidak ditemukan", "error")
+        return redirect(url_for("admin_orders"))
 
-order = {
-    "id": row.get("id"),
-    "customer": row.get("customer"),
-    "status": row.get("status") or "-",
-    "total": int(row.get("total") or 0),
-    "payment_method": row.get("payment_method") or "-",
-    "payment_status": row.get("payment_status") or "-",
-    "created_at": row.get("created_at"),
-}
-
+    order = {
+        "id":            getv(row, "id"),
+        "customer":      getv(row, "customer"),
+        "status":        getv(row, "status") or "-",
+        "total":         int(getv(row, "total") or 0),
+        "payment_method":getv(row, "payment_method") or "-",
+        "payment_status":getv(row, "payment_status") or "-",
+        "created_at":    getv(row, "created_at"),
+    }
 
     # Item pesanan
     sql_items = """
-        SELECT oi.id, oi.qty, oi.harga, COALESCE(b.nama,'(Produk)') AS nama
+        SELECT
+          oi.id        AS it_id,
+          COALESCE(oi.qty,0)   AS it_qty,
+          COALESCE(oi.harga,0) AS it_harga,
+          COALESCE(b.nama,'(Produk)') AS it_nama
         FROM order_items oi
         LEFT JOIN barang b ON b.id = oi.barang_id
         WHERE oi.order_id = %s
         ORDER BY oi.id
     """
     rows = _run_select_all(db, sql_items, [order_id]) or []
-    items = [{
-        "id": r.get("id"),
-        "qty": int(r.get("qty") or 0),
-        "harga": int(r.get("harga") or 0),
-        "nama": r.get("nama"),
-    } for r in rows]
 
-    return render_template("order_detail_admin.html", order=order, items=items)
+    items = []
+    for r in rows:
+        qty   = int(getv(r, "it_qty") or 0)
+        harga = int(getv(r, "it_harga") or 0)
+        items.append({
+            "id":    getv(r, "it_id"),
+            "qty":   qty,
+            "harga": harga,
+            "nama":  getv(r, "it_nama"),
+        })
+
+    return render_template("order_detail_admin.html", order=order, items=items, role="admin")
+
 
 
 
