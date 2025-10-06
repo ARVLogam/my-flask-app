@@ -636,6 +636,18 @@ def create_tables(db_config):
             )
         """)
 
+        # payment_proofs (untuk bukti pembayaran transfer / QRIS)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS payment_proofs (
+                id SERIAL PRIMARY KEY,
+                order_id INT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+                kind TEXT NOT NULL,           -- 'TRANSFER' / 'QRIS'
+                file_url TEXT NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+        """)
+        
+        
         # payments (opsional)
         cur.execute("""
             CREATE TABLE IF NOT EXISTS payments (
