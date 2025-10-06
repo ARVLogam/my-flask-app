@@ -795,28 +795,57 @@ def orders_me():
 # ==== Admin: daftar pesanan ====
 
 # =========================
-# Helpers untuk query aman
+# Util SQL yang fleksibel
 # =========================
-def _db_select_all(db, sql, params=None):
-    """Coba berbagai nama method select yang mungkin ada di kelas Database."""
+import psycopg2, psycopg2.extras, traceback
+
+def _db_try_all(db, sql, params=None, one=False):
+    """
+    Coba berbagai method yang mungkin ada di kelas Database.
+    Jika tidak ada, fallback ke psycopg2 langsung pakai DB_CONFIG.
+    Return: list of rows (dict-like) atau single row (kalau one=True).
+    """
     params = params or []
+
+    # 1) Coba method umum di wrapper Database
     for name in ("select", "fetch_all", "select_all"):
         if hasattr(db, name):
-            return getattr(db, name)(sql, params) or []
-    return []
+            rows = getattr(db, name)(sql, params) or []
+            return (rows[0] if (one and rows) else rows)
 
-def _db_select_one(db, sql, params=None):
-    rows = _db_select_all(db, sql, params)
-    return rows[0] if rows else None
+    # 2) Coba pattern execute() yang mengembalikan cursor/rows
+    if hasattr(db, "execute"):
+        res = db.execute(sql, params)
+        try:
+            rows = list(res) if res is not None else []
+        except Exception:
+            rows = res or []
+        return (rows[0] if (one and rows) else rows)
 
-def _row_get(row, key, idx):
-    """
-    Ambil nilai dari hasil query yang bisa berupa tuple/list atau dict.
-    key = nama kolom; idx = posisi kolom bila tuple.
-    """
+    # 3) Fallback psycopg2 langsung
+    conn = None
+    try:
+        conn = psycopg2.connect(
+            host=DB_CONFIG.get("host"),
+            port=DB_CONFIG.get("port"),
+            dbname=DB_CONFIG.get("dbname") or DB_CONFIG.get("database"),
+            user=DB_CONFIG.get("user"),
+            password=DB_CONFIG.get("password"),
+            sslmode=DB_CONFIG.get("sslmode", "require"),
+        )
+        with conn, conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(sql, params)
+            rows = cur.fetchall()
+            return (rows[0] if (one and rows) else rows)
+    finally:
+        if conn:
+            conn.close()
+
+
+def _get(row, key, idx):
+    """Ambil kolom dari row (dict/tuple)."""
     if isinstance(row, dict):
         return row.get(key)
-    # row sebagai tuple/list
     try:
         return row[idx]
     except Exception:
@@ -828,48 +857,62 @@ def _row_get(row, key, idx):
 # =========================
 @app.route("/admin/orders")
 def admin_orders():
-    if not check_role("admin"):
-        flash("Akses ditolak", "error")
-        return redirect(url_for("dashboard"))
+    try:
+        if not check_role("admin"):
+            flash("Akses ditolak", "error")
+            return redirect(url_for("dashboard"))
 
-    status = (request.args.get("status") or "semua").lower()
-    where, params = "", []
-    if status != "semua":
-        where = "WHERE o.status = %s"
-        params = [status]
+        status = (request.args.get("status") or "semua").lower()
+        where, params = "", []
+        if status != "semua":
+            where = "WHERE o.status = %s"
+            params = [status]
 
-    sql = f"""
-      SELECT
-        o.id,
-        COALESCE(u.nama, u.username) AS customer,
-        o.status,
-        COALESCE(o.total, 0) AS total,
-        COALESCE(o.payment_method, '-') AS payment_method,
-        COALESCE(o.payment_status, 'pending') AS payment_status,
-        o.created_at
-      FROM orders o
-      LEFT JOIN users u ON u.id = o.user_id
-      {where}
-      ORDER BY o.id DESC
-    """
+        sql = f"""
+          SELECT
+            o.id,
+            COALESCE(u.nama, u.username) AS customer,
+            o.status,
+            COALESCE(o.total, 0) AS total,
+            COALESCE(o.payment_method, '-') AS payment_method,
+            COALESCE(o.payment_status, 'pending') AS payment_status,
+            o.created_at
+          FROM orders o
+          LEFT JOIN users u ON u.id = o.user_id
+          {where}
+          ORDER BY o.id DESC
+        """
 
-    db = Database(DB_CONFIG)
-    rows = _db_select_all(db, sql, params)
+        db = Database(DB_CONFIG)
+        rows = _db_try_all(db, sql, params, one=False) or []
 
-    # Normalisasi ke dict untuk template
-    orders = []
-    for r in rows:
-        orders.append({
-            "id":              _row_get(r, "id",              0),
-            "customer":        _row_get(r, "customer",        1),
-            "status":         (_row_get(r, "status",          2) or "baru"),
-            "total":          (_row_get(r, "total",           3) or 0),
-            "payment_method": (_row_get(r, "payment_method",  4) or "-"),
-            "payment_status": (_row_get(r, "payment_status",  5) or "pending"),
-            "created_at":      _row_get(r, "created_at",      6),
-        })
+        orders = []
+        for r in rows:
+            orders.append({
+                "id":              _get(r, "id",              0),
+                "customer":        _get(r, "customer",        1),
+                "status":         (_get(r, "status",          2) or "baru"),
+                "total":          int(_get(r, "total",        3) or 0),
+                "payment_method": (_get(r, "payment_method",  4) or "-"),
+                "payment_status": (_get(r, "payment_status",  5) or "pending"),
+                "created_at":      _get(r, "created_at",      6),
+            })
 
-    return render_template("order_admin.html", orders=orders, status=status, role="admin")
+        # render pakai template normal
+        return render_template("order_admin.html", orders=orders, status=status, role="admin")
+
+    except Exception as e:
+        # TAMPILKAN PESAN DI HALAMAN (agar tidak 500) + traceback
+        tb = traceback.format_exc()
+        return render_template_string(
+            """
+            <h1>Kelola Pesanan — Error</h1>
+            <pre style="white-space:pre-wrap;background:#111;color:#eee;padding:12px;border-radius:8px;">
+{{tb}}
+            </pre>
+            """,
+            tb=tb
+        ), 200
 
 
 # =========================
@@ -877,93 +920,105 @@ def admin_orders():
 # =========================
 @app.route("/admin/orders/<int:order_id>", methods=["GET", "POST"])
 def admin_order_detail(order_id):
-    if not check_role("admin"):
-        flash("Akses ditolak", "error")
-        return redirect(url_for("dashboard"))
+    try:
+        if not check_role("admin"):
+            flash("Akses ditolak", "error")
+            return redirect(url_for("dashboard"))
 
-    db = Database(DB_CONFIG)
+        db = Database(DB_CONFIG)
 
-    # Update status (POST)
-    if request.method == "POST":
-        action = (request.form.get("action") or "").lower()
-        mapping = {"terima": "diterima", "proses": "diproses", "selesai": "selesai", "batal": "batal"}
-        if action in mapping and hasattr(db, "update_order_status"):
-            ok = db.update_order_status(order_id, mapping[action])
-            flash("Status diperbarui" if ok else "Gagal memperbarui status",
-                  "success" if ok else "error")
-        else:
-            flash("Aksi tidak dikenali", "warning")
-        return redirect(url_for("admin_order_detail", order_id=order_id))
+        # Update status via POST
+        if request.method == "POST":
+            action = (request.form.get("action") or "").lower()
+            mapping = {"terima": "diterima", "proses": "diproses",
+                       "selesai": "selesai", "batal": "batal"}
+            if action in mapping and hasattr(db, "update_order_status"):
+                ok = db.update_order_status(order_id, mapping[action])
+                flash("Status diperbarui" if ok else "Gagal memperbarui status",
+                      "success" if ok else "error")
+            else:
+                flash("Aksi tidak dikenali", "warning")
+            return redirect(url_for("admin_order_detail", order_id=order_id))
 
-    # Header pesanan
-    sql_head = """
-      SELECT
-        o.id,
-        COALESCE(u.nama, u.username) AS customer,
-        o.status,
-        COALESCE(o.total,0) AS total,
-        COALESCE(o.payment_method,'-') AS payment_method,
-        COALESCE(o.payment_status,'-') AS payment_status,
-        o.created_at
-      FROM orders o
-      LEFT JOIN users u ON u.id = o.user_id
-      WHERE o.id = %s
-    """
-    h = _db_select_one(db, sql_head, [order_id])
-    if not h:
-        flash("Pesanan tidak ditemukan", "error")
-        return redirect(url_for("admin_orders"))
+        # Header pesanan
+        sql_head = """
+          SELECT
+            o.id,
+            COALESCE(u.nama, u.username) AS customer,
+            o.status,
+            COALESCE(o.total,0) AS total,
+            COALESCE(o.payment_method,'-') AS payment_method,
+            COALESCE(o.payment_status,'-') AS payment_status,
+            o.created_at
+          FROM orders o
+          LEFT JOIN users u ON u.id = o.user_id
+          WHERE o.id = %s
+        """
+        h = _db_try_all(db, sql_head, [order_id], one=True)
+        if not h:
+            flash("Pesanan tidak ditemukan", "error")
+            return redirect(url_for("admin_orders"))
 
-    order = {
-        "id":              _row_get(h, "id",              0),
-        "customer":        _row_get(h, "customer",        1),
-        "status":         (_row_get(h, "status",          2) or "-"),
-        "total":          int(_row_get(h, "total",        3) or 0),
-        "payment_method": (_row_get(h, "payment_method",  4) or "-"),
-        "payment_status": (_row_get(h, "payment_status",  5) or "-"),
-        "created_at":      _row_get(h, "created_at",      6),
-    }
+        order = {
+            "id":              _get(h, "id",              0),
+            "customer":        _get(h, "customer",        1),
+            "status":         (_get(h, "status",          2) or "-"),
+            "total":          int(_get(h, "total",        3) or 0),
+            "payment_method": (_get(h, "payment_method",  4) or "-"),
+            "payment_status": (_get(h, "payment_status",  5) or "-"),
+            "created_at":      _get(h, "created_at",      6),
+        }
 
-    # Items (coba beberapa nama tabel umum agar fleksibel)
-    sql_items_list = [
-        ("""
-         SELECT oi.id, oi.qty, oi.harga, COALESCE(b.nama,'(Produk)') AS nama
-           FROM order_items oi
-      LEFT JOIN barang b ON b.id = oi.barang_id
-          WHERE oi.order_id = %s
-          ORDER BY oi.id
-        """, [order_id]),
-        ("""
-         SELECT oi.id, oi.qty, oi.harga, COALESCE(b.nama,'(Produk)') AS nama
-           FROM order_item oi
-      LEFT JOIN barang b ON b.id = oi.barang_id
-          WHERE oi.order_id = %s
-          ORDER BY oi.id
-        """, [order_id]),
-        ("""
-         SELECT d.id, d.qty, d.harga, COALESCE(b.nama,'(Produk)') AS nama
-           FROM order_details d
-      LEFT JOIN barang b ON b.id = d.barang_id
-          WHERE d.order_id = %s
-          ORDER BY d.id
-        """, [order_id]),
-    ]
-    raw_items = []
-    for sql_i, p_i in sql_items_list:
-        raw_items = _db_select_all(db, sql_i, p_i)
-        if raw_items:
-            break
+        # Items (coba beberapa nama tabel yang lazim)
+        candidate_sql = [
+            ("""
+              SELECT oi.id, oi.qty, oi.harga, COALESCE(b.nama,'(Produk)') AS nama
+                FROM order_items oi
+           LEFT JOIN barang b ON b.id = oi.barang_id
+               WHERE oi.order_id = %s
+               ORDER BY oi.id
+            """, [order_id]),
+            ("""
+              SELECT oi.id, oi.qty, oi.harga, COALESCE(b.nama,'(Produk)') AS nama
+                FROM order_item oi
+           LEFT JOIN barang b ON b.id = oi.barang_id
+               WHERE oi.order_id = %s
+               ORDER BY oi.id
+            """, [order_id]),
+            ("""
+              SELECT d.id, d.qty, d.harga, COALESCE(b.nama,'(Produk)') AS nama
+                FROM order_details d
+           LEFT JOIN barang b ON b.id = d.barang_id
+               WHERE d.order_id = %s
+               ORDER BY d.id
+            """, [order_id]),
+        ]
+        raw_items = []
+        for sql_i, p in candidate_sql:
+            raw_items = _db_try_all(db, sql_i, p, one=False) or []
+            if raw_items:
+                break
 
-    items = []
-    for r in raw_items:
-        items.append({
-            "id":    _row_get(r, "id",    0),
-            "qty":   int(_row_get(r, "qty",   1) or 0),
-            "harga": int(_row_get(r, "harga", 2) or 0),
-            "nama":  _row_get(r, "nama",  3),
-        })
+        items = [{
+            "id":    _get(r, "id",    0),
+            "qty":   int(_get(r, "qty",   1) or 0),
+            "harga": int(_get(r, "harga", 2) or 0),
+            "nama":  _get(r, "nama",  3),
+        } for r in raw_items]
 
-    return render_template("order_detail_admin.html", order=order, items=items, role="admin")
+        return render_template("order_detail_admin.html", order=order, items=items, role="admin")
+
+    except Exception:
+        tb = traceback.format_exc()
+        return render_template_string(
+            """
+            <h1>Detail Pesanan — Error</h1>
+            <pre style="white-space:pre-wrap;background:#111;color:#eee;padding:12px;border-radius:8px;">
+{{tb}}
+            </pre>
+            """,
+            tb=tb
+        ), 200
 
 
 
