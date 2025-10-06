@@ -909,27 +909,89 @@ def admin_orders():
 
 
 
+def _run_select_all(db, sql, params=None):
+    params = params or []
+    if hasattr(db, "select"):
+        return db.select(sql, params)
+    if hasattr(db, "fetch_all"):
+        return db.fetch_all(sql, params)
+    if hasattr(db, "select_all"):
+        return db.select_all(sql, params)
+    return []
+
+def _run_select_one(db, sql, params=None):
+    params = params or []
+    if hasattr(db, "select_one"):
+        return db.select_one(sql, params)
+    rows = _run_select_all(db, sql, params)
+    return rows[0] if rows else None
+
+
 @app.route("/admin/orders/<int:order_id>", methods=["GET", "POST"])
 def admin_order_detail(order_id):
     if not check_role("admin"):
         flash("Akses ditolak", "error")
-        return redirect("/")
+        return redirect(url_for("dashboard"))
 
     db = Database(DB_CONFIG)
 
+    # Update status (jika ada POST)
     if request.method == "POST":
-        action = request.form.get("action")
-        mapping = {"terima":"diterima","proses":"diproses","selesai":"selesai","batal":"batal"}
-        if action in mapping:
+        action  = (request.form.get("action") or "").lower()
+        mapping = {"terima": "diterima", "proses": "diproses",
+                   "selesai": "selesai", "batal": "batal"}
+        if action in mapping and hasattr(db, "update_order_status"):
             ok = db.update_order_status(order_id, mapping[action])
             flash("Status diperbarui" if ok else "Gagal memperbarui status",
                   "success" if ok else "error")
+        else:
+            flash("Aksi tidak dikenali", "warning")
         return redirect(url_for("admin_order_detail", order_id=order_id))
 
-    order, items = db.get_order(order_id)   # pastikan fungsi ini ada
-    if not order:
+    # Header pesanan
+    sql_head = """
+        SELECT
+          o.id,
+          COALESCE(u.nama, u.username) AS customer,
+          o.status,
+          COALESCE(o.total,0) AS total,
+          COALESCE(o.payment_method,'-') AS payment_method,
+          COALESCE(o.payment_status,'-') AS payment_status,
+          o.created_at
+        FROM orders o
+        LEFT JOIN users u ON u.id = o.user_id
+        WHERE o.id = %s
+    """
+    row = _run_select_one(db, sql_head, [order_id])
+    if not row:
         flash("Pesanan tidak ditemukan", "error")
         return redirect(url_for("admin_orders"))
+
+    order = {
+        "id":            row[0],
+        "customer":      row[1],
+        "status":        row[2] or "-",
+        "total":         int(row[3] or 0),
+        "payment_method":row[4] or "-",
+        "payment_status":row[5] or "-",
+        "created_at":    row[6],
+    }
+
+    # Item pesanan
+    sql_items = """
+        SELECT oi.id, oi.qty, oi.harga, COALESCE(b.nama,'(Produk)') AS nama
+        FROM order_items oi
+        LEFT JOIN barang b ON b.id = oi.barang_id
+        WHERE oi.order_id = %s
+        ORDER BY oi.id
+    """
+    rows = _run_select_all(db, sql_items, [order_id]) or []
+    items = [{
+        "id": r[0],
+        "qty": int(r[1] or 0),
+        "harga": int(r[2] or 0),
+        "nama": r[3],
+    } for r in rows]
 
     return render_template("order_detail_admin.html", order=order, items=items)
 
