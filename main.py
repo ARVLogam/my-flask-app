@@ -17,43 +17,40 @@ from crud import Database, create_tables
 from config import MAIL_SETTINGS, DB_CONFIG as RAW_DB
 
 
-# --- Helper universal untuk SELECT ALL yang aman dipakai template (return: list[dict]) ---
+# --- tambahkan di bagian import paling atas ---
+from jinja2 import TemplateNotFound
+
+# --- helper universal SELECT ALL: kembalikan list[dict] ---
 def _fetch_all_sql(sql, params=None):
     params = params or []
-    # 1) Coba lewat helper Database milikmu (apapun nama metodenya)
+    # coba lewat helper Database kamu (apapun nama metodenya)
     try:
         db = Database(DB_CONFIG)
         for name in ("fetch_all", "select_all", "query_all", "all"):
             if hasattr(db, name):
                 rows = getattr(db, name)(sql, params) or []
-                # normalisasi: pastikan jadi dict
                 if rows and not isinstance(rows[0], dict):
-                    # anggap row = tuple; konversi manual butuh kolom -> pakai cursor fallback saja
-                    raise RuntimeError("Rows are tuples, switch to psycopg2 RealDictCursor")
+                    raise RuntimeError("Rows are tuples; use psycopg2 dict cursor")
                 return rows
-        # Beberapa helper punya execute(..., fetch="all")
         if hasattr(db, "execute"):
             rows = db.execute(sql, params, fetch="all") or []
             if rows and not isinstance(rows[0], dict):
-                raise RuntimeError("Rows are tuples, switch to psycopg2 RealDictCursor")
+                raise RuntimeError("Rows are tuples; use psycopg2 dict cursor")
             return rows
     except Exception as e:
-        print("DB helper path failed, fallback to psycopg2:", e)
+        print("DB helper failed, fallback psycopg2:", e)
 
-    # 2) Fallback langsung ke psycopg2 (return dict)
-    import psycopg2
-    import psycopg2.extras
-    conn = psycopg2.connect(**DB_CONFIG)  # DB_CONFIG kamu sudah dipakai di tempat lain, jadi aman
+    # fallback langsung psycopg2 dict
+    import psycopg2, psycopg2.extras
+    conn = psycopg2.connect(**DB_CONFIG)
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(sql, params)
         rows = cur.fetchall()
         return [dict(r) for r in rows]
     finally:
-        try:
-            cur.close()
-        except Exception:
-            pass
+        try: cur.close()
+        except: pass
         conn.close()
 
 
@@ -823,23 +820,90 @@ def admin_orders():
       {where}
       ORDER BY o.id DESC
     """
-
     rows = _fetch_all_sql(sql, params)
 
-    # Normalisasi ke dict (aman meski sudah dict)
-    orders = []
-    for r in rows:
-        orders.append({
-            "id": r.get("id"),
-            "customer": r.get("customer"),
-            "status": (r.get("status") or "baru"),
-            "total": r.get("total") or 0,
-            "payment_method": r.get("payment_method") or "-",
-            "payment_status": r.get("payment_status") or "pending",
-            "created_at": r.get("created_at"),
-        })
+    orders = [{
+        "id": r.get("id"),
+        "customer": r.get("customer"),
+        "status": (r.get("status") or "baru"),
+        "total": r.get("total") or 0,
+        "payment_method": (r.get("payment_method") or "-"),
+        "payment_status": (r.get("payment_status") or "pending"),
+        "created_at": r.get("created_at"),
+    } for r in rows]
 
-    return render_template("order_admin.html", orders=orders, status=status)
+    # coba render template file normal
+    try:
+        return render_template("order_admin.html", orders=orders, status=status)
+    except TemplateNotFound:
+        # fallback: render inline agar tidak 500 walau file belum ada/terbaca
+        from flask import render_template_string
+        return render_template_string("""
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Kelola Pesanan (Fallback)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div class="flex items-center justify-between mb-4">
+      <h1 class="text-2xl font-bold text-gray-800">Kelola Pesanan</h1>
+      <a href="{{ url_for('dashboard') }}" class="px-3 py-2 text-sm rounded border border-gray-300 hover:bg-gray-100">← Kembali</a>
+    </div>
+
+    <p class="text-sm text-gray-600 mb-3">Template <code>order_admin.html</code> belum ditemukan / error render.</p>
+
+    <div class="mb-4 text-sm">
+      Filter:
+      {% for f in ['semua','baru','diterima','diproses','selesai','batal'] %}
+        <a href="{{ url_for('admin_orders', status=f) }}"
+           class="mr-3 {{ 'font-semibold text-yellow-700' if status==f else 'text-gray-600 hover:underline' }}">
+          {{ f|capitalize }}
+        </a>
+      {% endfor %}
+    </div>
+
+    <div class="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">#</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Customer</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Total</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Bayar</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Aksi</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            {% if orders and orders|length > 0 %}
+              {% for o in orders %}
+              <tr class="hover:bg-gray-50">
+                <td class="px-4 py-3 text-sm">#{{ o.id }}</td>
+                <td class="px-4 py-3 text-sm">{{ o.customer }}</td>
+                <td class="px-4 py-3 text-sm capitalize">{{ o.status }}</td>
+                <td class="px-4 py-3 text-sm">Rp {{ '{:,.0f}'.format((o.total or 0)|int).replace(',', '.') }}</td>
+                <td class="px-4 py-3 text-sm">{{ (o.payment_method or '-')|upper }} <span class="text-gray-500">({{ o.payment_status or 'pending' }})</span></td>
+                <td class="px-4 py-3 text-sm">
+                  <a href="{{ url_for('admin_order_detail', order_id=o.id) }}" class="text-blue-600 hover:underline">Detail</a>
+                </td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr><td colspan="6" class="px-4 py-6 text-center text-gray-500">Belum ada pesanan.</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
+        """, orders=orders, status=status)
 
 
 
@@ -851,23 +915,117 @@ def admin_order_detail(order_id):
         flash("Akses ditolak", "error")
         return redirect(url_for("dashboard"))
 
-    db = Database(DB_CONFIG)
-
+    # update status jika POST
     if request.method == "POST":
         action = (request.form.get("action") or "").lower()
         mapping = {"terima":"diterima","proses":"diproses","selesai":"selesai","batal":"batal"}
         if action in mapping:
-            ok = db.update_order_status(order_id, mapping[action])
-            flash("Status diperbarui" if ok else "Gagal memperbarui status",
-                  "success" if ok else "error")
+            try:
+                db = Database(DB_CONFIG)
+                if hasattr(db, "update_order_status"):
+                    ok = db.update_order_status(order_id, mapping[action])
+                else:
+                    # fallback SQL langsung
+                    import psycopg2
+                    conn = psycopg2.connect(**DB_CONFIG)
+                    cur = conn.cursor()
+                    cur.execute("UPDATE orders SET status=%s WHERE id=%s", (mapping[action], order_id))
+                    ok = (cur.rowcount > 0)
+                    conn.commit()
+                    cur.close(); conn.close()
+                flash("Status diperbarui" if ok else "Gagal memperbarui status",
+                      "success" if ok else "error")
+            except Exception as e:
+                flash(f"Gagal memperbarui status: {e}", "error")
         return redirect(url_for("admin_order_detail", order_id=order_id))
 
-    order, items = db.get_order(order_id)
-    if not order:
+    # ambil order + item
+    sql_o = """
+      SELECT o.*, COALESCE(u.nama, u.username) AS customer
+      FROM orders o LEFT JOIN users u ON u.id=o.user_id
+      WHERE o.id=%s
+    """
+    sql_i = """
+      SELECT oi.*, b.nama AS produk_nama
+      FROM order_items oi LEFT JOIN barang b ON b.id=oi.barang_id
+      WHERE oi.order_id=%s
+      ORDER BY oi.id ASC
+    """
+    order_rows = _fetch_all_sql(sql_o, [order_id])
+    item_rows  = _fetch_all_sql(sql_i, [order_id])
+    if not order_rows:
         flash("Pesanan tidak ditemukan", "error")
         return redirect(url_for("admin_orders"))
 
-    return render_template_string(ORDER_DETAIL_ADMIN_HTML, order=order, items=items)
+    order = order_rows[0]
+    items = item_rows
+
+    # coba render template file normal
+    try:
+        return render_template("order_detail_admin.html", order=order, items=items)
+    except TemplateNotFound:
+        from flask import render_template_string
+        return render_template_string("""
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Detail Pesanan (Fallback)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <main class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div class="flex items-center justify-between mb-4">
+      <h1 class="text-2xl font-bold text-gray-800">Detail Pesanan #{{ order.id }}</h1>
+      <a href="{{ url_for('admin_orders') }}" class="px-3 py-2 text-sm rounded border border-gray-300 hover:bg-gray-100">← Kembali</a>
+    </div>
+
+    <div class="bg-white rounded-xl shadow border border-gray-200 p-4 mb-6">
+      <div class="grid sm:grid-cols-2 gap-4 text-sm">
+        <div><span class="text-gray-500">Customer:</span> <span class="font-medium">{{ order.customer }}</span></div>
+        <div><span class="text-gray-500">Status:</span> <span class="capitalize font-medium">{{ order.status }}</span></div>
+        <div><span class="text-gray-500">Total:</span> <span class="font-medium">Rp {{ '{:,.0f}'.format((order.total or 0)|int).replace(',', '.') }}</span></div>
+        <div><span class="text-gray-500">Pembayaran:</span> <span class="font-medium">{{ (order.payment_method or '-')|upper }} ({{ order.payment_status or 'pending' }})</span></div>
+      </div>
+    </div>
+
+    <form method="post" class="flex gap-2 mb-6">
+      <button name="action" value="terima"  class="px-3 py-2 rounded bg-amber-600 text-white hover:bg-amber-700">Terima</button>
+      <button name="action" value="proses"  class="px-3 py-2 rounded bg-sky-600 text-white hover:bg-sky-700">Proses</button>
+      <button name="action" value="selesai" class="px-3 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700">Selesai</button>
+      <button name="action" value="batal"   class="px-3 py-2 rounded bg-rose-600 text-white hover:bg-rose-700">Batal</button>
+    </form>
+
+    <div class="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
+      <table class="min-w-full divide-y divide-gray-200 text-sm">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="px-4 py-3 text-left font-semibold text-gray-600">Produk</th>
+            <th class="px-4 py-3 text-left font-semibold text-gray-600">Qty</th>
+            <th class="px-4 py-3 text-left font-semibold text-gray-600">Harga</th>
+            <th class="px-4 py-3 text-left font-semibold text-gray-600">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+          {% for it in items %}
+          <tr>
+            <td class="px-4 py-3">{{ it.produk_nama }}</td>
+            <td class="px-4 py-3">{{ it.qty }}</td>
+            <td class="px-4 py-3">Rp {{ '{:,.0f}'.format((it.harga or 0)|int).replace(',', '.') }}</td>
+            <td class="px-4 py-3">Rp {{ '{:,.0f}'.format(((it.harga or 0) * (it.qty or 0))|int).replace(',', '.') }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="px-4 py-6 text-center text-gray-500">Tidak ada item.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </main>
+</body>
+</html>
+        """, order=order, items=items)
+
 
 
 @app.context_processor
