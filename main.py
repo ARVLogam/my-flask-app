@@ -921,7 +921,7 @@ def admin_orders():
 
 
 # =========================
-# ADMIN: Detail Pesanan (final)
+# ADMIN: Detail Pesanan (fix final)
 # =========================
 from decimal import Decimal
 
@@ -933,71 +933,38 @@ def admin_order_detail(order_id):
 
     db = Database(DB_CONFIG)
 
-    # ------------------------
-    # Update status (POST)
-    # ------------------------
+    # Update status
     if request.method == "POST":
         action = (request.form.get("action") or "").lower()
         mapping = {"terima": "diterima", "proses": "diproses", "selesai": "selesai", "batal": "batal"}
-        new_status = mapping.get(action)
-        if not new_status:
+        if action in mapping and hasattr(db, "update_order_status"):
+            ok = db.update_order_status(order_id, mapping[action])
+            flash("Status diperbarui" if ok else "Gagal memperbarui status",
+                  "success" if ok else "error")
+        else:
             flash("Aksi tidak dikenali", "warning")
-            return redirect(url_for("admin_order_detail", order_id=order_id))
-
-        ok = False
-        try:
-            if hasattr(db, "update_order_status"):
-                ok = bool(db.update_order_status(order_id, new_status))
-            else:
-                sql_upd = "UPDATE orders SET status = %s WHERE id = %s"
-                if hasattr(db, "execute"):
-                    db.execute(sql_upd, [new_status, order_id])
-                    ok = True
-                elif hasattr(db, "query"):
-                    db.query(sql_upd, [new_status, order_id])
-                    ok = True
-        except Exception:
-            ok = False
-
-        flash("Status diperbarui" if ok else "Gagal memperbarui status",
-              "success" if ok else "error")
         return redirect(url_for("admin_order_detail", order_id=order_id))
 
-    # ------------------------
-    # Header pesanan
-    # ------------------------
+    # Header pesanan: pastikan customer = nama/username
     sql_head = """
         SELECT
           o.id,
-          COALESCE(u.nama, u.username, '-')     AS customer,
-          COALESCE(o.status,'baru')             AS status,
-          COALESCE(o.total,0)                   AS total,
-          COALESCE(o.payment_method,'-')        AS payment_method,
-          COALESCE(o.payment_status,'pending')  AS payment_status,
+          COALESCE(u.nama, u.username) AS customer,
+          COALESCE(o.status,'baru')    AS status,
+          COALESCE(o.total,0)          AS total,
+          COALESCE(o.payment_method,'-')   AS payment_method,
+          COALESCE(o.payment_status,'pending') AS payment_status,
           o.created_at
         FROM orders o
         LEFT JOIN users u ON u.id = o.user_id
         WHERE o.id = %s
     """
-    # ambil satu baris pakai apa pun yang tersedia
-    order_row = None
-    try:
-        if hasattr(db, "select_one"):
-            order_row = db.select_one(sql_head, [order_id])
-        elif hasattr(db, "fetch_all"):
-            rs = db.fetch_all(sql_head, [order_id]) or []
-            order_row = rs[0] if rs else None
-        elif hasattr(db, "select"):
-            rs = db.select(sql_head, [order_id]) or []
-            order_row = rs[0] if rs else None
-    except Exception:
-        order_row = None
-
-    if not order_row:
+    row = _run_select_one(db, sql_head, [order_id])
+    if not row:
         flash("Pesanan tidak ditemukan", "error")
         return redirect(url_for("admin_orders"))
 
-    # dukung dict/tuple
+    # dukung tuple/dict
     def gv(r, key, idx, default=None):
         if isinstance(r, dict):
             return r.get(key, default)
@@ -1006,9 +973,9 @@ def admin_order_detail(order_id):
         except Exception:
             return default
 
-    total_val = gv(order_row, "total", 3, 0)
+    total_val = gv(row, "total", 3, 0)
     if isinstance(total_val, Decimal):
-        total_val = int(total_val)
+        total_val = int(total_val or 0)
     else:
         try:
             total_val = int(total_val or 0)
@@ -1016,86 +983,67 @@ def admin_order_detail(order_id):
             total_val = 0
 
     order = {
-        "id":             gv(order_row, "id", 0),
-        "customer":       gv(order_row, "customer", 1, "-"),
-        "status":         gv(order_row, "status", 2, "baru") or "baru",
+        "id":             gv(row, "id", 0),
+        "customer":       gv(row, "customer", 1, "-"),
+        "status":         gv(row, "status", 2, "baru") or "baru",
         "total":          total_val,
-        "payment_method": gv(order_row, "payment_method", 4, "-") or "-",
-        "payment_status": gv(order_row, "payment_status", 5, "pending") or "pending",
-        "created_at":     gv(order_row, "created_at", 6),
+        "payment_method": gv(row, "payment_method", 4, "-") or "-",
+        "payment_status": gv(row, "payment_status", 5, "pending") or "pending",
+        "created_at":     gv(row, "created_at", 6),
     }
 
-    # ------------------------
-    # Items pesanan
-    # - utamakan kolom oi.qty
-    # - fallback ke oi.jumlah bila kolom qty tidak ada
-    # ------------------------
-    item_rows = []
-    sql_items_qty = """
+    # Items: produk = nama barang, qty = jumlah, subtotal = qty*harga
+    # (gunakan kolom qty; kalau di skema-mu namanya 'jumlah', ubah 'oi.qty' -> 'oi.jumlah')
+    sql_items = """
         SELECT
-          oi.id                       AS it_id,
-          COALESCE(oi.qty,0)          AS it_qty,
-          COALESCE(oi.harga,0)        AS it_harga,
-          COALESCE(b.nama,'(Produk)') AS it_nama
+          oi.id,
+          COALESCE(oi.qty, 0)                AS qty,
+          COALESCE(oi.harga, 0)              AS harga,
+          COALESCE(b.nama, '(Produk)')       AS nama
         FROM order_items oi
         LEFT JOIN barang b ON b.id = oi.barang_id
         WHERE oi.order_id = %s
         ORDER BY oi.id
     """
-    sql_items_jumlah = """
-        SELECT
-          oi.id                       AS it_id,
-          COALESCE(oi.jumlah,0)       AS it_qty,
-          COALESCE(oi.harga,0)        AS it_harga,
-          COALESCE(b.nama,'(Produk)') AS it_nama
-        FROM order_items oi
-        LEFT JOIN barang b ON b.id = oi.barang_id
-        WHERE oi.order_id = %s
-        ORDER BY oi.id
-    """
+    rows = _run_select_all(db, sql_items, [order_id]) or []
 
-    def run_items(sql_text):
-        if hasattr(db, "select"):
-            return db.select(sql_text, [order_id]) or []
-        if hasattr(db, "fetch_all"):
-            return db.fetch_all(sql_text, [order_id]) or []
-        return []
-
-    try:
-        item_rows = run_items(sql_items_qty)
-    except Exception:
-        item_rows = []
-
-    # kalau kosong atau error, coba versi 'jumlah'
-    if item_rows == []:
-        try:
-            item_rows = run_items(sql_items_jumlah)
-        except Exception:
-            item_rows = []
+    # Kalau kolommu ternyata 'jumlah' (bukan 'qty'), fallback otomatis
+    if not rows:
+        sql_items_alt = """
+            SELECT
+              oi.id,
+              COALESCE(oi.jumlah, 0)         AS qty,
+              COALESCE(oi.harga, 0)          AS harga,
+              COALESCE(b.nama, '(Produk)')   AS nama
+            FROM order_items oi
+            LEFT JOIN barang b ON b.id = oi.barang_id
+            WHERE oi.order_id = %s
+            ORDER BY oi.id
+        """
+        rows = _run_select_all(db, sql_items_alt, [order_id]) or []
 
     items = []
-    for r in item_rows:
-        qty   = gv(r, "it_qty",   1, 0)
-        harga = gv(r, "it_harga", 2, 0)
-        nama  = gv(r, "it_nama",  3, "(Produk)")
-        try:   qty = int(qty or 0)
+    for r in rows:
+        qty   = gv(r, "qty",   1, 0) or 0
+        harga = gv(r, "harga", 2, 0) or 0
+        nama  = gv(r, "nama",  3, "(Produk)")
+        try:   qty = int(qty)
         except Exception: qty = 0
-        try:
-            if isinstance(harga, Decimal):
-                harga = int(harga)
-            else:
-                harga = int(harga or 0)
-        except Exception:
-            harga = 0
+        if isinstance(harga, Decimal):
+            harga = int(harga or 0)
+        else:
+            try:   harga = int(harga)
+            except Exception: harga = 0
 
         items.append({
-            "id":    gv(r, "it_id", 0),
+            "id":    gv(r, "id", 0),
             "qty":   qty,
             "harga": harga,
-            "nama":  nama,
+            "nama":  nama
         })
 
     return render_template("order_detail_admin.html", order=order, items=items, role="admin")
+
 
 
 
