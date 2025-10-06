@@ -965,33 +965,33 @@ def admin_order_detail(order_id):
         return redirect(url_for("admin_order_detail", order_id=order_id))
 
     # Header pesanan
-    sql_head = """
-        SELECT
-          o.id,
-          COALESCE(u.nama, u.username) AS customer,
-          o.status,
-          COALESCE(o.total,0) AS total,
-          COALESCE(o.payment_method,'-') AS payment_method,
-          COALESCE(o.payment_status,'-') AS payment_status,
-          o.created_at
-        FROM orders o
-        LEFT JOIN users u ON u.id = o.user_id
-        WHERE o.id = %s
-    """
-    row = _run_select_one(db, sql_head, [order_id])
-    if not row:
-        flash("Pesanan tidak ditemukan", "error")
-        return redirect(url_for("admin_orders"))
+SELECT
+  o.id AS id,
+  COALESCE(u.nama, u.username, '-') AS customer,
+  o.status,
+  COALESCE(o.total,0) AS total,
+  COALESCE(o.payment_method,'-') AS payment_method,
+  COALESCE(o.payment_status,'-') AS payment_status,
+  o.created_at
+FROM orders o
+LEFT JOIN users u ON u.id = o.user_id
+WHERE o.id = %s
 
-    order = {
-        "id": row.get("id"),
-        "customer": row.get("customer"),
-        "status": row.get("status") or "-",
-        "total": int(row.get("total") or 0),
-        "payment_method": row.get("payment_method") or "-",
-        "payment_status": row.get("payment_status") or "-",
-        "created_at": row.get("created_at"),
-    }
+    row = _run_select_one(db, sql_head, [order_id])
+if not row:
+    flash("Pesanan tidak ditemukan", "error")
+    return redirect(url_for("admin_orders"))
+
+order = {
+    "id": row.get("id"),
+    "customer": row.get("customer"),
+    "status": row.get("status") or "-",
+    "total": int(row.get("total") or 0),
+    "payment_method": row.get("payment_method") or "-",
+    "payment_status": row.get("payment_status") or "-",
+    "created_at": row.get("created_at"),
+}
+
 
     # Item pesanan
     sql_items = """
