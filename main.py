@@ -194,12 +194,9 @@ def list_payment_proofs(order_id: int):
 
 
 def get_qris_static_url():
-    """
-    Jika ada file /static/uploads/qris/qris.png, kembalikan URL-nya untuk ditampilkan di checkout.
-    """
-    path = os.path.join(QRIS_DIR, "qris.png")
+    path = os.path.join(app.static_folder, "img", "uploads", "qris", "qris.png")
     if os.path.exists(path):
-        return url_for("static", filename="uploads/qris/qris.png")
+        return url_for("static", filename="img/uploads/qris/qris.png")
     return None
 
 
