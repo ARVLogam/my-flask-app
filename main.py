@@ -734,7 +734,7 @@ def admin_orders():
 
     # contoh rows -> list of dicts/tuples; pastikan mapping ke template
     return render_template(
-        "admin_orders.html",
+        "order_admin.html",
         orders=rows,
         status=status
     )
