@@ -7,10 +7,7 @@
   <title>Kelola Pesanan</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    :root{
-      --brand: {{ brand.primary }};
-      --brandDark: {{ brand.primaryDark }};
-    }
+    :root{ --brand: {{ brand.primary }}; --brandDark: {{ brand.primaryDark }}; }
     .btn-brand{background:var(--brand);color:#fff}
     .btn-brand:hover{background:var(--brandDark)}
     .pill{padding:.15rem .5rem;border-radius:9999px;font-size:.75rem}
@@ -24,9 +21,7 @@
 
     <div class="flex items-center justify-between mb-5">
       <h1 class="text-2xl font-bold text-neutral-900">Kelola Pesanan</h1>
-      <button onclick="history.back()" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-300 hover:bg-neutral-100 text-sm">
-        ← Kembali
-      </button>
+      <button onclick="history.back()" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-300 hover:bg-neutral-100 text-sm">← Kembali</button>
     </div>
 
     <div class="mb-4 text-sm">
@@ -65,23 +60,13 @@
                 </span>
               </td>
               <td class="px-4 py-3 text-sm">Rp {{ '{:,.0f}'.format(o.total or 0).replace(',', '.') }}</td>
+              <td class="px-4 py-3 text-sm">{{ (o.payment_method or '-').upper() }} <span class="text-neutral-500">({{ o.payment_status or '-' }})</span></td>
               <td class="px-4 py-3 text-sm">
-                {{ (o.payment_method or '-').upper() }}
-                <span class="text-neutral-500">({{ o.payment_status or '-' }})</span>
-              </td>
-              <td class="px-4 py-3 text-sm">
-                <a href="{{ url_for('admin_order_detail', order_id=o.id) }}"
-                   class="btn-brand inline-flex items-center gap-2 px-3 py-1.5 rounded-lg">
-                  Detail
-                </a>
+                <a href="{{ url_for('admin_order_detail', order_id=o.id) }}" class="btn-brand inline-flex items-center gap-2 px-3 py-1.5 rounded-lg">Detail</a>
               </td>
             </tr>
             {% else %}
-            <tr>
-              <td colspan="6" class="px-4 py-6 text-center text-neutral-500">
-                Belum ada pesanan.
-              </td>
-            </tr>
+            <tr><td colspan="6" class="px-4 py-6 text-center text-neutral-500">Belum ada pesanan.</td></tr>
             {% endfor %}
           </tbody>
         </table>
