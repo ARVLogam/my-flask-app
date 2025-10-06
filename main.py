@@ -757,98 +757,64 @@ def orders_me():
 # ==== Admin: daftar pesanan ====
 
 @app.route("/admin/orders")
-@require_login(role="admin")
 def admin_orders():
-    # baca filter
-    status = (request.args.get("status") or "semua").lower()
-    allowed = {"semua", "baru", "diterima", "diproses", "selesai", "batal"}
-    if status not in allowed:
-        status = "semua"
+    # Hanya admin
+    if not check_role("admin"):
+        flash("Akses ditolak", "error")
+        return redirect(url_for("dashboard"))
 
+    status = (request.args.get("status") or "semua").lower()
     where, params = "", []
     if status != "semua":
         where = "WHERE o.status = %s"
         params = [status]
 
     sql = f"""
-        SELECT
-          o.id,
-          COALESCE(u.nama, u.username) AS customer,
-          o.status,
-          o.total,
-          COALESCE(o.payment_method, '-')   AS payment_method,
-          COALESCE(o.payment_status,'pending') AS payment_status,
-          o.created_at
-        FROM orders o
-        LEFT JOIN users u ON u.id = o.user_id
-        {where}
-        ORDER BY o.id DESC
+      SELECT
+        o.id,
+        COALESCE(u.nama, u.username) AS customer,
+        o.status,
+        o.total,
+        o.payment_method,
+        o.payment_status,
+        o.created_at
+      FROM orders o
+      LEFT JOIN users u ON u.id = o.user_id
+      {where}
+      ORDER BY o.id DESC
     """
 
     db = Database(DB_CONFIG)
 
-    # --- ambil data dengan method yang tersedia di class Database ---
-    rows = None
-    if hasattr(db, "select_all"):
-        rows = db.select_all(sql, params)
-    elif hasattr(db, "fetch_all"):
-        rows = db.fetch_all(sql, params)
-    elif hasattr(db, "query"):
-        rows = db.query(sql, params)
-    else:
-        # last resort: raw connection
-        rows = []
-        try:
-            conn = db.get_conn() if hasattr(db, "get_conn") else None
-            if conn:
-                with conn.cursor() as cur:
-                    cur.execute(sql, params)
-                    rows = cur.fetchall()
-        except Exception:
-            rows = []
+    # Ambil raw rows (bisa tuple atau dict tergantung helper-mu)
+    rows = db.select_all(sql, params) or []
 
-    # --- normalisasi baris -> dict -> SimpleNamespace agar bisa o.id, o.customer, dst ---
-    def row_to_dict(r):
-        if r is None:
-            return {}
+    # Normalisasi ke dict agar aman di template
+    orders = []
+    for r in rows:
         if isinstance(r, dict):
-            return r
-        try:
+            orders.append({
+                "id": r.get("id"),
+                "customer": r.get("customer"),
+                "status": r.get("status") or "baru",
+                "total": r.get("total") or 0,
+                "payment_method": r.get("payment_method") or "-",
+                "payment_status": r.get("payment_status") or "pending",
+                "created_at": r.get("created_at"),
+            })
+        else:
             # urutan kolom sesuai SELECT di atas
-            return {
+            orders.append({
                 "id": r[0],
                 "customer": r[1],
-                "status": r[2],
-                "total": r[3],
-                "payment_method": r[4],
-                "payment_status": r[5],
+                "status": r[2] or "baru",
+                "total": r[3] or 0,
+                "payment_method": r[4] or "-",
+                "payment_status": r[5] or "pending",
                 "created_at": r[6],
-            }
-        except Exception:
-            # kalau namedtuple/objek lain
-            keys = ("id","customer","status","total","payment_method","payment_status","created_at")
-            return {k: getattr(r, k, None) for k in keys}
+            })
 
-    orders = [SimpleNamespace(**row_to_dict(r)) for r in (rows or [])]
-
-    # render template utama; kalau belum ada/ error, tampilkan fallback agar tidak 500
-    try:
-        return render_template("order_admin.html", orders=orders, status=status)
-    except Exception:
-        # fallback sederhana (supaya tidak 500 dan kamu tetap bisa melihat data)
-        html = [
-            "<h1>Kelola Pesanan (Fallback)</h1>",
-            "<p>Template <code>order_admin.html</code> belum ditemukan / error render.</p>",
-            "<table border=1 cellspacing=0 cellpadding=6>",
-            "<tr><th>#</th><th>Customer</th><th>Status</th><th>Total</th><th>Bayar</th></tr>",
-        ]
-        for o in orders:
-            total = 0 if o.total is None else int(o.total)
-            pay   = f"{getattr(o,'payment_method','-')} ({getattr(o,'payment_status','pending')})"
-            html.append(f"<tr><td>#{o.id}</td><td>{o.customer}</td><td>{o.status}</td>"
-                        f"<td>Rp {total:,}</td><td>{pay}</td></tr>")
-        html.append("</table>")
-        return render_template_string("\n".join(html)), 200
+    return render_template("order_admin.html", orders=orders, status=status)
 
 
 
