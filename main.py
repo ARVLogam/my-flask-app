@@ -51,6 +51,27 @@ def require_login(role=None):
     return deco
 
 
+from flask import Response
+
+@app.get("/no-image")
+def no_image():
+    svg = """
+    <svg xmlns='http://www.w3.org/2000/svg' width='512' height='384' viewBox='0 0 512 384'>
+      <defs>
+        <linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>
+          <stop offset='0%' stop-color='#c08906'/>
+          <stop offset='100%' stop-color='#e7b64a'/>
+        </linearGradient>
+      </defs>
+      <rect width='100%' height='100%' fill='#f5f5f5'/>
+      <rect x='24' y='24' width='464' height='336' rx='16' fill='url(#g)' opacity='.08'/>
+      <g fill='#c08906' opacity='.6'>
+        <circle cx='176' cy='152' r='56'/>
+        <path d='M72 320h368l-96-128-96 88-56-56-120 96z'/>
+      </g>
+    </svg>
+    """.strip()
+    return Response(svg, mimetype="image/svg+xml")
 
 
 # Mail
