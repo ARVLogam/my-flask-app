@@ -49,14 +49,14 @@
 
                 <!-- QRIS preview kalau tersedia -->
                 {% if qris_url %}
-                <div class="mt-3">
-                  <img src="{{ qris_url }}" alt="QRIS" class="h-44 w-44 rounded-lg border border-neutral-200 object-contain bg-white" />
-                </div>
+                  <div class="qris-box">
+                    <img src="{{ qris_url }}" alt="QRIS" style="max-width:220px;border-radius:12px;border:1px solid #eee"/>
+                    <div class="hint">Scan QR ini lalu unggah bukti pembayaran.</div>
+                  </div>
                 {% else %}
-                <div class="mt-3 text-sm text-neutral-500">
-                  QRIS belum diunggah admin.
-                </div>
+                  <div class="muted">QRIS belum diunggah admin.</div>
                 {% endif %}
+
               </div>
             </label>
           </div>
