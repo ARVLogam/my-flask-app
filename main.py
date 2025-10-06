@@ -194,10 +194,12 @@ def list_payment_proofs(order_id: int):
 
 
 def get_qris_static_url():
-    path = os.path.join(app.static_folder, "img", "uploads", "qris", "qris.png")
+    # file yang diharapkan:  /static/uploads/qris/qris.png
+    path = os.path.join(app.static_folder, "uploads", "qris", "qris.png")
     if os.path.exists(path):
-        return url_for("static", filename="img/uploads/qris/qris.png")
+        return url_for("static", filename="uploads/qris/qris.png")
     return None
+
 
 
 
