@@ -923,16 +923,19 @@ def admin_orders():
 # =========================
 # ADMIN: Detail Pesanan
 # =========================
+from decimal import Decimal
+
 @app.route("/admin/orders/<int:order_id>", methods=["GET", "POST"])
 def admin_order_detail(order_id):
     if not check_role("admin"):
         flash("Akses ditolak", "error")
         return redirect(url_for("dashboard"))
 
-    # update status
+    # --- POST: update status ---
     if request.method == "POST":
         action  = (request.form.get("action") or "").lower()
-        mapping = {"terima": "diterima", "proses": "diproses", "selesai": "selesai", "batal": "batal"}
+        mapping = {"terima": "diterima", "proses": "diproses",
+                   "selesai": "selesai", "batal": "batal"}
         if action in mapping:
             ok = Database(DB_CONFIG).update_order_status(order_id, mapping[action])
             flash("Status diperbarui" if ok else "Gagal memperbarui status",
@@ -941,7 +944,7 @@ def admin_order_detail(order_id):
             flash("Aksi tidak dikenali", "warning")
         return redirect(url_for("admin_order_detail", order_id=order_id))
 
-    # helper akses dict/tuple
+    # util: ambil kolom baik dict/tuple + normalisasi angka
     def v(r, key, idx):
         if isinstance(r, dict):
             return r.get(key)
@@ -950,15 +953,28 @@ def admin_order_detail(order_id):
         except Exception:
             return None
 
-    # header pesanan
+    def to_int(x):
+        if x is None:
+            return 0
+        if isinstance(x, Decimal):
+            return int(x)
+        try:
+            return int(x)
+        except Exception:
+            try:
+                return int(float(x))
+            except Exception:
+                return 0
+
+    # --- HEADER PESANAN ---
     sql_head = """
       SELECT
         o.id,
         COALESCE(u.nama, u.username) AS customer,
         o.status,
         COALESCE(o.total,0) AS total,
-        COALESCE(o.payment_method,'-') AS payment_method,
-        COALESCE(o.payment_status,'-') AS payment_status,
+        COALESCE(o.payment_method,'-')  AS payment_method,
+        COALESCE(o.payment_status,'-')  AS payment_status,
         o.created_at
       FROM orders o
       LEFT JOIN users u ON u.id = o.user_id
@@ -974,40 +990,69 @@ def admin_order_detail(order_id):
         "id":              v(h, "id", 0),
         "customer":        v(h, "customer", 1),
         "status":         (v(h, "status", 2) or "-"),
-        "total":          int(v(h, "total", 3) or 0),
+        "total":          to_int(v(h, "total", 3)),
         "payment_method": (v(h, "payment_method", 4) or "-"),
         "payment_status": (v(h, "payment_status", 5) or "-"),
         "created_at":      v(h, "created_at", 6),
     }
 
-    # item pesanan (coba 2 nama tabel yang umum)
-    sql_items1 = """
-      SELECT oi.id, oi.qty, oi.harga, COALESCE(b.nama,'(Produk)') AS nama
-      FROM order_items oi
-      LEFT JOIN barang b ON b.id = oi.barang_id
-      WHERE oi.order_id = %s
-      ORDER BY oi.id
-    """
-    items_raw = _fetch_all_sql(sql_items1, [order_id]) or []
-
-    if not items_raw:
-        sql_items2 = """
-          SELECT d.id, d.qty, d.harga, COALESCE(b.nama,'(Produk)') AS nama
-          FROM order_details d
-          LEFT JOIN barang b ON b.id = d.barang_id
-          WHERE d.order_id = %s
-          ORDER BY d.id
+    # --- ITEMS PESANAN ---
+    # Coba beberapa kemungkinan nama tabel/kolom yang umum
+    candidates = [
+        # order_items + barang.nama
         """
-        items_raw = _fetch_all_sql(sql_items2, [order_id]) or []
+        SELECT oi.id, oi.qty, oi.harga, COALESCE(b.nama,'(Produk)') AS nama
+        FROM order_items oi
+        LEFT JOIN barang b ON b.id = oi.barang_id
+        WHERE oi.order_id = %s
+        ORDER BY oi.id
+        """,
+        # order_items + barang.nama_barang
+        """
+        SELECT oi.id, oi.qty, oi.harga, COALESCE(b.nama_barang,'(Produk)') AS nama
+        FROM order_items oi
+        LEFT JOIN barang b ON b.id = oi.barang_id
+        WHERE oi.order_id = %s
+        ORDER BY oi.id
+        """,
+        # order_details + barang.nama
+        """
+        SELECT d.id, d.qty, d.harga, COALESCE(b.nama,'(Produk)') AS nama
+        FROM order_details d
+        LEFT JOIN barang b ON b.id = d.barang_id
+        WHERE d.order_id = %s
+        ORDER BY d.id
+        """,
+        # order_detail (singular) + barang.nama
+        """
+        SELECT d.id, d.qty, d.harga, COALESCE(b.nama,'(Produk)') AS nama
+        FROM order_detail d
+        LEFT JOIN barang b ON b.id = d.barang_id
+        WHERE d.order_id = %s
+        ORDER BY d.id
+        """,
+    ]
+
+    items_raw = []
+    for sql in candidates:
+        try:
+            rows = _fetch_all_sql(sql, [order_id]) or []
+            if rows:
+                items_raw = rows
+                break
+        except Exception:
+            # kalau query ini gagal (kolom/tabel tak ada), coba kandidat berikutnya
+            continue
 
     items = [{
         "id":    v(r, "id",    0),
-        "qty":   int(v(r, "qty",   1) or 0),
-        "harga": int(v(r, "harga", 2) or 0),
-        "nama":  v(r, "nama",  3),
+        "qty":   to_int(v(r, "qty",   1)),
+        "harga": to_int(v(r, "harga", 2)),
+        "nama":  v(r, "nama",  3) or "(Produk)",
     } for r in items_raw]
 
     return render_template("order_detail_admin.html", order=order, items=items, role="admin")
+
 
 
 
