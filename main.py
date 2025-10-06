@@ -735,9 +735,12 @@ def orders_me():
 # ---------- Admin: Kelola Pesanan ----------
 # ==== Admin: daftar pesanan ====
 @app.route("/admin/orders")
-@require_login(role="admin")
 def admin_orders():
-    status = request.args.get("status", "semua").lower()
+    if not check_role("admin"):
+        flash("Akses ditolak", "error")
+        return redirect(url_for("dashboard"))
+
+    status = (request.args.get("status") or "semua").lower()
     where  = "" ; params = []
     if status != "semua":
         where = "WHERE o.status = %s"
@@ -747,18 +750,15 @@ def admin_orders():
       SELECT
         o.id,
         COALESCE(u.nama, u.username) AS customer,
-        o.status,
-        o.total,
-        o.payment_method,
-        o.payment_status,
-        o.created_at
+        o.status, o.total, o.payment_method, o.payment_status, o.created_at
       FROM orders o
       LEFT JOIN users u ON u.id = o.user_id
       {where}
       ORDER BY o.id DESC
     """
-    orders = db.fetchall(sql, params)  # sesuaikan helper DB-mu
-    return render_template("order_admin.html", orders=orders, status=status)
+    rows = Database(DB_CONFIG).fetch_all(sql, params)   # sesuaikan helpermu
+    return render_template("order_admin.html", orders=rows, status=status)
+
 
 
 
