@@ -15,7 +15,6 @@
 </head>
 <body class="bg-neutral-50 min-h-screen">
   {% include 'navbar.html' %}
-
   <main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
     {% include 'flashProtection.html' %}
 
@@ -26,30 +25,14 @@
 
     <section class="bg-white rounded-2xl shadow border border-neutral-200 p-5 mb-6">
       <div class="grid sm:grid-cols-2 gap-4 text-sm">
-        <div>
-          <div class="text-neutral-500">Customer</div>
-          <div class="font-medium">{{ order.customer }}</div>
-        </div>
-        <div>
-          <div class="text-neutral-500">Status</div>
-          <div>
-            <span class="pill {{ 'bg-emerald-100 text-emerald-700' if order.status=='selesai' else
-                                  'bg-amber-100 text-amber-700' if order.status in ['baru','diterima','diproses'] else
-                                  'bg-rose-100 text-rose-700' }}">
-              {{ order.status }}
-            </span>
-          </div>
-        </div>
-        <div>
-          <div class="text-neutral-500">Total</div>
-          <div class="font-medium">Rp {{ '{:,.0f}'.format(order.total or 0).replace(',', '.') }}</div>
-        </div>
-        <div>
-          <div class="text-neutral-500">Pembayaran</div>
-          <div class="font-medium">
-            {{ (order.payment_method or '-').upper() }} <span class="text-neutral-500">({{ order.payment_status or '-' }})</span>
-          </div>
-        </div>
+        <div><div class="text-neutral-500">Customer</div><div class="font-medium">{{ order.customer }}</div></div>
+        <div><div class="text-neutral-500">Status</div>
+             <div><span class="pill {{ 'bg-emerald-100 text-emerald-700' if order.status=='selesai' else
+                                        'bg-amber-100 text-amber-700' if order.status in ['baru','diterima','diproses'] else
+                                        'bg-rose-100 text-rose-700' }}">{{ order.status }}</span></div></div>
+        <div><div class="text-neutral-500">Total</div><div class="font-medium">Rp {{ '{:,.0f}'.format(order.total or 0).replace(',', '.') }}</div></div>
+        <div><div class="text-neutral-500">Pembayaran</div>
+             <div class="font-medium">{{ (order.payment_method or '-').upper() }} <span class="text-neutral-500">({{ order.payment_status or '-' }})</span></div></div>
       </div>
     </section>
 
@@ -73,9 +56,7 @@
               <td class="px-4 py-3 text-sm">Rp {{ '{:,.0f}'.format((it.price or 0) * (it.qty or 0)).replace(',', '.') }}</td>
             </tr>
             {% else %}
-            <tr>
-              <td colspan="4" class="px-4 py-6 text-center text-neutral-500">Tidak ada item.</td>
-            </tr>
+            <tr><td colspan="4" class="px-4 py-6 text-center text-neutral-500">Tidak ada item.</td></tr>
             {% endfor %}
           </tbody>
         </table>
