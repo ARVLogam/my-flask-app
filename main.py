@@ -955,7 +955,7 @@ def admin_order_detail(order_id):
 
     # Update status (jika ada POST)
     if request.method == "POST":
-        action  = (request.form.get("action") or "").lower()
+        action = (request.form.get("action") or "").lower()
         mapping = {"terima": "diterima", "proses": "diproses",
                    "selesai": "selesai", "batal": "batal"}
         if action in mapping and hasattr(db, "update_order_status"):
@@ -984,13 +984,13 @@ def admin_order_detail(order_id):
         return redirect(url_for("admin_orders"))
 
     order = {
-        "id": row[0],
-        "customer": row[1],
-        "status": row[2] or "-",
-        "total": int(row[3] or 0),
-        "payment_method": row[4] or "-",
-        "payment_status": row[5] or "-",
-        "created_at": row[6],
+        "id": row.get("id"),
+        "customer": row.get("customer"),
+        "status": row.get("status") or "-",
+        "total": int(row.get("total") or 0),
+        "payment_method": row.get("payment_method") or "-",
+        "payment_status": row.get("payment_status") or "-",
+        "created_at": row.get("created_at"),
     }
 
     # Item pesanan
@@ -1003,10 +1003,10 @@ def admin_order_detail(order_id):
     """
     rows = _run_select_all(db, sql_items, [order_id]) or []
     items = [{
-        "id": r[0],
-        "qty": int(r[1] or 0),
-        "harga": int(r[2] or 0),
-        "nama": r[3],
+        "id": r.get("id"),
+        "qty": int(r.get("qty") or 0),
+        "harga": int(r.get("harga") or 0),
+        "nama": r.get("nama"),
     } for r in rows]
 
     return render_template("order_detail_admin.html", order=order, items=items)
