@@ -51,10 +51,12 @@
                 {% if qris_url %}
                   <!-- QRIS preview -->
                   <div class="qris-box">
-                    <img src="{{ url_for('static', filename='uploads/qris/qris.png') }}"
-                         alt="QRIS"
-                         style="max-width:220px;border-radius:12px;border:1px solid #eee"
-                         onerror="this.closest('.qris-box').innerHTML='<div class=&quot;muted&quot;>QRIS belum diunggah admin.</div>'" />
+                    <img src="{{ url_for('static', filename='img/uploads/qris/qris.png') }}"
+                          alt="QRIS"
+                          style="max-width:220px;border-radius:12px;border:1px solid #eee"
+                          onerror="this.closest('.qris-box').innerHTML='<div class=&quot;muted&quot;>QRIS belum diunggah admin.</div>'"
+                        />
+
                     <div class="hint">Scan QR ini lalu unggah bukti pembayaran.</div>
                   </div>
 
