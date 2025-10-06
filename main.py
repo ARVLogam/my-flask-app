@@ -15,7 +15,9 @@ from jinja2 import TemplateNotFound
 # -- app modules
 from crud import Database, create_tables
 from config import MAIL_SETTINGS, DB_CONFIG as RAW_DB
-
+import os
+from pathlib import Path
+from werkzeug.utils import secure_filename
 
 # --- tambahkan di bagian import paling atas ---
 from jinja2 import TemplateNotFound
@@ -53,6 +55,52 @@ def _fetch_all_sql(sql, params=None):
         except: pass
         conn.close()
 
+def save_payment_proofs(order_id: int, files):
+    """
+    Simpan bukti transfer / qris ke /static/uploads/payments/<order_id>/
+    Field yang dibaca: 'bukti_transfer' dan 'bukti_qris' (input type="file")
+    """
+    base = PAYMENT_UPLOAD_DIR / str(order_id)
+    base.mkdir(parents=True, exist_ok=True)
+
+    saved = {"transfer": [], "qris": []}
+
+    for field, prefix in (("bukti_transfer", "transfer"), ("bukti_qris", "qris")):
+        file = files.get(field)
+        if not file or not getattr(file, "filename", ""):
+            continue
+        if not _allowed_image(file.filename):
+            continue
+        fname = secure_filename(file.filename)
+        # tambah prefix agar jelas
+        final_name = f"{prefix}_{fname}"
+        file.save(base / final_name)
+        saved[prefix].append(f"/static/uploads/payments/{order_id}/{final_name}")
+
+    return saved
+
+
+def list_payment_proofs(order_id: int):
+    """
+    Kembalikan daftar URL bukti untuk ditampilkan di admin.
+    """
+    base = PAYMENT_UPLOAD_DIR / str(order_id)
+    out = {"transfer": [], "qris": []}
+    if not base.exists():
+        return out
+
+    for p in sorted(base.iterdir()):
+        if not p.is_file():
+            continue
+        name = p.name.lower()
+        url = f"/static/uploads/payments/{order_id}/{p.name}"
+        if name.startswith("transfer_"):
+            out["transfer"].append(url)
+        elif name.startswith("qris_"):
+            out["qris"].append(url)
+    return out
+
+
 
 # =========================
 # App & Config dasar
@@ -61,6 +109,15 @@ load_dotenv()
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev")
+
+# === Upload folder untuk bukti pembayaran ===
+PAYMENT_UPLOAD_DIR = Path(app.static_folder) / "uploads" / "payments"
+PAYMENT_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+ALLOWED_IMAGE_EXT = {"jpg", "jpeg", "png", "gif", "webp", "bmp"}
+def _allowed_image(filename: str) -> bool:
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_IMAGE_EXT
+
 
 import os, logging
 logging.basicConfig(level=logging.INFO)
@@ -768,6 +825,7 @@ def cart_remove(item_id):
 @login_required
 def checkout():
     db = Database(DB_CONFIG)
+
     if request.method == "GET":
         items, total = db.get_cart_items(session["user_id"])
         if not items:
@@ -775,25 +833,55 @@ def checkout():
             return redirect(url_for("dashboard"))
         return render_template("checkout.html", items=items, total=total)
 
-    payment_method   = (request.form.get("payment_method") or "COD").upper()  # COD | TRANSFER
+    # ---------- POST ----------
+    # Hanya TRANSFER atau QRIS; kalau ada yang kirim "COD", kita map ke QRIS (sementara pakai QR statis)
+    payment_method = (request.form.get("payment_method") or "QRIS").upper()
+    if payment_method == "COD":
+        payment_method = "QRIS"
+
     shipping_address = (request.form.get("shipping_address") or "").strip()
     if not shipping_address:
         flash("Alamat pengiriman wajib diisi", "error")
         return redirect(url_for("checkout"))
 
+    # Buat order dari cart
     order_id = db.create_order_from_cart(session["user_id"], payment_method, shipping_address)
     if not order_id:
         flash("Gagal membuat pesanan", "error")
         return redirect(url_for("checkout"))
 
-    # Tahap awal: COD/TRANSFER manual
-    if payment_method == "COD":
+    # Simpan bukti upload (opsional): 'bukti_transfer' dan/atau 'bukti_qris'
+    try:
+        # pastikan helper save_payment_proofs sudah ada
+        save_payment_proofs(order_id, request.files)
+    except Exception as e:
+        # jangan bikin user gagal checkout hanya karena upload gagal
+        print("Gagal simpan bukti pembayaran:", e)
+
+    # Set status awal & info pembayaran
+    try:
+        # fungsi kamu sebelumnya menerima (order_id, status, payment_status) — biarkan sama
         db.update_order_status(order_id, "baru", "pending")
-        flash(f"Pesanan #{order_id} dibuat. Metode: COD. Admin akan memproses.", "success")
-    else:
-        flash(f"Pesanan #{order_id} dibuat. Silakan ikuti instruksi transfer pada daftar pesanan.", "success")
+    except TypeError:
+        # kalau implementasi kamu hanya menerima (order_id, status)
+        db.update_order_status(order_id, "baru")
+
+    # Pesan konfirmasi sesuai metode
+    if payment_method == "TRANSFER":
+        flash(
+            f"Pesanan #{order_id} dibuat. Metode: TRANSFER. "
+            "Silakan unggah bukti transfer (jika belum) agar admin dapat memverifikasi.",
+            "success",
+        )
+    else:  # QRIS
+        flash(
+            f"Pesanan #{order_id} dibuat. Metode: QRIS. "
+            "Silakan scan QRIS & unggah bukti pembayaran (jika belum) untuk diproses admin.",
+            "success",
+        )
 
     return redirect(url_for("orders_me"))
+
 
 # ---------- Pesanan Saya (user) ----------
 @app.route("/orders/me")
