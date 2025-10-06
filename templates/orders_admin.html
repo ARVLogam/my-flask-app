@@ -8,20 +8,13 @@
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50 min-h-screen">
-  {% include 'navbar.html' %}
   <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-    {% include 'flashProtection.html' %}
-
-    <!-- Header + Back -->
     <div class="flex items-center justify-between mb-4">
       <h1 class="text-2xl font-bold text-gray-800">Kelola Pesanan</h1>
       <a href="{{ url_for('dashboard') }}"
-         class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 text-sm">
-        ← Kembali
-      </a>
+         class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 text-sm">← Kembali</a>
     </div>
 
-    <!-- Filter -->
     <div class="mb-4 text-sm">
       Filter:
       {% for f in ['semua','baru','diterima','diproses','selesai','batal'] %}
@@ -32,7 +25,6 @@
       {% endfor %}
     </div>
 
-    <!-- Tabel -->
     <div class="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
@@ -53,25 +45,15 @@
                 <td class="px-4 py-3 text-sm">#{{ o.id }}</td>
                 <td class="px-4 py-3 text-sm">{{ o.customer }}</td>
                 <td class="px-4 py-3 text-sm capitalize">{{ o.status }}</td>
+                <td class="px-4 py-3 text-sm">Rp {{ '{:,.0f}'.format((o.total or 0)|int).replace(',', '.') }}</td>
+                <td class="px-4 py-3 text-sm">{{ (o.payment_method or '-')|upper }} <span class="text-gray-500">({{ o.payment_status or 'pending' }})</span></td>
                 <td class="px-4 py-3 text-sm">
-                  Rp {{ '{:,.0f}'.format((o.total or 0)|int).replace(',', '.') }}
-                </td>
-                <td class="px-4 py-3 text-sm">
-                  {{ (o.payment_method or '-')|upper }}
-                  <span class="text-gray-500">({{ o.payment_status or 'pending' }})</span>
-                </td>
-                <td class="px-4 py-3 text-sm">
-                  <a class="text-blue-600 hover:underline"
-                     href="{{ url_for('admin_order_detail', order_id=o.id) }}">Detail</a>
+                  <a href="{{ url_for('admin_order_detail', order_id=o.id) }}" class="text-blue-600 hover:underline">Detail</a>
                 </td>
               </tr>
               {% endfor %}
             {% else %}
-              <tr>
-                <td colspan="6" class="px-4 py-6 text-center text-gray-500">
-                  Belum ada pesanan untuk filter ini.
-                </td>
-              </tr>
+              <tr><td colspan="6" class="px-4 py-6 text-center text-gray-500">Belum ada pesanan.</td></tr>
             {% endif %}
           </tbody>
         </table>
