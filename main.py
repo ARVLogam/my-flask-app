@@ -737,7 +737,6 @@ def orders_me():
 
 @app.route("/admin/orders")
 def admin_orders():
-    # Hanya admin
     if not check_role("admin"):
         flash("Akses ditolak", "error")
         return redirect(url_for("dashboard"))
@@ -745,114 +744,50 @@ def admin_orders():
     status = (request.args.get("status") or "semua").lower()
     where, params = "", []
     if status != "semua":
-        where = "WHERE o.status = %s"
-        params = [status]
+        where, params = "WHERE o.status = %s", [status]
 
     sql = f"""
       SELECT
         o.id,
         COALESCE(u.nama, u.username) AS customer,
-        o.status,
-        o.total,
-        o.payment_method,
-        o.payment_status,
-        o.created_at
+        o.status, o.total, o.payment_method, o.payment_status, o.created_at
       FROM orders o
       LEFT JOIN users u ON u.id = o.user_id
       {where}
       ORDER BY o.id DESC
     """
+    # PAKAI METHOD SELECT YANG ADA DI KELAS Database KAMU
+    db = Database(DB_CONFIG)
+    orders = db.select_all(sql, params)  # jika namanya beda (query/fetch_rows), sesuaikan
 
-    # --- eksekusi query pakai helper Database kamu ---
-    db = Database(RAW_DB) if 'RAW_DB' in globals() else Database(DB_CONFIG)
-    conn = db._get_conn()
-    cur = conn.cursor()
-    try:
-        cur.execute(sql, params)
-        rows = cur.fetchall()
-        orders = [{
-            "id": r[0],
-            "customer": r[1],
-            "status": r[2],
-            "total": r[3],
-            "payment_method": r[4],
-            "payment_status": r[5],
-            "created_at": r[6],
-        } for r in rows]
-    finally:
-        cur.close()
-        conn.close()
-
-    # Coba 2 path template (kalau kamu taruh di subfolder "admin/")
-    for tpl in ("order_admin.html", "admin/order_admin.html"):
-        try:
-            return render_template(tpl, orders=orders, status=status)
-        except TemplateNotFound:
-            continue
-
-    # Fallback darurat kalau file belum terbaca oleh Jinja
-    return render_template_string("""
-    <!doctype html><meta charset="utf-8">
-    <h1>Kelola Pesanan (Fallback)</h1>
-    <p>Template <code>order_admin.html</code> belum ditemukan. Pastikan ada di folder <code>templates/</code>.</p>
-    <table border="1" cellpadding="6" cellspacing="0">
-      <tr><th>#</th><th>Customer</th><th>Status</th><th>Total</th><th>Bayar</th></tr>
-      {% for o in orders %}
-      <tr>
-        <td>#{{ o.id }}</td>
-        <td>{{ o.customer }}</td>
-        <td>{{ o.status }}</td>
-        <td>Rp {{ '{:,.0f}'.format(o.total).replace(',', '.') if o.total else '0' }}</td>
-        <td>{{ o.payment_method|upper }} ({{ o.payment_status }})</td>
-      </tr>
-      {% else %}
-      <tr><td colspan="5"><em>Belum ada pesanan</em></td></tr>
-      {% endfor %}
-    </table>
-    """, orders=orders), 200
-
+    return render_template_string(ORDER_ADMIN_HTML, orders=orders, status=status)
 
 
 
 
 @app.route("/admin/orders/<int:order_id>", methods=["GET", "POST"])
 def admin_order_detail(order_id):
-    # Cek role admin
     if not check_role("admin"):
         flash("Akses ditolak", "error")
         return redirect(url_for("dashboard"))
 
     db = Database(DB_CONFIG)
 
-    # Jika admin ubah status pesanan
     if request.method == "POST":
-        action = request.form.get("action")
-        mapping = {
-            "terima": "diterima",
-            "proses": "diproses",
-            "selesai": "selesai",
-            "batal": "batal"
-        }
+        action = (request.form.get("action") or "").lower()
+        mapping = {"terima":"diterima","proses":"diproses","selesai":"selesai","batal":"batal"}
         if action in mapping:
             ok = db.update_order_status(order_id, mapping[action])
-            flash(
-                "Status diperbarui" if ok else "Gagal memperbarui status",
-                "success" if ok else "error"
-            )
+            flash("Status diperbarui" if ok else "Gagal memperbarui status",
+                  "success" if ok else "error")
         return redirect(url_for("admin_order_detail", order_id=order_id))
 
-    # Ambil data order dan itemnya
     order, items = db.get_order(order_id)
     if not order:
         flash("Pesanan tidak ditemukan", "error")
         return redirect(url_for("admin_orders"))
 
-    # Render template dengan tambahan data nama customer
-    return render_template(
-        "order_detail_admin.html",
-        order=order,
-        items=items
-    )
+    return render_template_string(ORDER_DETAIL_ADMIN_HTML, order=order, items=items)
 
 
 @app.context_processor
