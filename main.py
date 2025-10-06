@@ -200,6 +200,23 @@ def get_qris_static_url():
         return url_for("static", filename="uploads/qris/qris.png")
     return None
 
+import os, logging
+# pastikan app dibuat dengan static_folder="static"
+
+def qris_url_or_none():
+    """
+    Return URL /static/uploads/qris/qris.png kalau file-nya ADA.
+    Sekaligus log absolute path supaya gampang debug di Railway.
+    """
+    # absolute path di filesystem container
+    abs_path = os.path.join(app.static_folder, "uploads", "qris", "qris.png")
+    exists = os.path.exists(abs_path)
+    logging.info(f"[QRIS] path: {abs_path} | exists={exists}")
+
+    # URL publiknya (kalau ada)
+    if exists:
+        return url_for("static", filename="uploads/qris/qris.png")
+    return None
 
 
 
@@ -993,8 +1010,9 @@ def checkout():
             flash("Keranjang masih kosong", "warning")
             return redirect(url_for("dashboard"))
     
-        qris_url = get_qris_static_url()  # <— JANGAN None
+        qris_url = qris_url_or_none()  # <— penting
         return render_template("checkout.html", items=items, total=total, qris_url=qris_url)
+
     
     # ---------- POST ----------
     # TRANSFER atau QRIS; jika masih ada opsi "COD", kita map ke "QRIS"
