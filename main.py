@@ -21,6 +21,28 @@ from werkzeug.utils import secure_filename
 
 # --- tambahkan di bagian import paling atas ---
 from jinja2 import TemplateNotFound
+import os, json, time, logging
+
+
+
+
+APP_ROOT = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(APP_ROOT, "static")
+
+# /static/uploads/payments/<order_id> untuk bukti user
+PAYMENT_UPLOAD_DIR = os.path.join(STATIC_DIR, "uploads", "payments")
+# /static/uploads/qris/qris.png untuk QRIS statis (diupload manual oleh admin)
+QRIS_DIR = os.path.join(STATIC_DIR, "uploads", "qris")
+
+os.makedirs(PAYMENT_UPLOAD_DIR, exist_ok=True)
+os.makedirs(QRIS_DIR, exist_ok=True)
+
+ALLOWED_IMAGE_EXTS = {"png", "jpg", "jpeg", "webp", "gif", "pdf"}
+
+def _allowed_ext(filename: str) -> bool:
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_IMAGE_EXTS
+
+
 
 # --- helper universal SELECT ALL: kembalikan list[dict] ---
 def _fetch_all_sql(sql, params=None):
@@ -55,50 +77,106 @@ def _fetch_all_sql(sql, params=None):
         except: pass
         conn.close()
 
-def save_payment_proofs(order_id: int, files):
-    """
-    Simpan bukti transfer / qris ke /static/uploads/payments/<order_id>/
-    Field yang dibaca: 'bukti_transfer' dan 'bukti_qris' (input type="file")
-    """
-    base = PAYMENT_UPLOAD_DIR / str(order_id)
-    base.mkdir(parents=True, exist_ok=True)
+def load_payment_settings():
+    default = {"bank": "BCA", "rekening": "", "atas_nama": "", "qris_image": ""}
+    try:
+        with open(PAYMENT_SETTINGS_FILE, "r") as f:
+            data = json.load(f)
+        return {**default, **data}
+    except Exception:
+        return default
 
-    saved = {"transfer": [], "qris": []}
+def save_payment_settings(data: dict):
+    try:
+        with open(PAYMENT_SETTINGS_FILE, "w") as f:
+            json.dump(data, f)
+        return True
+    except Exception:
+        logging.exception("Gagal simpan payment_settings.json")
+        return False
 
-    for field, prefix in (("bukti_transfer", "transfer"), ("bukti_qris", "qris")):
-        file = files.get(field)
-        if not file or not getattr(file, "filename", ""):
+def _save_upload(file_storage, prefix: str):
+    """Simpan file upload ke /static/uploads/payments dan kembalikan URL relatifnya."""
+    if not file_storage or file_storage.filename == "":
+        return None
+    fn   = secure_filename(file_storage.filename)
+    base, ext = os.path.splitext(fn)
+    out  = f"{prefix}-{int(time.time())}{ext.lower()}"
+    path = os.path.join(PAYMENT_UPLOAD_DIR, out)
+    file_storage.save(path)
+    # URL yang bisa dipakai di template
+    return f"/static/uploads/payments/{out}"
+
+# eksekusi SQL sederhana (INSERT/UPDATE/DELETE)
+def _execute_sql(sql, params=None):
+    params = params or []
+    try:
+        import psycopg2
+        conn = psycopg2.connect(**DB_CONFIG)
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute(sql, params)
+        return True
+    except Exception:
+        logging.exception("Execute SQL gagal")
+        return False
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
+def save_payment_proofs(order_id: int, files) -> list[str]:
+    """
+    Simpan file yang dikirim di field 'bukti_transfer' dan/atau 'bukti_qris'.
+    Return: list nama file yang sukses disimpan.
+    """
+    saved = []
+    folder = os.path.join(PAYMENT_UPLOAD_DIR, str(order_id))
+    os.makedirs(folder, exist_ok=True)
+
+    for field in ("bukti_transfer", "bukti_qris"):
+        f = files.get(field)
+        if not f or not getattr(f, "filename", ""):
             continue
-        if not _allowed_image(file.filename):
+        if not _allowed_ext(f.filename):
             continue
-        fname = secure_filename(file.filename)
-        # tambah prefix agar jelas
-        final_name = f"{prefix}_{fname}"
-        file.save(base / final_name)
-        saved[prefix].append(f"/static/uploads/payments/{order_id}/{final_name}")
+        ext = "." + f.filename.rsplit(".", 1)[1].lower()
+        fname = secure_filename(f"{field}{ext}")  # contoh: bukti_qris.png
+        f.save(os.path.join(folder, fname))
+        saved.append(fname)
 
     return saved
 
 
 def list_payment_proofs(order_id: int):
     """
-    Kembalikan daftar URL bukti untuk ditampilkan di admin.
+    Kembalikan list bukti pembayaran untuk order_id:
+    [{name, type, url}, ...]
     """
-    base = PAYMENT_UPLOAD_DIR / str(order_id)
-    out = {"transfer": [], "qris": []}
-    if not base.exists():
-        return out
+    folder = os.path.join(PAYMENT_UPLOAD_DIR, str(order_id))
+    if not os.path.isdir(folder):
+        return []
 
-    for p in sorted(base.iterdir()):
-        if not p.is_file():
+    out = []
+    for name in sorted(os.listdir(folder)):
+        if not _allowed_ext(name):
             continue
-        name = p.name.lower()
-        url = f"/static/uploads/payments/{order_id}/{p.name}"
-        if name.startswith("transfer_"):
-            out["transfer"].append(url)
-        elif name.startswith("qris_"):
-            out["qris"].append(url)
+        ftype = "transfer" if "transfer" in name.lower() else ("qris" if "qris" in name.lower() else "other")
+        url = url_for("static", filename=f"uploads/payments/{order_id}/{name}")
+        out.append({"name": name, "type": ftype, "url": url})
     return out
+
+
+def get_qris_static_url():
+    """
+    Jika ada file /static/uploads/qris/qris.png, kembalikan URL-nya untuk ditampilkan di checkout.
+    """
+    path = os.path.join(QRIS_DIR, "qris.png")
+    if os.path.exists(path):
+        return url_for("static", filename="uploads/qris/qris.png")
+    return None
 
 
 
@@ -109,6 +187,13 @@ load_dotenv()
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev")
+
+# ==== Pembayaran/Upload ====
+PAYMENT_SETTINGS_FILE = os.path.join(app.root_path, "payment_settings.json")
+PAYMENT_UPLOAD_DIR    = os.path.join(app.root_path, "static", "uploads", "payments")
+os.makedirs(PAYMENT_UPLOAD_DIR, exist_ok=True)
+
+
 
 # === Upload folder untuk bukti pembayaran ===
 PAYMENT_UPLOAD_DIR = Path(app.static_folder) / "uploads" / "payments"
@@ -831,10 +916,11 @@ def checkout():
         if not items:
             flash("Keranjang masih kosong", "warning")
             return redirect(url_for("dashboard"))
-        return render_template("checkout.html", items=items, total=total)
+        # kirim QRIS statis kalau tersedia
+        return render_template("checkout.html", items=items, total=total, qris_url=get_qris_static_url())
 
     # ---------- POST ----------
-    # Hanya TRANSFER atau QRIS; kalau ada yang kirim "COD", kita map ke QRIS (sementara pakai QR statis)
+    # TRANSFER atau QRIS; jika ada "COD", kita map ke QRIS (pakai QR statis)
     payment_method = (request.form.get("payment_method") or "QRIS").upper()
     if payment_method == "COD":
         payment_method = "QRIS"
@@ -850,30 +936,26 @@ def checkout():
         flash("Gagal membuat pesanan", "error")
         return redirect(url_for("checkout"))
 
-    # Simpan bukti upload (opsional): 'bukti_transfer' dan/atau 'bukti_qris'
+    # Simpan bukti (opsional)
     try:
-        # pastikan helper save_payment_proofs sudah ada
         save_payment_proofs(order_id, request.files)
     except Exception as e:
-        # jangan bikin user gagal checkout hanya karena upload gagal
         print("Gagal simpan bukti pembayaran:", e)
 
-    # Set status awal & info pembayaran
+    # Status awal
     try:
-        # fungsi kamu sebelumnya menerima (order_id, status, payment_status) — biarkan sama
         db.update_order_status(order_id, "baru", "pending")
     except TypeError:
-        # kalau implementasi kamu hanya menerima (order_id, status)
         db.update_order_status(order_id, "baru")
 
-    # Pesan konfirmasi sesuai metode
+    # Pesan
     if payment_method == "TRANSFER":
         flash(
             f"Pesanan #{order_id} dibuat. Metode: TRANSFER. "
             "Silakan unggah bukti transfer (jika belum) agar admin dapat memverifikasi.",
             "success",
         )
-    else:  # QRIS
+    else:
         flash(
             f"Pesanan #{order_id} dibuat. Metode: QRIS. "
             "Silakan scan QRIS & unggah bukti pembayaran (jika belum) untuk diproses admin.",
@@ -881,6 +963,7 @@ def checkout():
         )
 
     return redirect(url_for("orders_me"))
+
 
 
 # ---------- Pesanan Saya (user) ----------
@@ -1032,12 +1115,12 @@ def _fetch_one_sql(sql, params=None):
 # =========================
 @app.route("/admin/orders/<int:order_id>", methods=["GET", "POST"])
 def admin_order_detail(order_id):
-    # Wajib admin
+    # Hanya admin
     if not check_role("admin"):
         flash("Akses ditolak", "error")
         return redirect(url_for("dashboard"))
 
-    # Helper kecil untuk ambil nilai aman dari dict/tuple
+    # helper kecil untuk ambil aman dari dict/tuple
     def v(row, key, idx):
         if isinstance(row, dict):
             return row.get(key)
@@ -1046,7 +1129,7 @@ def admin_order_detail(order_id):
         except Exception:
             return None
 
-    # --- Update status (opsional) ---
+    # ---- Update status (opsional) ----
     if request.method == "POST":
         action  = (request.form.get("action") or "").lower()
         mapping = {"terima": "diterima", "proses": "diproses", "selesai": "selesai", "batal": "batal"}
@@ -1063,13 +1146,13 @@ def admin_order_detail(order_id):
             flash("Aksi tidak dikenali", "warning")
         return redirect(url_for("admin_order_detail", order_id=order_id))
 
-    # --- Header pesanan ---
+    # ---- Header pesanan ----
     sql_head = """
         SELECT
             o.id,
-            COALESCE(u.nama, u.username)   AS customer,
-            COALESCE(o.status, 'baru')     AS status,
-            COALESCE(o.total, 0)           AS total,
+            COALESCE(u.nama, u.username)     AS customer,
+            COALESCE(o.status, 'baru')       AS status,
+            COALESCE(o.total, 0)             AS total,
             COALESCE(o.payment_method, '-')  AS payment_method,
             COALESCE(o.payment_status, '-')  AS payment_status,
             o.created_at
@@ -1093,13 +1176,13 @@ def admin_order_detail(order_id):
         "created_at":     v(head, "created_at", 6),
     }
 
-    # --- Item pesanan ---
-    # Pakai harga_snapshot sesuai skema, bukan "harga".
+    # ---- Item pesanan ----
+    # gunakan harga_snapshot sebagai harga satuan pada saat transaksi
     sql_items = """
         SELECT
             oi.id,
-            COALESCE(oi.qty, 0)              AS qty,
-            COALESCE(oi.harga_snapshot, 0)   AS harga
+            COALESCE(oi.qty, 0)             AS qty,
+            COALESCE(oi.harga_snapshot, 0)  AS harga
         FROM order_items oi
         WHERE oi.order_id = %s
         ORDER BY oi.id
@@ -1118,7 +1201,37 @@ def admin_order_detail(order_id):
             "subtotal": qty * harga,      # qty x harga
         })
 
-    return render_template("order_detail_admin.html", order=order, items=items)
+    # (opsional) sertakan bukti pembayaran kalau helper-nya ada
+    try:
+        proofs = list_payment_proofs(order["id"])
+    except Exception:
+        proofs = []
+
+    return render_template("order_detail_admin.html", order=order, items=items, proofs=proofs)
+
+@app.route("/admin/payment-settings", methods=["GET", "POST"])
+def admin_payment_settings():
+    if not check_role("admin"):
+        flash("Akses ditolak", "error")
+        return redirect(url_for("dashboard"))
+
+    s = load_payment_settings()
+    if request.method == "POST":
+        s["bank"]      = (request.form.get("bank") or "BCA").strip()
+        s["rekening"]  = (request.form.get("rekening") or "").strip()
+        s["atas_nama"] = (request.form.get("atas_nama") or "").strip()
+
+        qris_file = request.files.get("qris_image")
+        url = _save_upload(qris_file, "qris") if qris_file else None
+        if url:
+            s["qris_image"] = url
+
+        save_payment_settings(s)
+        flash("Pengaturan pembayaran disimpan.", "success")
+        return redirect(url_for("admin_payment_settings"))
+
+    # NANTI template-nya kita buat (admin_payment_settings.html)
+    return render_template("admin_payment_settings.html", s=s)
 
 
 
