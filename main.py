@@ -24,6 +24,35 @@ load_dotenv()
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev")
 
+# ==== Guard / Auth decorators ====
+from functools import wraps
+from flask import session, redirect, url_for, flash, request
+
+def require_login(role=None):
+    """
+    Pakai @require_login() untuk halaman umum (harus login),
+    atau @require_login(role="admin") untuk halaman khusus admin.
+    """
+    def deco(f):
+        @wraps(f)
+        def inner(*a, **kw):
+            # belum login
+            if 'user_id' not in session:
+                # simpan tujuan biar bisa balik setelah login
+                session['next'] = request.full_path if request.query_string else request.path
+                return redirect(url_for('login'))
+
+            # cek role kalau diminta
+            if role is not None and session.get('role') != role:
+                flash('Anda tidak memiliki izin mengakses halaman ini.', 'error')
+                return redirect(url_for('dashboard'))
+            return f(*a, **kw)
+        return inner
+    return deco
+
+
+
+
 # Mail
 from flask_mail import Mail, Message
 app.config.update(MAIL_SETTINGS)
