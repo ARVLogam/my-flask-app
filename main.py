@@ -757,31 +757,98 @@ def orders_me():
 # ==== Admin: daftar pesanan ====
 
 @app.route("/admin/orders")
+@require_login(role="admin")
 def admin_orders():
-    if not check_role("admin"):
-        flash("Akses ditolak", "error")
-        return redirect(url_for("dashboard"))
-
+    # baca filter
     status = (request.args.get("status") or "semua").lower()
+    allowed = {"semua", "baru", "diterima", "diproses", "selesai", "batal"}
+    if status not in allowed:
+        status = "semua"
+
     where, params = "", []
     if status != "semua":
-        where, params = "WHERE o.status = %s", [status]
+        where = "WHERE o.status = %s"
+        params = [status]
 
     sql = f"""
-      SELECT
-        o.id,
-        COALESCE(u.nama, u.username) AS customer,
-        o.status, o.total, o.payment_method, o.payment_status, o.created_at
-      FROM orders o
-      LEFT JOIN users u ON u.id = o.user_id
-      {where}
-      ORDER BY o.id DESC
+        SELECT
+          o.id,
+          COALESCE(u.nama, u.username) AS customer,
+          o.status,
+          o.total,
+          COALESCE(o.payment_method, '-')   AS payment_method,
+          COALESCE(o.payment_status,'pending') AS payment_status,
+          o.created_at
+        FROM orders o
+        LEFT JOIN users u ON u.id = o.user_id
+        {where}
+        ORDER BY o.id DESC
     """
-    # PAKAI METHOD SELECT YANG ADA DI KELAS Database KAMU
-    db = Database(DB_CONFIG)
-    orders = db.select_all(sql, params)  # jika namanya beda (query/fetch_rows), sesuaikan
 
-    return render_template_string(ORDER_ADMIN_HTML, orders=orders, status=status)
+    db = Database(DB_CONFIG)
+
+    # --- ambil data dengan method yang tersedia di class Database ---
+    rows = None
+    if hasattr(db, "select_all"):
+        rows = db.select_all(sql, params)
+    elif hasattr(db, "fetch_all"):
+        rows = db.fetch_all(sql, params)
+    elif hasattr(db, "query"):
+        rows = db.query(sql, params)
+    else:
+        # last resort: raw connection
+        rows = []
+        try:
+            conn = db.get_conn() if hasattr(db, "get_conn") else None
+            if conn:
+                with conn.cursor() as cur:
+                    cur.execute(sql, params)
+                    rows = cur.fetchall()
+        except Exception:
+            rows = []
+
+    # --- normalisasi baris -> dict -> SimpleNamespace agar bisa o.id, o.customer, dst ---
+    def row_to_dict(r):
+        if r is None:
+            return {}
+        if isinstance(r, dict):
+            return r
+        try:
+            # urutan kolom sesuai SELECT di atas
+            return {
+                "id": r[0],
+                "customer": r[1],
+                "status": r[2],
+                "total": r[3],
+                "payment_method": r[4],
+                "payment_status": r[5],
+                "created_at": r[6],
+            }
+        except Exception:
+            # kalau namedtuple/objek lain
+            keys = ("id","customer","status","total","payment_method","payment_status","created_at")
+            return {k: getattr(r, k, None) for k in keys}
+
+    orders = [SimpleNamespace(**row_to_dict(r)) for r in (rows or [])]
+
+    # render template utama; kalau belum ada/ error, tampilkan fallback agar tidak 500
+    try:
+        return render_template("order_admin.html", orders=orders, status=status)
+    except Exception:
+        # fallback sederhana (supaya tidak 500 dan kamu tetap bisa melihat data)
+        html = [
+            "<h1>Kelola Pesanan (Fallback)</h1>",
+            "<p>Template <code>order_admin.html</code> belum ditemukan / error render.</p>",
+            "<table border=1 cellspacing=0 cellpadding=6>",
+            "<tr><th>#</th><th>Customer</th><th>Status</th><th>Total</th><th>Bayar</th></tr>",
+        ]
+        for o in orders:
+            total = 0 if o.total is None else int(o.total)
+            pay   = f"{getattr(o,'payment_method','-')} ({getattr(o,'payment_status','pending')})"
+            html.append(f"<tr><td>#{o.id}</td><td>{o.customer}</td><td>{o.status}</td>"
+                        f"<td>Rp {total:,}</td><td>{pay}</td></tr>")
+        html.append("</table>")
+        return render_template_string("\n".join(html)), 200
 
 
 
