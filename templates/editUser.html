@@ -8,11 +8,12 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+<body class="bg-neutral-100 min-h-screen flex items-center justify-center p-4">
   {% include 'flashProtection.html' %}
-  <div class="w-full max-w-md bg-white rounded-lg shadow-md overflow-hidden">
+  <div class="w-full max-w-md bg-white rounded-lg shadow-lg overflow-hidden">
+    
     <!-- Header -->
-    <div class="bg-red-600 py-4 px-6">
+    <div class="bg-green-700 py-4 px-6">
       <h1 class="text-2xl font-bold text-white text-center">Edit Pengguna</h1>
     </div>
 
@@ -21,25 +22,25 @@
 
       <!-- Username (readonly) -->
       <div>
-        <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+        <label for="username" class="block text-sm font-medium text-neutral-700 mb-1">Username</label>
         <div class="relative">
-          <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+          <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-neutral-400">
             <i class="fa-solid fa-user"></i>
           </span>
           <input type="text" id="username" name="username" value="{{ user[1] }}" readonly
-                 class="w-full pl-10 p-2.5 border border-gray-300 rounded-md bg-gray-100 text-gray-600"/>
+                 class="w-full pl-10 p-2.5 border border-neutral-300 rounded-lg bg-neutral-100 text-neutral-600"/>
         </div>
       </div>
 
       <!-- Role -->
       <div>
-        <label for="role" class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+        <label for="role" class="block text-sm font-medium text-neutral-700 mb-1">Role</label>
         <div class="relative">
-          <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+          <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-neutral-400">
             <i class="fa-solid fa-user-tag"></i>
           </span>
           <select id="role" name="role"
-                  class="w-full pl-10 p-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500">
+                  class="w-full pl-10 p-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-green-600">
             <option value="admin" {% if user[2] == 'admin' %}selected{% endif %}>Admin</option>
             <option value="user" {% if user[2] == 'user' %}selected{% endif %}>User</option>
           </select>
@@ -48,24 +49,24 @@
 
       <!-- Password (opsional) -->
       <div>
-        <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password Baru</label>
+        <label for="password" class="block text-sm font-medium text-neutral-700 mb-1">Password Baru</label>
         <div class="relative">
-          <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+          <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-neutral-400">
             <i class="fa-solid fa-lock"></i>
           </span>
           <input type="password" id="password" name="password" placeholder="Kosongkan jika tidak diubah"
-                 class="w-full pl-10 p-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500"/>
+                 class="w-full pl-10 p-2.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-green-600"/>
         </div>
-        <p class="text-xs text-gray-500 mt-1">Kosongkan jika tidak ingin mengubah password</p>
+        <p class="text-xs text-neutral-500 mt-1">Kosongkan jika tidak ingin mengubah password</p>
       </div>
 
       <!-- Actions -->
       <button type="submit"
-              class="w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition flex items-center justify-center">
+              class="w-full bg-green-700 hover:bg-green-800 text-white py-2 px-4 rounded-lg transition flex items-center justify-center">
         <i class="fa-solid fa-save mr-2"></i> Simpan Perubahan
       </button>
       <a href="{{ url_for('menuAdmin', roleMenu='kelolaUser') }}"
-         class="block text-center w-full bg-gray-200 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-300 transition mt-3">
+         class="block text-center w-full bg-neutral-200 text-neutral-800 py-2 px-4 rounded-lg hover:bg-neutral-300 transition mt-3">
         <i class="fa-solid fa-times mr-2"></i> Batal
       </a>
     </form>
