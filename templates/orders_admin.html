@@ -1,5 +1,4 @@
-ORDER_ADMIN_HTML = r"""
-{% set brand = {'primary':'#c08906','primaryDark':'#9a6f05'} %}
+<!-- templates/order_admin.html -->
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -7,68 +6,73 @@ ORDER_ADMIN_HTML = r"""
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Kelola Pesanan</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    :root{ --brand: {{ brand.primary }}; --brandDark: {{ brand.primaryDark }}; }
-    .btn-brand{background:var(--brand);color:#fff}
-    .btn-brand:hover{background:var(--brandDark)}
-    .pill{padding:.15rem .5rem;border-radius:9999px;font-size:.75rem}
-  </style>
 </head>
-<body class="bg-neutral-50 min-h-screen">
+<body class="bg-gray-50 min-h-screen">
   {% include 'navbar.html' %}
-
   <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
     {% include 'flashProtection.html' %}
 
-    <div class="flex items-center justify-between mb-5">
-      <h1 class="text-2xl font-bold text-neutral-900">Kelola Pesanan</h1>
-      <button onclick="history.back()" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-300 hover:bg-neutral-100 text-sm">← Kembali</button>
+    <!-- Header + Back -->
+    <div class="flex items-center justify-between mb-4">
+      <h1 class="text-2xl font-bold text-gray-800">Kelola Pesanan</h1>
+      <a href="{{ url_for('dashboard') }}"
+         class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 text-sm">
+        ← Kembali
+      </a>
     </div>
 
+    <!-- Filter -->
     <div class="mb-4 text-sm">
       Filter:
       {% for f in ['semua','baru','diterima','diproses','selesai','batal'] %}
         <a href="{{ url_for('admin_orders', status=f) }}"
-           class="mr-3 {{ 'font-semibold text-[color:var(--brand)]' if status==f else 'text-neutral-600 hover:underline' }}">
+           class="mr-3 {{ 'font-semibold text-yellow-700' if status==f else 'text-gray-600 hover:underline' }}">
           {{ f|capitalize }}
         </a>
       {% endfor %}
     </div>
 
-    <div class="bg-white rounded-2xl shadow border border-neutral-200 overflow-hidden">
+    <!-- Tabel -->
+    <div class="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
       <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-neutral-200">
-          <thead class="bg-neutral-100">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-100">
             <tr>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">#</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Customer</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Status</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Total</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Pembayaran</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Aksi</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">#</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Customer</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Total</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Bayar</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Aksi</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-neutral-200">
-            {% for o in orders %}
-            <tr class="hover:bg-neutral-50">
-              <td class="px-4 py-3 text-sm">#{{ o.id }}</td>
-              <td class="px-4 py-3 text-sm">{{ o.customer }}</td>
-              <td class="px-4 py-3 text-sm capitalize">
-                <span class="pill {{ 'bg-emerald-100 text-emerald-700' if o.status=='selesai' else
-                                      'bg-amber-100 text-amber-700' if o.status in ['baru','diterima','diproses'] else
-                                      'bg-rose-100 text-rose-700' }}">
-                  {{ o.status }}
-                </span>
-              </td>
-              <td class="px-4 py-3 text-sm">Rp {{ '{:,.0f}'.format(o.total or 0).replace(',', '.') }}</td>
-              <td class="px-4 py-3 text-sm">{{ (o.payment_method or '-').upper() }} <span class="text-neutral-500">({{ o.payment_status or '-' }})</span></td>
-              <td class="px-4 py-3 text-sm">
-                <a href="{{ url_for('admin_order_detail', order_id=o.id) }}" class="btn-brand inline-flex items-center gap-2 px-3 py-1.5 rounded-lg">Detail</a>
-              </td>
-            </tr>
+          <tbody class="divide-y divide-gray-200">
+            {% if orders and orders|length > 0 %}
+              {% for o in orders %}
+              <tr class="hover:bg-gray-50">
+                <td class="px-4 py-3 text-sm">#{{ o.id }}</td>
+                <td class="px-4 py-3 text-sm">{{ o.customer }}</td>
+                <td class="px-4 py-3 text-sm capitalize">{{ o.status }}</td>
+                <td class="px-4 py-3 text-sm">
+                  Rp {{ '{:,.0f}'.format((o.total or 0)|int).replace(',', '.') }}
+                </td>
+                <td class="px-4 py-3 text-sm">
+                  {{ (o.payment_method or '-')|upper }}
+                  <span class="text-gray-500">({{ o.payment_status or 'pending' }})</span>
+                </td>
+                <td class="px-4 py-3 text-sm">
+                  <a class="text-blue-600 hover:underline"
+                     href="{{ url_for('admin_order_detail', order_id=o.id) }}">Detail</a>
+                </td>
+              </tr>
+              {% endfor %}
             {% else %}
-            <tr><td colspan="6" class="px-4 py-6 text-center text-neutral-500">Belum ada pesanan.</td></tr>
-            {% endfor %}
+              <tr>
+                <td colspan="6" class="px-4 py-6 text-center text-gray-500">
+                  Belum ada pesanan untuk filter ini.
+                </td>
+              </tr>
+            {% endif %}
           </tbody>
         </table>
       </div>
@@ -76,4 +80,3 @@ ORDER_ADMIN_HTML = r"""
   </main>
 </body>
 </html>
-"""
