@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Kelola Pesanan</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
 </head>
 <body class="bg-gray-50 min-h-screen">
   {% include 'navbar.html' %}
@@ -51,17 +52,22 @@
             {% for o in orders %}
             <tr class="hover:bg-gray-50">
               <td class="px-4 py-3 text-sm">#{{ o.id }}</td>
-              <td class="px-4 py-3 text-sm">{{ o.customer }}</td> <!-- tampilkan nama/username -->
+              <td class="px-4 py-3 text-sm">{{ o.customer }}</td>
               <td class="px-4 py-3 text-sm capitalize">{{ o.status }}</td>
               <td class="px-4 py-3 text-sm">Rp {{ '{:,.0f}'.format(o.total).replace(',', '.') }}</td>
-              <td class="px-4 py-3 text-sm">{{ o.payment_method|upper }} <span class="text-gray-500">({{ o.payment_status }})</span></td>
+              <td class="px-4 py-3 text-sm">
+                {{ o.payment_method|upper }}
+                <span class="text-gray-500">({{ o.payment_status }})</span>
+              </td>
               <td class="px-4 py-3 text-sm">
                 <a href="{{ url_for('admin_order_detail', order_id=o.id) }}"
                    class="text-blue-600 hover:underline">Detail</a>
               </td>
             </tr>
             {% else %}
-            <tr><td colspan="6" class="px-4 py-6 text-center text-gray-500">Belum ada pesanan.</td></tr>
+            <tr>
+              <td colspan="6" class="px-4 py-6 text-center text-gray-500">Belum ada pesanan.</td>
+            </tr>
             {% endfor %}
           </tbody>
         </table>
