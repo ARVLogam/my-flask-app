@@ -998,7 +998,7 @@ def admin_order_detail(order_id):
     # --- Items (beri nomor urut + subtotal) ---
     sql_items = """
         SELECT
-          COALESCE(b.nama,'(Produk)') AS nama,
+          COALESCE(b.nama_barang,'(Produk)') AS nama,
           COALESCE(oi.qty,0)          AS qty,
           COALESCE(oi.harga,0)        AS harga
         FROM order_items oi
@@ -1006,6 +1006,7 @@ def admin_order_detail(order_id):
         WHERE oi.order_id = %s
         ORDER BY oi.id
     """
+
     rows = _fetch_all_sql(sql_items, [order_id]) or []
     items = []
     for idx, row in enumerate(rows, start=1):
