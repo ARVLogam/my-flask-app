@@ -1,4 +1,8 @@
+<!-- templates/navbar.html -->
 <nav class="fixed inset-x-0 top-0 z-50 bg-white/90 backdrop-blur border-b border-neutral-200">
+  <!-- (Opsional) CDN ikon; aman dipakai lokal di layout navbar saja -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
+
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16">
     <div class="flex h-full items-center justify-between">
 
@@ -7,13 +11,13 @@
         <img src="{{ url_for('static', filename='img/logo.PNG') }}" alt="Logo" class="h-8 w-auto"/>
       </a>
 
-      <!-- Desktop menu -->
+      <!-- ===== DESKTOP (>= md) ===== -->
       <div class="hidden md:flex items-center gap-6">
         {% set _role = role|default('user') %}
 
         {% if _role == 'admin' %}
-          <!-- Admin dropdown -->
-          <div class="relative" id="adminDropdown">
+          <!-- Admin dropdown (desktop) -->
+          <div class="relative" id="adminDesktop">
             <button type="button"
                     class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-green-600 text-white hover:bg-green-700">
               <i class="fa-solid fa-gear"></i>
@@ -21,94 +25,100 @@
               <i class="fa-solid fa-caret-down"></i>
             </button>
             <div class="absolute right-0 mt-2 w-60 rounded-xl border border-neutral-200 bg-white shadow-xl hidden">
-              <a href="{{ url_for('dashboard') }}" class="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50"><i class="fa-solid fa-home text-neutral-700"></i> Dashboard</a>
-              <a href="{{ url_for('addBarang') }}" class="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50"><i class="fa-solid fa-plus text-emerald-600"></i> Tambah Barang</a>
-              <a href="{{ url_for('menuAdmin', roleMenu='kelolaUser') }}" class="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50"><i class="fa-solid fa-users text-violet-600"></i> Kelola User</a>
-              <a href="{{ url_for('admin_orders') }}" class="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50"><i class="fa-solid fa-box text-blue-600"></i> Kelola Pesanan</a>
+              <a href="{{ url_for('dashboard') }}" class="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50"><i class="fa-solid fa-house text-neutral-700"></i><span>Dashboard</span></a>
+              <a href="{{ url_for('addBarang') }}" class="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50"><i class="fa-solid fa-square-plus text-emerald-600"></i><span>Tambah Barang</span></a>
+              <a href="{{ url_for('menuAdmin', roleMenu='kelolaUser') }}" class="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50"><i class="fa-solid fa-users-gear text-violet-600"></i><span>Kelola User</span></a>
+              <a href="{{ url_for('admin_orders') }}" class="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50"><i class="fa-solid fa-list-check text-blue-600"></i><span>Kelola Pesanan</span></a>
             </div>
           </div>
         {% else %}
-          <!-- Menu user -->
+          <!-- Menu user (desktop) -->
           <a href="{{ url_for('dashboard') }}" class="text-sm text-neutral-700 hover:text-red-600">Dashboard</a>
           <a href="{{ url_for('cart_view') }}" class="text-sm text-neutral-700 hover:text-red-600">Keranjang{% if cart_count %} ({{ cart_count }}){% endif %}</a>
           <a href="{{ url_for('orders_me') }}" class="text-sm text-neutral-700 hover:text-red-600">Pesanan Saya</a>
         {% endif %}
 
-        <!-- Profile dropdown -->
-        <div class="relative" id="profileDropdown">
-          <button type="button" class="inline-flex items-center gap-2 px-3 py-2 rounded-full border border-neutral-300 hover:bg-neutral-50">
-            <i class="fa-solid fa-user text-neutral-700"></i>
+        <!-- Profile dropdown (desktop) -->
+        {% set _avatar = avatar_url if avatar_url else url_for('static', filename='img/no-image.png') %}
+        <div class="relative" id="profileDesktop">
+          <button type="button" class="inline-flex items-center gap-2 pl-2 pr-3 py-2 rounded-full border border-neutral-300 hover:bg-neutral-50">
+            <img src="{{ _avatar }}" alt="avatar" class="h-7 w-7 rounded-full object-cover" onerror="this.src='{{ url_for('static', filename='img/no-image.png') }}'">
             <span class="hidden lg:inline text-sm text-neutral-700">Halo, {{ nama|default('Pengguna') }}</span>
             <i class="fa-solid fa-caret-down text-neutral-500"></i>
           </button>
-          <div class="absolute right-0 mt-2 w-56 rounded-xl border border-neutral-200 bg-white shadow-xl hidden">
-            <a href="{{ url_for('editProfile') }}" class="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50"><i class="fa-solid fa-id-card text-blue-600"></i> Profil</a>
-            <a href="{{ url_for('logout') }}" class="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 text-red-600"><i class="fa-solid fa-arrow-right-from-bracket"></i> Keluar</a>
+          <div class="absolute right-0 mt-2 w-56 rounded-xl border border-neutral-200 bg-white shadow-xl overflow-hidden hidden">
+            <a href="{{ url_for('editProfile') }}" class="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50"><i class="fa-solid fa-id-card text-blue-600"></i><span>Profil</span></a>
+            <a href="{{ url_for('logout') }}" class="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 text-red-600"><i class="fa-solid fa-right-from-bracket"></i><span>Keluar</span></a>
           </div>
         </div>
       </div>
 
-      <!-- Mobile menu (kanan) -->
-      <div class="md:hidden flex items-center gap-3">
-        {% if role == 'admin' %}
-          <!-- Admin menu mobile -->
-          <div class="relative" id="adminDropdownMobile">
-            <button class="p-2 rounded-lg bg-green-600 text-white hover:bg-green-700">
+      <!-- ===== MOBILE (< md) ===== -->
+      <div class="md:hidden flex items-center gap-2">
+        {% set _role_m = role|default('user') %}
+        {% set _avatar_m = avatar_url if avatar_url else url_for('static', filename='img/no-image.png') %}
+
+        {% if _role_m == 'admin' %}
+          <!-- KIRI: tombol Admin (gear) -->
+          <div class="relative" id="adminMobile">
+            <button class="h-9 w-9 inline-flex items-center justify-center rounded-lg bg-green-600 text-white hover:bg-green-700" aria-label="Menu admin">
               <i class="fa-solid fa-gear"></i>
             </button>
             <div class="absolute right-0 mt-2 w-56 rounded-xl border border-neutral-200 bg-white shadow-xl hidden">
-              <a href="{{ url_for('dashboard') }}" class="block px-4 py-2 hover:bg-neutral-50">Dashboard</a>
-              <a href="{{ url_for('addBarang') }}" class="block px-4 py-2 hover:bg-neutral-50">Tambah Barang</a>
-              <a href="{{ url_for('menuAdmin', roleMenu='kelolaUser') }}" class="block px-4 py-2 hover:bg-neutral-50">Kelola User</a>
-              <a href="{{ url_for('admin_orders') }}" class="block px-4 py-2 hover:bg-neutral-50">Kelola Pesanan</a>
+              <a href="{{ url_for('dashboard') }}" class="block px-4 py-2 hover:bg-neutral-50"><i class="fa-solid fa-house mr-2"></i>Dashboard</a>
+              <a href="{{ url_for('addBarang') }}" class="block px-4 py-2 hover:bg-neutral-50"><i class="fa-solid fa-square-plus mr-2"></i>Tambah Barang</a>
+              <a href="{{ url_for('menuAdmin', roleMenu='kelolaUser') }}" class="block px-4 py-2 hover:bg-neutral-50"><i class="fa-solid fa-users-gear mr-2"></i>Kelola User</a>
+              <a href="{{ url_for('admin_orders') }}" class="block px-4 py-2 hover:bg-neutral-50"><i class="fa-solid fa-list-check mr-2"></i>Kelola Pesanan</a>
             </div>
           </div>
         {% else %}
-          <!-- Hamburger untuk user -->
-          <div class="relative" id="userMenuMobile">
-            <button class="p-2 rounded-lg border border-neutral-300 hover:bg-neutral-100">
+          <!-- KIRI: hamburger untuk user -->
+          <div class="relative" id="userMobileMenu">
+            <button class="h-9 w-9 inline-flex items-center justify-center rounded-lg border border-neutral-300 hover:bg-neutral-100" aria-label="Menu">
               <i class="fa-solid fa-bars"></i>
             </button>
             <div class="absolute right-0 mt-2 w-56 rounded-xl border border-neutral-200 bg-white shadow-xl hidden">
-              <a href="{{ url_for('dashboard') }}" class="block px-4 py-2 hover:bg-neutral-50">Dashboard</a>
-              <a href="{{ url_for('cart_view') }}" class="block px-4 py-2 hover:bg-neutral-50">Keranjang{% if cart_count %} ({{ cart_count }}){% endif %}</a>
-              <a href="{{ url_for('orders_me') }}" class="block px-4 py-2 hover:bg-neutral-50">Pesanan Saya</a>
+              <a href="{{ url_for('dashboard') }}" class="block px-4 py-2 hover:bg-neutral-50"><i class="fa-solid fa-house mr-2"></i>Dashboard</a>
+              <a href="{{ url_for('cart_view') }}" class="block px-4 py-2 hover:bg-neutral-50"><i class="fa-solid fa-cart-shopping mr-2"></i>Keranjang{% if cart_count %} ({{ cart_count }}){% endif %}</a>
+              <a href="{{ url_for('orders_me') }}" class="block px-4 py-2 hover:bg-neutral-50"><i class="fa-solid fa-receipt mr-2"></i>Pesanan Saya</a>
             </div>
           </div>
         {% endif %}
 
-        <!-- Profile mobile -->
-        <div class="relative" id="profileDropdownMobile">
-          <button class="p-2 rounded-full border border-neutral-300 hover:bg-neutral-100">
-            <i class="fa-solid fa-user text-neutral-700"></i>
+        <!-- KANAN: Avatar (profil & keluar) -->
+        <div class="relative" id="profileMobile">
+          <button class="h-9 w-9 rounded-full border border-neutral-300 overflow-hidden" aria-label="Profil">
+            <img src="{{ _avatar_m }}" alt="avatar" class="h-full w-full object-cover" onerror="this.src='{{ url_for('static', filename='img/no-image.png') }}'">
           </button>
           <div class="absolute right-0 mt-2 w-56 rounded-xl border border-neutral-200 bg-white shadow-xl hidden">
-            <a href="{{ url_for('editProfile') }}" class="block px-4 py-2 hover:bg-neutral-50">Profil</a>
-            <a href="{{ url_for('logout') }}" class="block px-4 py-2 hover:bg-neutral-50 text-red-600">Keluar</a>
+            <a href="{{ url_for('editProfile') }}" class="block px-4 py-2 hover:bg-neutral-50"><i class="fa-solid fa-id-card mr-2"></i>Profil</a>
+            <a href="{{ url_for('logout') }}" class="block px-4 py-2 hover:bg-neutral-50 text-red-600"><i class="fa-solid fa-right-from-bracket mr-2"></i>Keluar</a>
           </div>
         </div>
       </div>
+      <!-- /MOBILE -->
     </div>
   </div>
 </nav>
 
+<!-- spacer agar konten tidak ketutup navbar -->
 <div class="h-16"></div>
 
 <script>
-  // dropdown helper
-  function setupDropdown(rootId) {
-    const root = document.getElementById(rootId);
-    if (!root) return;
-    const btn = root.querySelector('button');
-    const panel = root.querySelector('div.absolute');
-    btn.addEventListener('click', () => panel.classList.toggle('hidden'));
-    document.addEventListener('click', (e) => {
-      if (!root.contains(e.target)) panel.classList.add('hidden');
-    });
+  // util untuk dropdown
+  function bindDropdown(rootId){
+    const root=document.getElementById(rootId);
+    if(!root) return;
+    const btn=root.querySelector('button');
+    const panel=root.querySelector('div.absolute');
+    btn.addEventListener('click',()=>panel.classList.toggle('hidden'));
+    document.addEventListener('click',(e)=>{ if(!root.contains(e.target)) panel.classList.add('hidden'); });
   }
-  setupDropdown('adminDropdown');
-  setupDropdown('profileDropdown');
-  setupDropdown('adminDropdownMobile');
-  setupDropdown('userMenuMobile');
-  setupDropdown('profileDropdownMobile');
+  // desktop
+  bindDropdown('adminDesktop');
+  bindDropdown('profileDesktop');
+  // mobile
+  bindDropdown('adminMobile');
+  bindDropdown('userMobileMenu');
+  bindDropdown('profileMobile');
 </script>
