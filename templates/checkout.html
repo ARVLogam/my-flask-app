@@ -1,69 +1,148 @@
-<!-- ... header / navbar kamu ... -->
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Checkout</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-neutral-50 min-h-screen">
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <h1 class="text-2xl font-bold text-neutral-900 mb-6">Ringkasan</h1>
 
-<main class="max-w-4xl mx-auto px-4 py-6">
-  {% include 'flashProtection.html' %}
+    <div class="grid lg:grid-cols-3 gap-6">
+      <!-- Kiri: Alamat + Metode + Upload -->
+      <form method="post" enctype="multipart/form-data" class="lg:col-span-2 space-y-6">
+        <!-- Alamat -->
+        <section class="bg-white rounded-2xl shadow-sm border border-neutral-200 p-6">
+          <h2 class="font-semibold text-neutral-900 mb-3">Alamat Pengiriman</h2>
+          <textarea name="shipping_address" rows="4" required
+            class="w-full rounded-xl border border-neutral-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 p-3"
+            placeholder="Tulis alamat lengkap pengiriman…"></textarea>
+        </section>
 
-  <!-- Rangkuman keranjang (pakai punyamu) -->
-  <!-- items & total sudah dikirim dari route -->
-  <section class="mb-6">
-    <h2 class="text-xl font-semibold mb-3">Ringkasan</h2>
-    <!-- tabel items kamu -->
-    <div class="text-right font-bold">Total: Rp {{ '{:,.0f}'.format(total).replace(',', '.') }}</div>
-  </section>
+        <!-- Metode Pembayaran -->
+        <section class="bg-white rounded-2xl shadow-sm border border-neutral-200 p-6">
+          <h2 class="font-semibold text-neutral-900 mb-3">Metode Pembayaran</h2>
 
-  <form method="post" enctype="multipart/form-data" class="space-y-6">
-    <!-- Alamat -->
-    <div>
-      <label class="block text-sm font-medium mb-1">Alamat Pengiriman</label>
-      <textarea name="shipping_address" rows="3" class="w-full border rounded p-2" required></textarea>
-    </div>
+          <div class="space-y-3" id="payMethodWrap">
+            <label class="flex items-start gap-3">
+              <input type="radio" name="payment_method" value="TRANSFER" class="mt-1" />
+              <div>
+                <div class="font-medium">Transfer Bank (BCA)</div>
+                <div class="text-sm text-neutral-600 leading-6">
+                  <span class="font-semibold">BCA</span><br/>
+                  <span class="font-semibold">No. Rekening:</span> 1234567890<br/>
+                  <span class="font-semibold">Nama:</span> PT Contoh Jaya<br/>
+                  Unggah bukti transfer pada bagian <em>Upload Bukti</em> di bawah setelah melakukan pembayaran.
+                </div>
+              </div>
+            </label>
 
-    <!-- Metode bayar -->
-    <div>
-      <label class="block text-sm font-medium mb-2">Metode Pembayaran</label>
-      <div class="space-y-2">
-        <label class="flex items-center gap-2">
-          <input type="radio" name="payment_method" value="TRANSFER" checked>
-          <span>Transfer Bank (BCA)</span>
-        </label>
-        <div class="ml-6 text-sm text-neutral-700 bg-neutral-50 border rounded p-3">
-          <div><b>BCA</b></div>
-          <div><b>No. Rekening:</b> <span class="tracking-wider">1234567890</span></div>
-          <div><b>Nama:</b> PT Contoh Jaya</div>
-          <div class="mt-1 text-neutral-500">Unggah bukti transfer di bawah setelah pembayaran.</div>
+            <label class="flex items-start gap-3">
+              <input type="radio" name="payment_method" value="QRIS" class="mt-1" checked />
+              <div>
+                <div class="font-medium">QRIS (statis)</div>
+                <div class="text-sm text-neutral-600">
+                  Scan QR berikut lalu unggah bukti pembayaran.
+                </div>
+
+                <!-- QRIS preview kalau tersedia -->
+                {% if qris_url %}
+                <div class="mt-3">
+                  <img src="{{ qris_url }}" alt="QRIS" class="h-44 w-44 rounded-lg border border-neutral-200 object-contain bg-white" />
+                </div>
+                {% else %}
+                <div class="mt-3 text-sm text-neutral-500">
+                  QRIS belum diunggah admin.
+                </div>
+                {% endif %}
+              </div>
+            </label>
+          </div>
+        </section>
+
+        <!-- Upload Bukti -->
+        <section class="bg-white rounded-2xl shadow-sm border border-neutral-200 p-6">
+          <h2 class="font-semibold text-neutral-900 mb-4">Upload Bukti</h2>
+
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm text-neutral-700 mb-1">Bukti Transfer (jpg/png/pdf)</label>
+              <input type="file" name="transfer_proof" accept=".jpg,.jpeg,.png,.pdf"
+                     class="block w-full text-sm file:mr-4 file:px-4 file:py-2 file:rounded-lg
+                            file:border-0 file:bg-amber-600 file:text-white hover:file:bg-amber-700
+                            border border-neutral-300 rounded-xl p-2 bg-white" />
+              <p class="text-xs text-neutral-500 mt-1">Opsional—gunakan jika memilih Transfer.</p>
+            </div>
+
+            <div>
+              <label class="block text-sm text-neutral-700 mb-1">Bukti Pembayaran QRIS (jpg/png/pdf)</label>
+              <input type="file" name="qris_proof" accept=".jpg,.jpeg,.png,.pdf"
+                     class="block w-full text-sm file:mr-4 file:px-4 file:py-2 file:rounded-lg
+                            file:border-0 file:bg-amber-600 file:text-white hover:file:bg-amber-700
+                            border border-neutral-300 rounded-xl p-2 bg-white" />
+              <p class="text-xs text-neutral-500 mt-1">Opsional—unggah jika memilih QRIS.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Submit -->
+        <div class="flex gap-3">
+          <button type="submit"
+                  class="px-5 py-3 rounded-xl bg-amber-700 hover:bg-amber-800 text-white font-medium">
+            Buat Pesanan
+          </button>
+          <a href="{{ url_for('dashboard') }}"
+             class="px-5 py-3 rounded-xl border border-neutral-300 hover:bg-neutral-100 text-neutral-700">
+            Kembali
+          </a>
+        </div>
+      </form>
+
+      <!-- Kanan: Ringkasan Belanja -->
+      <aside class="bg-white rounded-2xl shadow-sm border border-neutral-200 p-6 h-fit">
+        <h2 class="font-semibold text-neutral-900 mb-4">Ringkasan Belanja</h2>
+
+        <div class="space-y-3 mb-4 max-h-56 overflow-auto pr-1">
+          {% for it in items %}
+            <div class="flex justify-between text-sm">
+              <div class="text-neutral-700">{{ it.nama or it.product_name }}</div>
+              <div class="text-neutral-600">x{{ it.qty }}</div>
+            </div>
+          {% endfor %}
         </div>
 
-        <label class="flex items-center gap-2">
-          <input type="radio" name="payment_method" value="QRIS">
-          <span>QRIS (statis)</span>
-        </label>
-        <div class="ml-6 text-sm text-neutral-700 bg-neutral-50 border rounded p-3">
-          <div class="mb-2">Scan QR berikut lalu unggah bukti pembayaran:</div>
-          {% if qris_url %}
-            <img src="{{ qris_url }}" alt="QRIS" class="h-48 w-48 object-contain border rounded">
-          {% else %}
-            <div class="text-neutral-500">QRIS belum diunggah admin.</div>
-          {% endif %}
+        <div class="border-t border-neutral-200 pt-3 flex justify-between items-center">
+          <div class="text-neutral-600">Total</div>
+          <div class="text-lg font-bold text-amber-700">
+            Rp {{ '{:,.0f}'.format(total|int).replace(',', '.') }}
+          </div>
         </div>
-      </div>
+      </aside>
     </div>
+  </main>
 
-    <!-- Upload bukti -->
-    <div class="grid md:grid-cols-2 gap-4">
-      <div>
-        <label class="block text-sm font-medium mb-1">Bukti Transfer (jpg/png/pdf)</label>
-        <input type="file" name="transfer_proof" accept="image/*,application/pdf" class="block w-full">
-        <div class="text-xs text-neutral-500 mt-1">Opsional — unggah jika memilih Transfer.</div>
-      </div>
-      <div>
-        <label class="block text-sm font-medium mb-1">Bukti Pembayaran QRIS (jpg/png/pdf)</label>
-        <input type="file" name="qris_proof" accept="image/*,application/pdf" class="block w-full">
-        <div class="text-xs text-neutral-500 mt-1">Opsional — unggah jika memilih QRIS.</div>
-      </div>
-    </div>
+  <script>
+    // Optional: highlight upload yang relevan saat user ganti metode
+    (function () {
+      const radios = document.querySelectorAll('input[name="payment_method"]');
+      const tfInput = document.querySelector('input[name="transfer_proof"]');
+      const qrisInput = document.querySelector('input[name="qris_proof"]');
 
-    <button class="px-4 py-2 rounded bg-amber-600 text-white hover:bg-amber-700">
-      Buat Pesanan
-    </button>
-  </form>
-</main>
+      function toggle() {
+        const val = document.querySelector('input[name="payment_method"]:checked').value;
+        if (val === 'TRANSFER') {
+          tfInput.parentElement.classList.remove('opacity-50');
+          qrisInput.parentElement.classList.add('opacity-50');
+        } else {
+          qrisInput.parentElement.classList.remove('opacity-50');
+          tfInput.parentElement.classList.add('opacity-50');
+        }
+      }
+      radios.forEach(r => r.addEventListener('change', toggle));
+      toggle();
+    })();
+  </script>
+</body>
+</html>
