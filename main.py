@@ -942,79 +942,54 @@ def _fetch_one_sql(sql, params=None):
 # =========================
 # ADMIN: Detail Pesanan
 # =========================
-@app.route("/admin/orders/<order_id>", methods=["GET", "POST"])
+@app.route("/admin/orders/<int:order_id>", methods=["GET"])
 def admin_order_detail(order_id):
-    if not check_role("admin"):
-        flash("Akses ditolak", "error")
-        return redirect(url_for("dashboard"))
+    if not session.get("is_admin"):
+        flash("Hanya admin yang bisa mengakses halaman ini", "danger")
+        return redirect(url_for("index"))
 
-    # Update status (jika POST)
-    if request.method == "POST":
-        action  = (request.form.get("action") or "").lower()
-        mapping = {"terima": "diterima", "proses": "diproses",
-                   "selesai": "selesai", "batal": "batal"}
-        if action in mapping:
-            try:
-                ok = Database(DB_CONFIG).update_order_status(order_id, mapping[action])
-            except Exception:
-                ok = False
-            flash("Status diperbarui" if ok else "Gagal memperbarui status",
-                  "success" if ok else "error")
-        else:
-            flash("Aksi tidak dikenali", "warning")
-        return redirect(url_for("admin_order_detail", order_id=order_id))
+    db = get_db()
 
-    # Header pesanan: ambil nama customer dari users.nama kalau ada, jika tidak pakai username
+    # Ambil data utama order
     sql_head = """
-        SELECT
-          o.id,
-          COALESCE(u.nama, u.username) AS customer,
-          o.status,
-          COALESCE(o.total,0) AS total,
-          COALESCE(o.payment_method,'-') AS payment_method,
-          COALESCE(o.payment_status,'-') AS payment_status,
-          o.created_at
+        SELECT 
+            o.id,
+            u.username AS customer,
+            o.total_harga,
+            o.status,
+            o.created_at
         FROM orders o
         LEFT JOIN users u ON u.id = o.user_id
         WHERE o.id = %s
     """
     row = _fetch_one_sql(sql_head, [order_id])
     if not row:
-        flash("Pesanan tidak ditemukan", "error")
+        flash("Order tidak ditemukan", "danger")
         return redirect(url_for("admin_orders"))
 
     order = {
-        "id":            row[0],
-        "customer":      row[1],
-        "status":        row[2] or "-",
-        "total":         int(row[3] or 0),
-        "payment_method":row[4] or "-",
-        "payment_status":row[5] or "-",
-        "created_at":    row[6],
+        "id": row["id"],
+        "customer": row["customer"],
+        "total_harga": row["total_harga"],
+        "status": row["status"],
+        "created_at": row["created_at"]
     }
 
-    # Items: tanpa join ke barang (hindari error kolom), nanti 'Produk' ditampilkan nomor urut 1,2,3,...
+    # Ambil detail item order
     sql_items = """
-        SELECT oi.id, COALESCE(oi.qty,0) AS qty, COALESCE(oi.harga,0) AS harga
-        FROM order_items oi
-        WHERE oi.order_id = %s
-        ORDER BY oi.id
+        SELECT 
+            p.nama AS produk,
+            od.jumlah AS qty,
+            od.harga AS harga_satuan,
+            (od.jumlah * od.harga) AS subtotal
+        FROM order_details od
+        LEFT JOIN barang p ON p.id = od.barang_id
+        WHERE od.order_id = %s
     """
-    rows = _fetch_all_sql(sql_items, [order_id]) or []
-
-    items = []
-    for idx, r in enumerate(rows, start=1):
-        qty = int(r[1] or 0)
-        harga = int(r[2] or 0)
-        items.append({
-            "no": idx,                 # nomor urut untuk kolom "Produk"
-            "id": r[0],
-            "qty": qty,                # jumlah produk
-            "harga": harga,
-            "subtotal": qty * harga,   # qty x harga
-        })
+    items = _fetch_all_sql(sql_items, [order_id]) or []
 
     return render_template("order_detail_admin.html", order=order, items=items)
+
 
 
 
