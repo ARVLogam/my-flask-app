@@ -1,23 +1,41 @@
-<!-- templates/dashboard.html -->
+<!-- templates/dashboard.html (tema emas–coklat selaras logo) -->
 <!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Etalase Produk</title>
+
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Palet warna brand -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand:     '#d4a017',  // emas
+            brandDark: '#8b5e00',  // coklat tua
+            brandLite: '#f6d27a',  // emas muda
+            ink:       '#111827',  // teks gelap
+            paper:     '#F8F7F4'   // putih hangat
+          },
+          boxShadow: { card: '0 10px 25px rgba(0,0,0,.06)' }
+        }
+      }
+    }
+  </script>
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
   <style>
     * { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
-    .card-shadow { box-shadow: 0 10px 25px rgba(0,0,0,.06); }
     .line-clamp-2 { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
     .scrollbar-hide::-webkit-scrollbar{display:none}
     .scrollbar-hide{ -ms-overflow-style:none; scrollbar-width:none }
   </style>
 </head>
-<body class="bg-neutral-50 min-h-screen">
+<body class="bg-paper min-h-screen">
 
   {% include 'navbar.html' %}
   {% set _role = role|default('user') %}
@@ -28,8 +46,8 @@
 
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-      <h1 class="text-xl sm:text-2xl font-bold text-neutral-900">Etalase Produk</h1>
-      <div class="text-sm text-neutral-600">Total produk: <strong>{{ total_produk }}</strong></div>
+      <h1 class="text-xl sm:text-2xl font-bold text-ink">Etalase Produk</h1>
+      <div class="text-sm text-ink/70">Total produk: <strong class="text-ink">{{ total_produk }}</strong></div>
     </div>
 
     <div id="gridProduk" class="grid gap-4 sm:gap-5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
@@ -41,9 +59,9 @@
         {% set desk  = item[3] %}
         {% set ver   = (item[6] if item|length>6 and item[6] else range(1,1000000)|random) %}
 
-        <article class="card group bg-white rounded-2xl card-shadow border border-neutral-100 flex flex-col overflow-hidden"
+        <article class="group bg-white rounded-2xl shadow-card border border-brand/10 flex flex-col overflow-hidden"
                  data-name="{{ nama|lower }}" data-cat="semua">
-          <div class="relative aspect-[4/3] overflow-hidden bg-neutral-100">
+          <div class="relative aspect-[4/3] overflow-hidden bg-brandLite/20">
             <img
               data-id="{{ id }}"
               data-try="webp"
@@ -53,23 +71,25 @@
               onerror="tryNextExt(this)"
               loading="lazy"
             />
-            <div class="absolute left-2 top-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full shadow">Terlaris</div>
+            <div class="absolute left-2 top-2 bg-brand text-ink text-xs px-2 py-1 rounded-full shadow">
+              Terlaris
+            </div>
           </div>
 
           <div class="p-3 sm:p-4 flex-1 flex flex-col">
-            <h3 class="font-semibold text-neutral-900 text-sm sm:text-base line-clamp-2 min-h-[2.5rem]">{{ nama }}</h3>
-            <p class="text-xs text-neutral-500 mt-1 line-clamp-2 min-h-[2rem]">{{ desk }}</p>
+            <h3 class="font-semibold text-ink text-sm sm:text-base line-clamp-2 min-h-[2.5rem]">{{ nama }}</h3>
+            <p class="text-xs text-ink/60 mt-1 line-clamp-2 min-h-[2rem]">{{ desk }}</p>
 
             <div class="mt-3 sm:mt-4">
-              <div class="text-base sm:text-lg font-bold text-red-600">
+              <div class="text-base sm:text-lg font-bold text-brandDark">
                 Rp {{ '{:,.0f}'.format(harga).replace(',', '.') }}
               </div>
             </div>
 
             <div class="mt-3 sm:mt-4 grid grid-cols-2 gap-2">
-              <!-- Tombol Detail: data-attributes -> modal -->
+              <!-- Tombol Detail -->
               <a href="#"
-                 class="btn-detail text-center text-sm border border-neutral-300 rounded-lg py-2 hover:bg-neutral-50"
+                 class="btn-detail text-center text-sm border border-ink/15 rounded-lg py-2 hover:bg-brandLite/20"
                  data-id="{{ id }}"
                  data-name="{{ nama }}"
                  data-price="{{ '{:,.0f}'.format(harga).replace(',', '.') }}"
@@ -80,11 +100,13 @@
 
               {% if _role == 'admin' %}
                 <a href="{{ url_for('editBarang', id_barang=id) }}"
-                   class="text-center text-sm bg-red-600 text-white rounded-lg py-2 hover:bg-red-700">Edit</a>
+                   class="text-center text-sm bg-brand text-ink rounded-lg py-2 hover:bg-brandDark hover:text-white">
+                  Edit
+                </a>
               {% else %}
                 <form action="{{ url_for('cart_add', barang_id=id) }}" method="post">
                   <input type="hidden" name="qty" value="1">
-                  <button class="w-full text-center text-sm bg-red-600 text-white rounded-lg py-2 hover:bg-red-700">
+                  <button class="w-full text-center text-sm bg-brand text-ink rounded-lg py-2 hover:bg-brandDark hover:text-white">
                     Tambah
                   </button>
                 </form>
@@ -96,14 +118,14 @@
     </div>
 
     {% if barang|length == 0 %}
-      <div class="text-center py-20 text-neutral-500">
-        Belum ada produk. {% if _role == 'admin' %}<a href="{{ url_for('addBarang') }}" class="text-red-600 hover:underline">Tambah sekarang</a>.{% endif %}
+      <div class="text-center py-20 text-ink/60">
+        Belum ada produk. {% if _role == 'admin' %}<a href="{{ url_for('addBarang') }}" class="text-brandDark hover:underline">Tambah sekarang</a>.{% endif %}
       </div>
     {% endif %}
   </main>
 
-  <footer class="border-t border-neutral-200 bg-white">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-sm text-neutral-500">
+  <footer class="border-t border-brand/20 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-sm text-ink/60">
       © Sistem Management ARV LOGAM • Dibuat dengan ❤️
     </div>
   </footer>
@@ -114,11 +136,11 @@
     <div class="absolute inset-0 bg-black/50" data-close-modal></div>
 
     <!-- card -->
-    <div class="relative mx-4 w-full max-w-lg rounded-2xl bg-white shadow-2xl">
+    <div class="relative mx-4 w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-brand/20">
       <!-- header -->
       <div class="flex items-center justify-between border-b px-5 py-4">
-        <h3 id="mdTitle" class="text-lg font-semibold text-neutral-900">Detail Produk</h3>
-        <button class="h-9 w-9 rounded-full hover:bg-neutral-100" data-close-modal aria-label="Tutup">
+        <h3 id="mdTitle" class="text-lg font-semibold text-ink">Detail Produk</h3>
+        <button class="h-9 w-9 rounded-full hover:bg-brandLite/30" data-close-modal aria-label="Tutup">
           <svg class="mx-auto h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 18 6M6 6l12 12"/>
           </svg>
@@ -127,33 +149,33 @@
 
       <!-- body -->
       <div class="grid gap-4 p-5 sm:grid-cols-2">
-        <div class="rounded-xl border bg-neutral-50 p-2">
+        <div class="rounded-xl border bg-brandLite/20 p-2">
           <img id="mdImage" src="" alt="" class="h-48 w-full rounded-lg object-contain bg-white"
                onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/no-image.png') }}';">
         </div>
         <div class="space-y-2">
           <div>
-            <div class="text-xs text-neutral-500">Nama</div>
-            <div id="mdName" class="font-semibold text-neutral-900"></div>
+            <div class="text-xs text-ink/60">Nama</div>
+            <div id="mdName" class="font-semibold text-ink"></div>
           </div>
           <div>
-            <div class="text-xs text-neutral-500">Harga</div>
-            <div id="mdPrice" class="text-red-600 font-bold text-lg"></div>
+            <div class="text-xs text-ink/60">Harga</div>
+            <div id="mdPrice" class="text-brandDark font-bold text-lg"></div>
           </div>
           <div>
-            <div class="text-xs text-neutral-500">Deskripsi</div>
-            <div id="mdDesc" class="text-sm text-neutral-700"></div>
+            <div class="text-xs text-ink/60">Deskripsi</div>
+            <div id="mdDesc" class="text-sm text-ink/80"></div>
           </div>
         </div>
       </div>
 
       <!-- footer -->
       <div class="flex items-center justify-end gap-3 border-t px-5 py-4">
-        <button class="rounded-lg border px-4 py-2 text-sm hover:bg-neutral-50" data-close-modal>Tutup</button>
+        <button class="rounded-lg border px-4 py-2 text-sm hover:bg-brandLite/30" data-close-modal>Tutup</button>
 
         {% if _role == 'admin' %}
           <a id="mdEditLink" href="#"
-             class="rounded-lg bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700">
+             class="rounded-lg bg-brand px-4 py-2 text-sm text-ink hover:bg-brandDark hover:text-white">
             Edit Produk
           </a>
         {% else %}
@@ -161,7 +183,7 @@
           <form id="mdAddForm" method="post" class="flex items-center gap-2">
             <input name="qty" type="number" value="1" min="1"
                    class="w-20 border rounded px-2 py-1">
-            <button class="rounded-lg bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700">
+            <button class="rounded-lg bg-brand px-4 py-2 text-sm text-ink hover:bg-brandDark hover:text-white">
               Tambah
             </button>
           </form>
@@ -175,7 +197,7 @@
     function tryNextExt(img){
       const base = "{{ url_for('static', filename='img/products/') }}";
       const id   = img.getAttribute('data-id');
-      const ver  = "{{ range(1,1000000)|random }}";  // cache-busting cadangan
+      const ver  = "{{ range(1,1000000)|random }}";
       const tried = img.getAttribute('data-try') || 'webp';
 
       if (tried === 'webp'){
@@ -190,7 +212,7 @@
       }
     }
 
-    // ===== Modal logic (buka/tutup + isi detail)
+    // ===== Modal logic
     (function () {
       const modal   = document.getElementById('modalDetail');
       const imgEl   = document.getElementById('mdImage');
@@ -201,10 +223,8 @@
       const editEl  = document.getElementById('mdEditLink');
       const addForm = document.getElementById('mdAddForm');
 
-      // URL dasar untuk cart_add (barang_id=0), nanti kita ganti "0" di ujung dengan id asli
       const addUrlBase = "{{ url_for('cart_add', barang_id=0) }}";
 
-      // buka modal
       function openModal(data) {
         nameEl.textContent  = data.name || '';
         priceEl.textContent = 'Rp ' + (data.price || '0');
@@ -217,7 +237,6 @@
           editEl.href = "{{ url_for('editBarang', id_barang='__ID__') }}".replace('__ID__', data.id);
         }
         if (addForm) {
-          // ganti angka 0 paling akhir pada '/cart/add/0' menjadi id produk
           addForm.action = addUrlBase.replace(/0$/, String(data.id));
         }
 
@@ -226,14 +245,12 @@
         document.body.classList.add('overflow-hidden');
       }
 
-      // tutup modal
       function closeModal() {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
         document.body.classList.remove('overflow-hidden');
       }
 
-      // binding tombol Detail
       document.querySelectorAll('.btn-detail').forEach(btn => {
         btn.addEventListener('click', (e) => {
           e.preventDefault();
@@ -247,11 +264,9 @@
         });
       });
 
-      // handler tutup
       modal.querySelectorAll('[data-close-modal]').forEach(el => el.addEventListener('click', closeModal));
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
 
-      // fallback gambar untuk modal
       function setImageWithFallback(imgEl, id, initialSrc) {
         const base = "{{ url_for('static', filename='img/products/') }}";
         const noimg = "{{ url_for('static', filename='img/no-image.png') }}";
