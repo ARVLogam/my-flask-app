@@ -812,8 +812,7 @@ def admin_orders():
                     "created_at":     r[6],
                 })
 
-    return render_template("order_admin.html", orders=orders, status=status)
-
+   return render_template("admin/order_admin.html", orders=orders, status=status)
 
 
 
