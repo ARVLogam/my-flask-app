@@ -741,7 +741,7 @@ def admin_orders():
         return redirect(url_for("dashboard"))
 
     status = (request.args.get("status") or "semua").lower()
-    where  = "" ; params = []
+    where, params = "", []
     if status != "semua":
         where = "WHERE o.status = %s"
         params = [status]
@@ -762,57 +762,26 @@ def admin_orders():
     """
 
     db = Database(DB_CONFIG)
+    rows = db.fetch_all(sql, params)
 
-    # Coba ambil sebagai dict lebih dulu (kalau helper-nya ada)
-    rows = None
-    for method_name in ["fetch_all_dict", "fetch_all", "query", "select_all", "select"]:
-        if hasattr(db, method_name):
-            try:
-                rows = getattr(db, method_name)(sql, params)
-                break
-            except TypeError:
-                # Ada helper yang hanya terima 1 argumen
-                try:
-                    rows = getattr(db, method_name)(sql)
-                    break
-                except Exception:
-                    pass
-        # lanjut coba method berikutnya
-
-    if rows is None:
-        # fallback terakhir
-        rows = []
-
-    # Normalisasi: pastikan jadi list of dict
+    # Normalisasi hasil query ke list of dict
     orders = []
-    if rows:
-        sample = rows[0]
-        if isinstance(sample, dict):
-            # Sudah dict
-            for r in rows:
-                orders.append({
-                    "id":             r.get("id"),
-                    "customer":       r.get("customer"),
-                    "status":         r.get("status"),
-                    "total":          r.get("total"),
-                    "payment_method": r.get("payment_method"),
-                    "payment_status": r.get("payment_status"),
-                    "created_at":     r.get("created_at"),
-                })
+    for r in rows:
+        if isinstance(r, dict):
+            orders.append(r)
         else:
-            # Anggap tuple urut kolom SELECT
-            for r in rows:
-                orders.append({
-                    "id":             r[0],
-                    "customer":       r[1],
-                    "status":         r[2],
-                    "total":          r[3],
-                    "payment_method": r[4],
-                    "payment_status": r[5],
-                    "created_at":     r[6],
-                })
+            orders.append({
+                "id": r[0],
+                "customer": r[1],
+                "status": r[2],
+                "total": r[3],
+                "payment_method": r[4],
+                "payment_status": r[5],
+                "created_at": r[6],
+            })
 
-   return render_template("admin/order_admin.html", orders=orders, status=status)
+    return render_template("order_admin.html", orders=orders, status=status)
+
 
 
 
