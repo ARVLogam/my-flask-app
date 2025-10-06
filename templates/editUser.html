@@ -1,95 +1,177 @@
+<!-- templates/editUser.html -->
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Edit Pengguna</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
-      rel="stylesheet"
-    />
-  </head>
-  <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
-    {% include 'flashProtection.html' %}
-    <div class="w-full max-w-md bg-white rounded-lg shadow-md overflow-hidden">
-      <!-- Header Form -->
-      <div class="bg-red-600 py-4 px-6">
-        <h1 class="text-2xl font-bold text-white text-center">Edit Pengguna</h1>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Edit Pengguna</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Palet warna brand -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand:     '#d4a017',  // emas
+            brandDark: '#8b5e00',  // coklat tua
+            brandLite: '#f6d27a',  // emas muda
+            ink:       '#111827',
+            paper:     '#F8F7F4'
+          },
+          boxShadow: { soft: '0 10px 25px rgba(0,0,0,.08)' }
+        }
+      }
+    }
+  </script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
+</head>
+
+<body class="bg-paper min-h-screen flex items-center justify-center p-4">
+  {% include 'flashProtection.html' %}
+
+  <div class="w-full max-w-xl bg-white rounded-2xl shadow-soft overflow-hidden border border-brand/20">
+    <div class="bg-brand py-4 px-6">
+      <h1 class="text-2xl font-bold text-ink text-center">Edit Pengguna</h1>
+    </div>
+
+    <!--
+      Struktur data user (mengacu tabel & halaman kelolaUser):
+      user[0]=id, [1]=username, [2]=role, [3]=nama, [4]=email, [5]=nohp, [6]=created_at
+    -->
+    <form action="{{ url_for('editUser', user_id=user[0]) }}" method="post" class="p-6 space-y-5" novalidate>
+      {# Jika pakai Flask-WTF, aktifkan: {{ csrf_token() }} #}
+
+      <!-- Username (readonly) -->
+      <div>
+        <label for="username" class="block text-sm font-medium text-ink mb-1">Username</label>
+        <div class="relative">
+          <i class="fa-solid fa-at absolute left-3 top-1/2 -translate-y-1/2 text-ink/30"></i>
+          <input type="text" id="username" name="username" value="{{ user[1] }}"
+                 readonly
+                 class="w-full pl-10 p-2.5 border border-ink/15 rounded-lg bg-neutral-100 text-ink/80"/>
+        </div>
       </div>
 
-      <!-- Form Container -->
-      <form
-        action="{{ url_for('editUser', user_id=user[0]) }}"
-        method="post"
-        class="p-6 space-y-4"
-      >
-        <!-- Username -->
-        <div>
-          <label
-            for="username"
-            class="block text-sm font-medium text-gray-700 mb-1"
-            >Username</label
-          >
-          <div class="relative">
-            <div
-              class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
-            >
-              <i class="fas fa-at text-gray-400"></i>
-            </div>
-            <input
-              type="text"
-              id="username"
-              name="username"
-              value="{{ user[1] }}"
-              class="w-full pl-10 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent bg-gray-100"
-              readonly
-            />
-          </div>
+      <!-- Nama -->
+      <div>
+        <label for="nama" class="block text-sm font-medium text-ink mb-1">Nama</label>
+        <div class="relative">
+          <i class="fa-solid fa-id-badge absolute left-3 top-1/2 -translate-y-1/2 text-ink/30"></i>
+          <input type="text" id="nama" name="nama" value="{{ user[3] or '' }}" required
+                 class="w-full pl-10 p-2.5 border border-ink/15 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand"/>
+        </div>
+      </div>
+
+      <!-- Email -->
+      <div>
+        <label for="email" class="block text-sm font-medium text-ink mb-1">Email</label>
+        <div class="relative">
+          <i class="fa-solid fa-envelope absolute left-3 top-1/2 -translate-y-1/2 text-ink/30"></i>
+          <input type="email" id="email" name="email" value="{{ user[4] or '' }}" required
+                 class="w-full pl-10 p-2.5 border border-ink/15 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand"/>
+        </div>
+      </div>
+
+      <!-- No HP -->
+      <div>
+        <label for="nohp" class="block text-sm font-medium text-ink mb-1">No. HP</label>
+        <div class="relative">
+          <i class="fa-solid fa-phone absolute left-3 top-1/2 -translate-y-1/2 text-ink/30"></i>
+          <input type="tel" id="nohp" name="nohp" value="{{ user[5] or '' }}" required
+                 class="w-full pl-10 p-2.5 border border-ink/15 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand"/>
+        </div>
+      </div>
+
+      <!-- Role -->
+      <div>
+        <label for="role" class="block text-sm font-medium text-ink mb-1">Role</label>
+        <div class="relative">
+          <i class="fa-solid fa-user-gear absolute left-3 top-1/2 -translate-y-1/2 text-ink/30"></i>
+          <select id="role" name="role"
+                  class="w-full pl-10 p-2.5 border border-ink/15 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand">
+            <option value="admin" {% if user[2]=='admin' %}selected{% endif %}>Admin</option>
+            <option value="user"  {% if user[2]=='user'  %}selected{% endif %}>User</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Ganti Password (opsional) -->
+      <div class="rounded-xl border border-brand/20 p-4 bg-brandLite/10">
+        <div class="flex items-center gap-2 mb-3">
+          <i class="fa-solid fa-key text-brandDark"></i>
+          <p class="text-sm text-ink/80"><strong>Ganti Password (opsional):</strong> kosongkan jika tidak ingin mengubah.</p>
         </div>
 
-        <!-- Role -->
-        <div>
-          <label
-            for="role"
-            class="block text-sm font-medium text-gray-700 mb-1"
-            >Role</label
-          >
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div class="relative">
-            <div
-              class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
-            >
-              <i class="fas fa-user-tag text-gray-400"></i>
-            </div>
-            <select
-              id="role"
-              name="role"
-              class="w-full pl-10 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-            >
-              <option value="admin" {% if user[3] == 'admin' %}selected{% endif %}>Admin</option>
-              <option value="user" {% if user[3] == 'user' %}selected{% endif %}>User</option>
-            </select>
+            <i class="fa-solid fa-lock absolute left-3 top-1/2 -translate-y-1/2 text-ink/30"></i>
+            <input type="password" id="new_password" name="new_password" placeholder="Password baru"
+                   class="w-full pl-10 pr-10 p-2.5 border border-ink/15 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand">
+            <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-ink/40 hover:text-ink/60" data-toggle="new_password">
+              <i class="fa-regular fa-eye"></i>
+            </button>
+          </div>
+
+          <div class="relative">
+            <i class="fa-solid fa-lock absolute left-3 top-1/2 -translate-y-1/2 text-ink/30"></i>
+            <input type="password" id="confirm_password" name="confirm_password" placeholder="Ulangi password baru"
+                   class="w-full pl-10 pr-10 p-2.5 border border-ink/15 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand">
+            <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-ink/40 hover:text-ink/60" data-toggle="confirm_password">
+              <i class="fa-regular fa-eye"></i>
+            </button>
           </div>
         </div>
+        <p class="mt-2 text-xs text-ink/60">Minimal 6 karakter disarankan. Sistem hanya akan mengubah password bila kedua kolom terisi dan sama.</p>
+      </div>
 
-        <!-- Submit Button -->
-        <button
-          type="submit"
-          class="w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition duration-300 flex items-center justify-center"
-        >
-          <i class="fas fa-save mr-2"></i> Simpan Perubahan
+      <!-- Actions -->
+      <div class="flex gap-3 pt-2">
+        <button type="submit"
+                class="flex-1 bg-brand hover:bg-brandDark text-ink hover:text-white rounded-lg py-2.5 font-medium">
+          <i class="fa-solid fa-floppy-disk mr-2"></i> Simpan Perubahan
         </button>
-
-        <!-- Cancel Button -->
-        <a
-          href="{{ url_for('menuAdmin', roleMenu='kelolaUser') }}"
-          class="w-full bg-gray-200 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-300 transition duration-300 flex items-center justify-center mt-3"
-        >
-          <i class="fas fa-times mr-2"></i> Batal
+        <a href="{{ url_for('menuAdmin', roleMenu='kelolaUser') }}"
+           class="flex-1 text-center bg-neutral-200 hover:bg-neutral-300 text-neutral-800 rounded-lg py-2.5 font-medium">
+          <i class="fa-solid fa-xmark mr-2"></i> Batal
         </a>
-      </form>
-    </div>
-  </body>
-</html>
-```
+      </div>
+    </form>
+  </div>
 
+  <script>
+    // Toggle show/hide password fields
+    document.querySelectorAll('[data-toggle]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-toggle');
+        const input = document.getElementById(id);
+        if (!input) return;
+        const isPass = input.type === 'password';
+        input.type = isPass ? 'text' : 'password';
+        const icon = btn.querySelector('i');
+        icon.classList.toggle('fa-eye');
+        icon.classList.toggle('fa-eye-slash');
+      });
+    });
+
+    // Validasi ringan: pastikan konfirmasi sama (di sisi klien)
+    const form = document.querySelector('form');
+    form.addEventListener('submit', (e) => {
+      const p1 = document.getElementById('new_password').value.trim();
+      const p2 = document.getElementById('confirm_password').value.trim();
+      if (p1 || p2) {
+        if (p1.length < 6) {
+          e.preventDefault();
+          alert('Password baru minimal 6 karakter.');
+          return;
+        }
+        if (p1 !== p2) {
+          e.preventDefault();
+          alert('Konfirmasi password tidak sama.');
+          return;
+        }
+      }
+    });
+  </script>
+</body>
+</html>
