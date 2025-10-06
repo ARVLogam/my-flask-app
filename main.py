@@ -794,6 +794,38 @@ def orders_me():
 # ---------- Admin: Kelola Pesanan ----------
 # ==== Admin: daftar pesanan ====
 
+# =========================
+# Helpers untuk query aman
+# =========================
+def _db_select_all(db, sql, params=None):
+    """Coba berbagai nama method select yang mungkin ada di kelas Database."""
+    params = params or []
+    for name in ("select", "fetch_all", "select_all"):
+        if hasattr(db, name):
+            return getattr(db, name)(sql, params) or []
+    return []
+
+def _db_select_one(db, sql, params=None):
+    rows = _db_select_all(db, sql, params)
+    return rows[0] if rows else None
+
+def _row_get(row, key, idx):
+    """
+    Ambil nilai dari hasil query yang bisa berupa tuple/list atau dict.
+    key = nama kolom; idx = posisi kolom bila tuple.
+    """
+    if isinstance(row, dict):
+        return row.get(key)
+    # row sebagai tuple/list
+    try:
+        return row[idx]
+    except Exception:
+        return None
+
+
+# =========================
+# ADMIN: Daftar Pesanan
+# =========================
 @app.route("/admin/orders")
 def admin_orders():
     if not check_role("admin"):
@@ -811,122 +843,38 @@ def admin_orders():
         o.id,
         COALESCE(u.nama, u.username) AS customer,
         o.status,
-        o.total,
-        o.payment_method,
-        o.payment_status,
+        COALESCE(o.total, 0) AS total,
+        COALESCE(o.payment_method, '-') AS payment_method,
+        COALESCE(o.payment_status, 'pending') AS payment_status,
         o.created_at
       FROM orders o
       LEFT JOIN users u ON u.id = o.user_id
       {where}
       ORDER BY o.id DESC
     """
-    rows = _fetch_all_sql(sql, params)
 
-    orders = [{
-        "id": r.get("id"),
-        "customer": r.get("customer"),
-        "status": (r.get("status") or "baru"),
-        "total": r.get("total") or 0,
-        "payment_method": (r.get("payment_method") or "-"),
-        "payment_status": (r.get("payment_status") or "pending"),
-        "created_at": r.get("created_at"),
-    } for r in rows]
+    db = Database(DB_CONFIG)
+    rows = _db_select_all(db, sql, params)
 
-    # coba render template file normal
-    try:
-        return render_template("order_admin.html", orders=orders, status=status)
-    except TemplateNotFound:
-        # fallback: render inline agar tidak 500 walau file belum ada/terbaca
-        from flask import render_template_string
-        return render_template_string("""
-<!DOCTYPE html>
-<html lang="id">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Kelola Pesanan (Fallback)</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-50 min-h-screen">
-  <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-    <div class="flex items-center justify-between mb-4">
-      <h1 class="text-2xl font-bold text-gray-800">Kelola Pesanan</h1>
-      <a href="{{ url_for('dashboard') }}" class="px-3 py-2 text-sm rounded border border-gray-300 hover:bg-gray-100">← Kembali</a>
-    </div>
+    # Normalisasi ke dict untuk template
+    orders = []
+    for r in rows:
+        orders.append({
+            "id":              _row_get(r, "id",              0),
+            "customer":        _row_get(r, "customer",        1),
+            "status":         (_row_get(r, "status",          2) or "baru"),
+            "total":          (_row_get(r, "total",           3) or 0),
+            "payment_method": (_row_get(r, "payment_method",  4) or "-"),
+            "payment_status": (_row_get(r, "payment_status",  5) or "pending"),
+            "created_at":      _row_get(r, "created_at",      6),
+        })
 
-    <p class="text-sm text-gray-600 mb-3">Template <code>order_admin.html</code> belum ditemukan / error render.</p>
-
-    <div class="mb-4 text-sm">
-      Filter:
-      {% for f in ['semua','baru','diterima','diproses','selesai','batal'] %}
-        <a href="{{ url_for('admin_orders', status=f) }}"
-           class="mr-3 {{ 'font-semibold text-yellow-700' if status==f else 'text-gray-600 hover:underline' }}">
-          {{ f|capitalize }}
-        </a>
-      {% endfor %}
-    </div>
-
-    <div class="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-100">
-            <tr>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">#</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Customer</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Total</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Bayar</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Aksi</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-200">
-            {% if orders and orders|length > 0 %}
-              {% for o in orders %}
-              <tr class="hover:bg-gray-50">
-                <td class="px-4 py-3 text-sm">#{{ o.id }}</td>
-                <td class="px-4 py-3 text-sm">{{ o.customer }}</td>
-                <td class="px-4 py-3 text-sm capitalize">{{ o.status }}</td>
-                <td class="px-4 py-3 text-sm">Rp {{ '{:,.0f}'.format((o.total or 0)|int).replace(',', '.') }}</td>
-                <td class="px-4 py-3 text-sm">{{ (o.payment_method or '-')|upper }} <span class="text-gray-500">({{ o.payment_status or 'pending' }})</span></td>
-                <td class="px-4 py-3 text-sm">
-                  <a href="{{ url_for('admin_order_detail', order_id=o.id) }}" class="text-blue-600 hover:underline">Detail</a>
-                </td>
-              </tr>
-              {% endfor %}
-            {% else %}
-              <tr><td colspan="6" class="px-4 py-6 text-center text-gray-500">Belum ada pesanan.</td></tr>
-            {% endif %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </main>
-</body>
-</html>
-        """, orders=orders, status=status)
+    return render_template("order_admin.html", orders=orders, status=status, role="admin")
 
 
-
-
-
-def _run_select_all(db, sql, params=None):
-    params = params or []
-    if hasattr(db, "select"):
-        return db.select(sql, params)
-    if hasattr(db, "fetch_all"):
-        return db.fetch_all(sql, params)
-    if hasattr(db, "select_all"):
-        return db.select_all(sql, params)
-    return []
-
-def _run_select_one(db, sql, params=None):
-    params = params or []
-    if hasattr(db, "select_one"):
-        return db.select_one(sql, params)
-    rows = _run_select_all(db, sql, params)
-    return rows[0] if rows else None
-
-
+# =========================
+# ADMIN: Detail Pesanan
+# =========================
 @app.route("/admin/orders/<int:order_id>", methods=["GET", "POST"])
 def admin_order_detail(order_id):
     if not check_role("admin"):
@@ -935,11 +883,10 @@ def admin_order_detail(order_id):
 
     db = Database(DB_CONFIG)
 
-    # Update status (jika ada POST)
+    # Update status (POST)
     if request.method == "POST":
-        action  = (request.form.get("action") or "").lower()
-        mapping = {"terima": "diterima", "proses": "diproses",
-                   "selesai": "selesai", "batal": "batal"}
+        action = (request.form.get("action") or "").lower()
+        mapping = {"terima": "diterima", "proses": "diproses", "selesai": "selesai", "batal": "batal"}
         if action in mapping and hasattr(db, "update_order_status"):
             ok = db.update_order_status(order_id, mapping[action])
             flash("Status diperbarui" if ok else "Gagal memperbarui status",
@@ -950,50 +897,74 @@ def admin_order_detail(order_id):
 
     # Header pesanan
     sql_head = """
-        SELECT
-          o.id,
-          COALESCE(u.nama, u.username) AS customer,
-          o.status,
-          COALESCE(o.total,0) AS total,
-          COALESCE(o.payment_method,'-') AS payment_method,
-          COALESCE(o.payment_status,'-') AS payment_status,
-          o.created_at
-        FROM orders o
-        LEFT JOIN users u ON u.id = o.user_id
-        WHERE o.id = %s
+      SELECT
+        o.id,
+        COALESCE(u.nama, u.username) AS customer,
+        o.status,
+        COALESCE(o.total,0) AS total,
+        COALESCE(o.payment_method,'-') AS payment_method,
+        COALESCE(o.payment_status,'-') AS payment_status,
+        o.created_at
+      FROM orders o
+      LEFT JOIN users u ON u.id = o.user_id
+      WHERE o.id = %s
     """
-    row = _run_select_one(db, sql_head, [order_id])
-    if not row:
+    h = _db_select_one(db, sql_head, [order_id])
+    if not h:
         flash("Pesanan tidak ditemukan", "error")
         return redirect(url_for("admin_orders"))
 
     order = {
-        "id":            row[0],
-        "customer":      row[1],
-        "status":        row[2] or "-",
-        "total":         int(row[3] or 0),
-        "payment_method":row[4] or "-",
-        "payment_status":row[5] or "-",
-        "created_at":    row[6],
+        "id":              _row_get(h, "id",              0),
+        "customer":        _row_get(h, "customer",        1),
+        "status":         (_row_get(h, "status",          2) or "-"),
+        "total":          int(_row_get(h, "total",        3) or 0),
+        "payment_method": (_row_get(h, "payment_method",  4) or "-"),
+        "payment_status": (_row_get(h, "payment_status",  5) or "-"),
+        "created_at":      _row_get(h, "created_at",      6),
     }
 
-    # Item pesanan
-    sql_items = """
-        SELECT oi.id, oi.qty, oi.harga, COALESCE(b.nama,'(Produk)') AS nama
-        FROM order_items oi
-        LEFT JOIN barang b ON b.id = oi.barang_id
-        WHERE oi.order_id = %s
-        ORDER BY oi.id
-    """
-    rows = _run_select_all(db, sql_items, [order_id]) or []
-    items = [{
-        "id": r[0],
-        "qty": int(r[1] or 0),
-        "harga": int(r[2] or 0),
-        "nama": r[3],
-    } for r in rows]
+    # Items (coba beberapa nama tabel umum agar fleksibel)
+    sql_items_list = [
+        ("""
+         SELECT oi.id, oi.qty, oi.harga, COALESCE(b.nama,'(Produk)') AS nama
+           FROM order_items oi
+      LEFT JOIN barang b ON b.id = oi.barang_id
+          WHERE oi.order_id = %s
+          ORDER BY oi.id
+        """, [order_id]),
+        ("""
+         SELECT oi.id, oi.qty, oi.harga, COALESCE(b.nama,'(Produk)') AS nama
+           FROM order_item oi
+      LEFT JOIN barang b ON b.id = oi.barang_id
+          WHERE oi.order_id = %s
+          ORDER BY oi.id
+        """, [order_id]),
+        ("""
+         SELECT d.id, d.qty, d.harga, COALESCE(b.nama,'(Produk)') AS nama
+           FROM order_details d
+      LEFT JOIN barang b ON b.id = d.barang_id
+          WHERE d.order_id = %s
+          ORDER BY d.id
+        """, [order_id]),
+    ]
+    raw_items = []
+    for sql_i, p_i in sql_items_list:
+        raw_items = _db_select_all(db, sql_i, p_i)
+        if raw_items:
+            break
 
-    return render_template("order_detail_admin.html", order=order, items=items)
+    items = []
+    for r in raw_items:
+        items.append({
+            "id":    _row_get(r, "id",    0),
+            "qty":   int(_row_get(r, "qty",   1) or 0),
+            "harga": int(_row_get(r, "harga", 2) or 0),
+            "nama":  _row_get(r, "nama",  3),
+        })
+
+    return render_template("order_detail_admin.html", order=order, items=items, role="admin")
+
 
 
 
